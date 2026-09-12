@@ -1,0 +1,64 @@
+# IRON-X Gen II — TESR Academy teaching robot (reference robot #1).
+# Dimensions follow the Gen II CAD (axle z = 0.05, lidar ≈ 0.149 above ground, camera ≈ 0.125).
+# Chassis box and component ids are placeholders until confirmed against ironx_description.
+schema_version: 1
+meta:
+  name: ironx_gen2
+  package_prefix: ironx
+  created_by: anon
+  description: IRON-X Gen II differential-drive teaching robot
+  tags: [education, reference]
+
+target:
+  ros_distro: jazzy
+  os: ubuntu-24.04
+  compute: rpi5
+  arch: arm64
+  deployment: docker
+
+requirements:
+  application: research
+  environment: {type: laboratory, indoor: true, floor: tile, max_slope_deg: 3}
+  payload: {max_kg: 2.0, dims_m: [0.15, 0.15, 0.10], cog_offset_m: [0.0, 0.0, 0.05]}
+  motion: {v_max: 0.5, a_max: 0.5, w_max: 1.5}
+  runtime_h: 2
+
+mechanical:
+  dims_m: {length: 0.26, width: 0.24, height: 0.10, ground_clearance: 0.02}
+  mass_kg: {robot: auto, total: auto}
+
+drive:
+  type: differential
+  wheels: {diameter_m: 0.10, width_m: 0.03, separation_m: 0.23}
+  casters:
+    - {xyz: [-0.10, 0.0, 0.0]}
+  motor: {hw: generic_dc_gearmotor, count: 2, gear_ratio: 30, driver: generic_serial_motor_driver}
+
+hardware:
+  - {id: lidar, hw: ld19, frame: laser, parent: base_link, xyz: [0.0, 0.0, 0.099], rpy: [0.0, 0.0, 3.14159]}
+  - {id: imu, hw: tesr_imu, frame: imu_link, parent: base_link, xyz: [0.0, 0.0, 0.02], rpy: [0.0, 0.0, 0.0]}
+  - {id: camera, hw: realsense_d435i, frame: camera_link, parent: base_link, xyz: [0.10, 0.0, 0.075], rpy: [0.0, 0.0, 0.0]}
+  - {id: base_board, hw: generic_serial_motor_driver}
+
+power:
+  battery: {hw: liion_12v_20ah}
+  bus_v: 12
+  rails:
+    - {v: 5, hw: dcdc_12_5}
+
+comms: [dds, mqtt]
+
+ros:
+  control: {stack: ros2_control, controller: auto}
+  localization: {slam: slam_toolbox, amcl: true, ekf: auto}
+  navigation:
+    profile: indoor_amr
+    planner: auto
+    controller: auto
+    costmap: auto
+    safety_margin_m: 0.03
+    features: [manual, slam, nav, waypoints]
+  perception: {depth_to_costmap: false}
+
+sim: {engine: gz_harmonic, world: empty, renderer: ogre1}
+integrations: {node_red: true, studio_pro: true}

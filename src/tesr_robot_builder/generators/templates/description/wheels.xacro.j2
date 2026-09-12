@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<!-- {{ header }} -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- {{ d.drive.type }} drive: {{ r.wheels|length }} driven wheels, {{ r.casters|length }} casters -->
+  <xacro:macro name="tesr_wheel" params="name x y mass ixx iyy izz">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="tesr_grey"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <mass value="${mass}"/>
+        <inertia ixx="${ixx}" ixy="0" ixz="0" iyy="${iyy}" iyz="0" izz="${izz}"/>
+      </inertial>
+    </link>
+    <joint name="${name}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <dynamics damping="0.1" friction="0.1"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="tesr_caster" params="name x y z radius">
+    <link name="${name}">
+      <visual>
+        <geometry><sphere radius="${radius}"/></geometry>
+        <material name="tesr_grey"/>
+      </visual>
+      <collision>
+        <geometry><sphere radius="${radius}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="0.2"/>
+        <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+      </inertial>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+{% for w in r.wheels %}
+  <xacro:tesr_wheel name="{{ w.name }}" x="{{ w.x|f4 }}" y="{{ w.y|f4 }}" mass="{{ w.mass|f4 }}"
+                    ixx="{{ w.inertia.ixx|sci }}" iyy="{{ w.inertia.iyy|sci }}" izz="{{ w.inertia.izz|sci }}"/>
+{% endfor %}
+{% for c in r.casters %}
+  <xacro:tesr_caster name="{{ c.name }}" x="{{ c.x|f4 }}" y="{{ c.y|f4 }}" z="{{ c.z|f4 }}" radius="{{ c.radius|f4 }}"/>
+{% endfor %}
+</robot>

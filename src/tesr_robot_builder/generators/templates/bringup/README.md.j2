@@ -1,0 +1,25 @@
+<!-- {{ header }} -->
+# {{ pkg }}
+
+Bringup package for **{{ d.meta.name }}** — {{ d.drive.type }} drive, ROS 2 {{ d.target.ros_distro }} on {{ d.target.compute }}.
+
+| Item | Value |
+|---|---|
+| Chassis (L × W × H) | {{ r.chassis.length }} × {{ r.chassis.width }} × {{ r.chassis.height }} m |
+| Wheels | {{ r.wheels|length }} × Ø{{ d.drive.wheels.diameter_m }} m, track {{ d.drive.wheels.separation_m }} m |
+| Robot / total mass (est.) | {{ r.robot_mass }} / {{ r.total_mass }} kg |
+| Controller | `{{ r.controller }}` |
+| Localization | {{ d.ros.localization.slam }}{% if d.ros.localization.amcl %} + AMCL{% endif %}{% if r.ekf %} + EKF{% endif %} |
+| Navigation | `{{ r.planner }}` + `{{ r.nav_controller }}` |
+| Footprint | `{{ r.footprint }}` |
+| Local costmap | {{ r.costmap.local_size_m }} m @ {{ r.costmap.resolution_m }} m, inflation {{ r.costmap.inflation_radius_m }} m |
+
+```bash
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch {{ pkg }} robot.launch.py
+```
+
+`config/capabilities.json` is the contract consumed by TESR Studio Pro to enable Blockly blocks for this robot.
+
+Do not edit generated files — change the Robot Definition (or `overrides/`) and run `tesr-rb generate` again.

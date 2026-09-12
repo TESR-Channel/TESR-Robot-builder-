@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- {{ header }} -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Sensor and device frames. Poses are relative to the parent frame (metres, radians). -->
+{% for h in r.hardware if h.frame %}
+  <!-- {{ h.id }}: {{ h.name }} ({{ h.category }}) -->
+  <link name="{{ h.frame }}">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="{{ h.dims|vec }}"/></geometry>
+      <material name="tesr_crimson"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="{{ h.dims|vec }}"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="{{ ([h.mass, 0.001]|max)|f4 }}"/>
+      <inertia ixx="{{ h.inertia.ixx|sci }}" ixy="0" ixz="0" iyy="{{ h.inertia.iyy|sci }}" iyz="0" izz="{{ h.inertia.izz|sci }}"/>
+    </inertial>
+  </link>
+  <joint name="{{ h.frame }}_joint" type="fixed">
+    <parent link="{{ h.parent }}"/>
+    <child link="{{ h.frame }}"/>
+    <origin xyz="{{ h.xyz|vec }}" rpy="{{ h.rpy|vec }}"/>
+  </joint>
+{% if h.optical_frame %}
+  <link name="{{ h.optical_frame }}"/>
+  <joint name="{{ h.optical_frame }}_joint" type="fixed">
+    <parent link="{{ h.frame }}"/>
+    <child link="{{ h.optical_frame }}"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+{% endif %}
+
+{% endfor %}
+</robot>

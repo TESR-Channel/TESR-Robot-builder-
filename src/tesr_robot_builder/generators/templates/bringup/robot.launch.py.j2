@@ -1,0 +1,41 @@
+# {{ header }}
+"""Bring up {{ d.meta.name }} ({{ d.drive.type }} drive, ROS 2 {{ d.target.ros_distro }}).
+
+    ros2 launch {{ pkg }} robot.launch.py
+    ros2 launch {{ pkg }} robot.launch.py use_sim_time:=true
+
+Phase 0 publishes the robot model and TF. Phase 1 adds, from the same
+Robot Definition: {{ r.controller }} (ros2_control), sensor drivers
+({{ r.hardware|map(attribute='driver_package')|select|unique|join(', ') or 'none yet' }}),
+{% if r.ekf %}robot_localization EKF, {% endif %}{{ d.ros.localization.slam }}, AMCL and Nav2
+({{ r.planner }} + {{ r.nav_controller }}).
+"""
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+from launch_ros.substitutions import FindPackageShare
+
+
+def generate_launch_description():
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    description_share = FindPackageShare('{{ r.package("description") }}')
+    model = PathJoinSubstitution([description_share, 'urdf', 'robot.urdf.xacro'])
+    robot_description = ParameterValue(Command(['xacro ', model]), value_type=str)
+
+    return LaunchDescription([
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            output='screen',
+            parameters=[{'robot_description': robot_description, 'use_sim_time': use_sim_time}],
+        ),
+        # Phase 1: replaced by ros2_control's joint_state_broadcaster.
+        Node(
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+    ])

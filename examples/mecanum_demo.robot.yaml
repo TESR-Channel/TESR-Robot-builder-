@@ -1,0 +1,56 @@
+# Mecanum demo — exercises the 4-wheel holonomic path of the generators.
+schema_version: 1
+meta:
+  name: mecanum_demo
+  package_prefix: mecanum_demo
+  created_by: anon
+  tags: [demo, mecanum]
+
+target:
+  ros_distro: jazzy
+  os: ubuntu-24.04
+  compute: x86_pc
+  arch: amd64
+  deployment: docker
+
+requirements:
+  application: research
+  environment: {type: laboratory, indoor: true, floor: epoxy, max_slope_deg: 2, min_aisle_m: 1.0}
+  payload: {max_kg: 30, dims_m: [0.5, 0.4, 0.3], cog_offset_m: [0.0, 0.0, 0.15]}
+  motion: {v_max: 1.0, a_max: 0.8, w_max: 1.5}
+  runtime_h: 4
+
+mechanical:
+  dims_m: {length: 0.60, width: 0.50, height: 0.30, ground_clearance: 0.05}
+
+drive:
+  type: mecanum
+  wheels: {diameter_m: 0.152, width_m: 0.05, separation_m: 0.44, wheelbase_m: 0.40}
+  motor: {hw: generic_bldc_24v_100w, count: 4, gear_ratio: 15, driver: generic_can_motor_driver}
+
+hardware:
+  - {id: lidar_front, hw: rplidar_s2, frame: laser, parent: base_link, xyz: [0.25, 0.0, 0.30], rpy: [0.0, 0.0, 0.0]}
+  - {id: imu, hw: tesr_imu, frame: imu_link, parent: base_link, xyz: [0.0, 0.0, 0.10], rpy: [0.0, 0.0, 0.0]}
+  - {id: camera_front, hw: realsense_d455, frame: camera_link, parent: base_link, xyz: [0.28, 0.0, 0.22], rpy: [0.0, 0.0, 0.0]}
+  - {id: drivers_front, hw: generic_can_motor_driver}
+  - {id: drivers_rear, hw: generic_can_motor_driver}
+  - {id: estop, hw: generic_estop, io: DI1}
+
+power:
+  battery: {hw: liion_24v_30ah}
+  bus_v: 24
+  rails:
+    - {v: 12, hw: dcdc_24_12}
+    - {v: 5, hw: dcdc_24_5}
+
+io: {DI: {1: estop}, DO: {1: tower_light}}
+comms: [dds, mqtt, rest]
+
+ros:
+  navigation:
+    profile: indoor_amr
+    features: [manual, slam, nav, waypoints]
+  perception: {depth_to_costmap: true}
+
+sim: {engine: gz_harmonic, world: empty, renderer: ogre1}
+integrations: {node_red: true, studio_pro: true}

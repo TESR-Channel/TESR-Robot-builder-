@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!-- {{ header }} -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- base_footprint: on the ground under the robot centre. base_link: at axle height. -->
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 {{ r.chassis.base_link_z|f4 }}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 {{ r.chassis.box_center_z|f4 }}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+      <material name="tesr_black"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 {{ r.chassis.box_center_z|f4 }}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 {{ r.chassis.box_center_z|f4 }}" rpy="0 0 0"/>
+      <mass value="{{ r.chassis.mass|f4 }}"/>
+      <inertia ixx="{{ r.chassis.inertia.ixx|sci }}" ixy="0" ixz="0"
+               iyy="{{ r.chassis.inertia.iyy|sci }}" iyz="0"
+               izz="{{ r.chassis.inertia.izz|sci }}"/>
+    </inertial>
+  </link>
+</robot>

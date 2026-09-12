@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- {{ header }} -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="{{ d.meta.name }}">
+
+  <!-- Resolved geometry — every value below is traceable to robot.lock.yaml -->
+  <xacro:property name="wheel_radius"     value="{{ r.wheel_radius|f4 }}"/>
+  <xacro:property name="wheel_width"      value="{{ d.drive.wheels.width_m|f4 }}"/>
+  <xacro:property name="chassis_length"   value="{{ r.chassis.length|f4 }}"/>
+  <xacro:property name="chassis_width"    value="{{ r.chassis.width|f4 }}"/>
+  <xacro:property name="chassis_height"   value="{{ r.chassis.height|f4 }}"/>
+  <xacro:property name="ground_clearance" value="{{ r.chassis.ground_clearance|f4 }}"/>
+
+  <material name="tesr_black">   <color rgba="0.05 0.05 0.05 1.0"/></material>
+  <material name="tesr_crimson"> <color rgba="0.545 0.0 0.0 1.0"/></material>
+  <material name="tesr_gold">    <color rgba="0.788 0.659 0.298 1.0"/></material>
+  <material name="tesr_grey">    <color rgba="0.55 0.55 0.55 1.0"/></material>
+
+  <xacro:include filename="chassis.xacro"/>
+  <xacro:include filename="wheels.xacro"/>
+  <xacro:include filename="sensors.xacro"/>
+  <xacro:include filename="gazebo.xacro"/>
+</robot>

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!-- {{ header }} -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- gz-sim ({{ d.sim.engine }}) hooks. Phase 1 adds gz_ros2_control, sensor plugins and the
+       {{ r.controller }} system from the '{{ d.drive.type }}' drive profile. -->
+{% for w in r.wheels %}
+  <gazebo reference="{{ w.name }}">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+  </gazebo>
+{% endfor %}
+{% for c in r.casters %}
+  <gazebo reference="{{ c.name }}">
+    <mu1>0.01</mu1>
+    <mu2>0.01</mu2>
+  </gazebo>
+{% endfor %}
+</robot>
