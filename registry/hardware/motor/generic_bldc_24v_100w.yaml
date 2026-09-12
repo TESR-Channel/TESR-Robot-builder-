@@ -1,0 +1,10 @@
+id: generic_bldc_24v_100w
+category: motor
+name: 100 W BLDC gear motor (24 V)
+manufacturer: generic
+mass_kg: 1.2
+dims_m: [0.10, 0.06, 0.06]
+electrical: {voltage_v: 24, typical_w: 50, peak_w: 100}
+interfaces: [hall, encoder]
+motor: {rated_torque_nm: 0.32, rated_rpm: 3000, peak_torque_nm: 0.96}
+verified: false

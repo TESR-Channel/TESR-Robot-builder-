@@ -1,0 +1,11 @@
+id: rplidar_s2
+category: lidar
+name: Slamtec RPLIDAR S2
+manufacturer: Slamtec
+mass_kg: 0.185
+dims_m: [0.078, 0.078, 0.04]
+electrical: {voltage_v: 5, typical_w: 3, peak_w: 5}
+interfaces: [usb2, uart]
+sensor: {type: lidar_2d, range_m: 30, min_range_m: 0.05, fov_deg: 360, rate_hz: 10}
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false

@@ -1,0 +1,9 @@
+id: lifepo4_48v_40ah
+category: battery
+name: LiFePO4 48 V 40 Ah
+manufacturer: generic
+mass_kg: 22
+dims_m: [0.35, 0.20, 0.22]
+electrical: {voltage_v: 48, typical_w: 0, peak_w: 0}
+battery: {nominal_v: 51.2, capacity_ah: 40, max_discharge_a: 60, chemistry: lifepo4}
+verified: false

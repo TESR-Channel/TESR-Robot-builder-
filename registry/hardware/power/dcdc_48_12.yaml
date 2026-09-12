@@ -1,0 +1,9 @@
+id: dcdc_48_12
+category: power_supply
+name: DC-DC 48 V → 12 V 10 A
+manufacturer: generic
+mass_kg: 0.2
+dims_m: [0.10, 0.06, 0.03]
+electrical: {voltage_v: 48, typical_w: 3, peak_w: 130}
+power_supply: {output_v: 12, output_a: 10}
+verified: false

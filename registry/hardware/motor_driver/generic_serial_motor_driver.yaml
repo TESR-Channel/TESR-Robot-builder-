@@ -1,0 +1,10 @@
+id: generic_serial_motor_driver
+category: motor_driver
+name: Serial (UART) motor driver board with encoder feedback
+manufacturer: generic
+mass_kg: 0.08
+dims_m: [0.08, 0.06, 0.02]
+electrical: {voltage_v: 12, typical_w: 1, peak_w: 3}
+interfaces: [uart]
+verified: false
+notes: Placeholder for microcontroller-based drivers such as the IRON-X base board (ironx_driver.py).

@@ -1,0 +1,9 @@
+id: differential
+kinematics: differential
+controller: diff_drive_controller/DiffDriveController
+joints: {left: left_wheel_joint, right: right_wheel_joint}
+wheel_count: 2
+holonomic: false
+nav_planner: nav2_smac_planner/SmacPlanner2D
+nav_controller: nav2_mppi_controller/MPPIController
+mppi_motion_model: DiffDrive

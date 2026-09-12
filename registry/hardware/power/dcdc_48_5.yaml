@@ -1,0 +1,9 @@
+id: dcdc_48_5
+category: power_supply
+name: DC-DC 48 V → 5 V 10 A
+manufacturer: generic
+mass_kg: 0.15
+dims_m: [0.08, 0.05, 0.03]
+electrical: {voltage_v: 48, typical_w: 2, peak_w: 55}
+power_supply: {output_v: 5, output_a: 10}
+verified: false

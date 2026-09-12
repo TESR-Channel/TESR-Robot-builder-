@@ -1,0 +1,7 @@
+hw: generic_serial_motor_driver
+distro: jazzy
+package: tesr_serial_base_hardware
+apt: [ros-jazzy-ros2-control, ros-jazzy-ros2-controllers]
+ros2_control_plugin: tesr_serial_base_hardware/SerialBaseSystem
+topics: {main: /joint_states}
+notes: Serial protocol as used by ironx_driver.py; Phase 1 wraps it as a ros2_control SystemInterface.

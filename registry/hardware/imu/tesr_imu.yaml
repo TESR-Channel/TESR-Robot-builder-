@@ -1,0 +1,12 @@
+id: tesr_imu
+category: imu
+name: TESR IMU module (9-axis, UART)
+manufacturer: TESR
+mass_kg: 0.01
+dims_m: [0.03, 0.03, 0.01]
+electrical: {voltage_v: 5, typical_w: 0.2, peak_w: 0.3}
+interfaces: [uart]
+sensor: {type: imu, rate_hz: 100}
+ros: {default_frame: imu_link, topic: /imu/data, msg: sensor_msgs/msg/Imu}
+verified: false
+notes: Placeholder for the IMU used on IRON-X (quaternion output, mount_rpy calibration in imu_tf.yaml).

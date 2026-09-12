@@ -1,0 +1,11 @@
+id: realsense_d455
+category: depth_camera
+name: Intel RealSense D455
+manufacturer: Intel
+mass_kg: 0.103
+dims_m: [0.124, 0.026, 0.029]
+electrical: {voltage_v: 5, typical_w: 3, peak_w: 5}
+interfaces: [usb3]
+sensor: {type: depth_camera, range_m: 6, min_range_m: 0.4, fov_deg: 87, vfov_deg: 58, rate_hz: 30}
+ros: {default_frame: camera_link, topic: /camera/depth/color/points, msg: sensor_msgs/msg/PointCloud2}
+verified: false

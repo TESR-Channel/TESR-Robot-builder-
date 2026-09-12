@@ -1,0 +1,10 @@
+hw: slamtec_p3
+distro: jazzy
+package: rplidar_ros
+apt: [ros-jazzy-rplidar-ros]
+node: rplidar_node
+topics: {main: /scan}
+frame: laser
+launch_template: null
+params_template: null
+notes: Phase 1 adds launch/params templates (serial_port, serial_baudrate, scan_mode).

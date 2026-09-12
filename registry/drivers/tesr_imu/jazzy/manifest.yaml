@@ -1,0 +1,8 @@
+hw: tesr_imu
+distro: jazzy
+package: tesr_imu_driver
+apt: []
+node: imu_node
+topics: {main: /imu/data}
+frame: imu_link
+notes: TESR in-house driver (quaternion input, mount_rpy_deg / invert / zero parameters as on IRON-X).

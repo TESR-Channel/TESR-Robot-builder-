@@ -1,0 +1,7 @@
+id: indoor_amr
+resolution_m: 0.05
+local_costmap_min_m: 3.0
+local_costmap_max_m: 6.0
+inflation_extra_m: 0.10
+obstacle_range_factor: 0.9
+raytrace_extra_m: 0.5

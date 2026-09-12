@@ -1,0 +1,18 @@
+id: x86_pc
+category: compute
+name: Industrial mini PC (x86-64)
+manufacturer: generic
+mass_kg: 0.8
+dims_m: [0.15, 0.12, 0.05]
+electrical: {voltage_v: 12, typical_w: 25, peak_w: 65}
+interfaces: [usb3, usb2, ethernet, serial]
+compute:
+  arch: amd64
+  ram_gb: 16
+  gpu: false
+  usb3_ports: 4
+  ethernet_ports: 2
+  supported_distros: [jazzy]
+  supported_os: [ubuntu-24.04]
+verified: false
+notes: Placeholder for any x86-64 mini/industrial PC; replace with the exact model when known.

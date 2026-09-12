@@ -1,0 +1,7 @@
+hw: realsense_d435i
+distro: jazzy
+package: realsense2_camera
+apt: [ros-jazzy-realsense2-camera]
+node: realsense2_camera_node
+topics: {main: /camera/camera/depth/color/points, imu: /camera/camera/imu}
+frame: camera_link

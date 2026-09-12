@@ -1,0 +1,8 @@
+id: generic_estop
+category: estop
+name: Emergency stop button (mushroom, 2 NC contacts)
+manufacturer: generic
+mass_kg: 0.05
+dims_m: [0.04, 0.04, 0.06]
+interfaces: [digital_input]
+verified: true

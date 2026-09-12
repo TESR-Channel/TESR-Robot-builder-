@@ -1,0 +1,7 @@
+id: tesr_md400_encoder
+category: encoder
+name: Wheel encoders via MD-400 feedback
+manufacturer: TESR
+mass_kg: 0.0
+dims_m: [0.01, 0.01, 0.01]
+verified: false

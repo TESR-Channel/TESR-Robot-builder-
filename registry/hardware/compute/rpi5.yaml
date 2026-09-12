@@ -1,0 +1,18 @@
+id: rpi5
+category: compute
+name: Raspberry Pi 5 (8 GB)
+manufacturer: Raspberry Pi
+mass_kg: 0.05
+dims_m: [0.085, 0.056, 0.02]
+electrical: {voltage_v: 5, typical_w: 8, peak_w: 20}
+interfaces: [usb3, usb2, ethernet, uart, i2c, spi, gpio]
+compute:
+  arch: arm64
+  ram_gb: 8
+  gpu: false
+  usb3_ports: 2
+  ethernet_ports: 1
+  supported_distros: [jazzy]
+  supported_os: [ubuntu-24.04]
+verified: true
+sources: ["https://www.raspberrypi.com/products/raspberry-pi-5/"]

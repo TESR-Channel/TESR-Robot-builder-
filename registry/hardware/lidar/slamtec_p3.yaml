@@ -1,0 +1,12 @@
+id: slamtec_p3
+category: lidar
+name: Slamtec P3 (2D LiDAR)
+manufacturer: Slamtec
+mass_kg: 0.19
+dims_m: [0.07, 0.07, 0.04]
+electrical: {voltage_v: 5, typical_w: 5, peak_w: 5}
+interfaces: [usb2]
+sensor: {type: lidar_2d, range_m: 40, min_range_m: 0.05, fov_deg: 360, rate_hz: 10}
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+notes: Values from the TESR Robot Builder spec example; confirm against the Slamtec datasheet.

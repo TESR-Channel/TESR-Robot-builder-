@@ -1,0 +1,11 @@
+id: realsense_d435i
+category: depth_camera
+name: Intel RealSense D435i
+manufacturer: Intel
+mass_kg: 0.072
+dims_m: [0.09, 0.025, 0.025]
+electrical: {voltage_v: 5, typical_w: 2.5, peak_w: 4}
+interfaces: [usb3]
+sensor: {type: depth_camera, range_m: 3, min_range_m: 0.3, fov_deg: 87, vfov_deg: 58, rate_hz: 30}
+ros: {default_frame: camera_link, topic: /camera/depth/color/points, msg: sensor_msgs/msg/PointCloud2}
+verified: false

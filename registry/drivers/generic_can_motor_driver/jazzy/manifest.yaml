@@ -1,0 +1,7 @@
+hw: generic_can_motor_driver
+distro: jazzy
+package: canopen_ros2_control
+apt: [ros-jazzy-ros2-control, ros-jazzy-ros2-controllers]
+ros2_control_plugin: canopen_ros2_control/CIA402System
+topics: {main: /joint_states}
+notes: ros2_canopen CiA 402 system interface (built from source on Jazzy in Phase 1).

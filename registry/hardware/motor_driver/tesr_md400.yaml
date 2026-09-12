@@ -1,0 +1,10 @@
+id: tesr_md400
+category: motor_driver
+name: TESR MD-400 dual BLDC driver
+manufacturer: TESR
+mass_kg: 0.4
+dims_m: [0.12, 0.09, 0.03]
+electrical: {voltage_v: 48, typical_w: 5, peak_w: 20}
+interfaces: [can, serial]
+verified: false
+notes: Placeholder — ros2_control hardware interface defined in registry/drivers/tesr_md400.

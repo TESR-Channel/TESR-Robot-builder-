@@ -1,0 +1,9 @@
+id: dcdc_12_5
+category: power_supply
+name: DC-DC 12 V → 5 V 5 A
+manufacturer: generic
+mass_kg: 0.05
+dims_m: [0.06, 0.04, 0.02]
+electrical: {voltage_v: 12, typical_w: 0.5, peak_w: 28}
+power_supply: {output_v: 5, output_a: 5}
+verified: false

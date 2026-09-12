@@ -1,0 +1,10 @@
+id: generic_dc_gearmotor
+category: motor
+name: 12 V DC gear motor with encoder
+manufacturer: generic
+mass_kg: 0.25
+dims_m: [0.08, 0.037, 0.037]
+electrical: {voltage_v: 12, typical_w: 10, peak_w: 30}
+interfaces: [encoder]
+motor: {rated_torque_nm: 0.5, rated_rpm: 200, peak_torque_nm: 1.5}
+verified: false

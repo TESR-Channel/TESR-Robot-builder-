@@ -1,0 +1,9 @@
+id: dcdc_24_12
+category: power_supply
+name: DC-DC 24 V → 12 V 10 A
+manufacturer: generic
+mass_kg: 0.15
+dims_m: [0.08, 0.05, 0.03]
+electrical: {voltage_v: 24, typical_w: 2, peak_w: 130}
+power_supply: {output_v: 12, output_a: 10}
+verified: false

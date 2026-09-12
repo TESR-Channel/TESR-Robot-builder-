@@ -1,0 +1,8 @@
+id: service_robot
+resolution_m: 0.05
+local_costmap_min_m: 3.0
+local_costmap_max_m: 5.0
+inflation_extra_m: 0.15
+obstacle_range_factor: 0.9
+raytrace_extra_m: 0.5
+max_speed_cap: 1.0

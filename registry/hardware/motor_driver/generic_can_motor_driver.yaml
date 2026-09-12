@@ -1,0 +1,9 @@
+id: generic_can_motor_driver
+category: motor_driver
+name: Dual BLDC driver, CANopen (24 V)
+manufacturer: generic
+mass_kg: 0.3
+dims_m: [0.11, 0.08, 0.03]
+electrical: {voltage_v: 24, typical_w: 3, peak_w: 10}
+interfaces: [can]
+verified: false

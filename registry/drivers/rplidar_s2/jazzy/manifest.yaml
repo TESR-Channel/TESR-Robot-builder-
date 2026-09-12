@@ -1,0 +1,7 @@
+hw: rplidar_s2
+distro: jazzy
+package: rplidar_ros
+apt: [ros-jazzy-rplidar-ros]
+node: rplidar_node
+topics: {main: /scan}
+frame: laser

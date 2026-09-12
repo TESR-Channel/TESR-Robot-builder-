@@ -1,0 +1,9 @@
+hw: ld19
+distro: jazzy
+package: ldlidar_stl_ros2
+apt: []
+pip: []
+node: ldlidar_stl_ros2_node
+topics: {main: /scan}
+frame: laser
+notes: Built from source (github.com/ldrobotSensorTeam/ldlidar_stl_ros2); Phase 1 adds it to the workspace as a vcs import.

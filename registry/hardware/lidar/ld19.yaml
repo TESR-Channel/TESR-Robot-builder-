@@ -1,0 +1,12 @@
+id: ld19
+category: lidar
+name: LDROBOT LD19 (STL-19P)
+manufacturer: LDROBOT
+mass_kg: 0.047
+dims_m: [0.038, 0.038, 0.035]
+electrical: {voltage_v: 5, typical_w: 1, peak_w: 1.5}
+interfaces: [uart]
+sensor: {type: lidar_2d, range_m: 12, min_range_m: 0.02, fov_deg: 360, rate_hz: 10}
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+notes: Small classroom-class LiDAR; used as a placeholder for IRON-X Gen II until the exact model is confirmed.
