@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tesr-robot-builder"
+version = "0.1.0"
+description = "TESR Robot Builder — Robot Definition → Validation → deterministic ROS 2 workspace generation"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "TESR Co., Ltd.", email = "tesrshop@gmail.com" }]
+dependencies = [
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "jinja2>=3.1",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "xacro>=1.14"]
+
+[project.scripts]
+tesr-rb = "tesr_robot_builder.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tesr_robot_builder"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
