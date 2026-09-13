@@ -1,0 +1,440 @@
+/* TESR Robot Builder — web app logic (docs/app.js)
+ *
+ * Pure functions (calc, recommend, yaml, bom) mirror src/tesr_robot_builder/calc/*.py and are
+ * cross-checked by tests/test_web.js against numbers produced by the Python engine.
+ * Data: ./data/registry.json (engineering specs, exported by `tesr-rb export-web`) and a product
+ * catalog CSV (./data/products.csv or a Google Sheet shared "anyone with link" via ?catalog=<id|url>).
+ * Every step produces something usable on its own: sizing numbers, part recommendations with TESR Shop
+ * links, a robot.yaml for `tesr-rb generate`, and a BOM CSV.
+ */
+(function (root) {
+  'use strict';
+
+  const G = 9.81, SAFETY_FACTOR = 1.3, EFFICIENCY = 0.85;
+  const ROLLING_RESISTANCE = { concrete: 0.015, epoxy: 0.012, tile: 0.012, carpet: 0.030, asphalt: 0.020, gravel: 0.050, mixed: 0.030 };
+  const DUTY = 0.6, DOD = 0.8;
+
+  // ------------------------------------------------------------------ calc (mirrors calc/*.py)
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
+
+  function sizeDrivetrain(o) {
+    const cRr = ROLLING_RESISTANCE[o.floor] ?? 0.02;
+    const theta = (o.slopeDeg || 0) * Math.PI / 180;
+    const r = o.wheelDiameter / 2;
+    const i = o.gearRatio || 1, eta = o.efficiency ?? EFFICIENCY, sf = o.safetyFactor ?? SAFETY_FACTOR;
+    const fCont = o.totalMass * G * cRr;
+    const fPeak = o.totalMass * G * (Math.sin(theta) + cRr * Math.cos(theta)) + o.totalMass * o.aMax;
+    const twCont = fCont * r / o.nDrive, twPeak = fPeak * r / o.nDrive;
+    const wheelRpm = o.vMax * 60 / (Math.PI * o.wheelDiameter);
+    return {
+      totalMass: o.totalMass, cRr, forceCont: fCont, forcePeak: fPeak,
+      wheelTorqueCont: twCont, wheelTorquePeak: twPeak,
+      motorTorqueCont: twCont / (i * eta), motorTorquePeak: twPeak / (i * eta),
+      wheelRpm, motorRpm: wheelRpm * i,
+      powerMechCont: fCont * o.vMax, powerMechPeak: fPeak * o.vMax, powerElecPeak: fPeak * o.vMax / eta,
+      requiredMotorRatedTorque: twCont / (i * eta) * sf, requiredMotorPeakTorque: twPeak / (i * eta),
+    };
+  }
+
+  function sizeBattery(o) {
+    const eta = o.efficiency ?? EFFICIENCY, duty = o.duty ?? DUTY, dod = o.dod ?? DOD;
+    const driveAvg = o.powerMechCont * duty / eta;
+    const totalAvg = driveAvg + o.electronicsW;
+    const wh = totalAvg * o.runtimeH / dod;
+    return { electronicsW: o.electronicsW, driveAvgW: driveAvg, totalAvgW: totalAvg, energyWh: wh,
+      capacityAh: wh / o.busV, peakCurrentA: (o.powerElecPeak + o.electronicsW) / o.busV };
+  }
+
+  function navSizing(o) {
+    const hl = o.length / 2 + o.margin, hw = o.width / 2 + o.margin;
+    const circ = Math.hypot(hl, hw);
+    const raw = 2 * (o.vMax * o.vMax / (2 * o.aMax) + o.length);
+    const local = r4(Math.ceil(Math.min(Math.max(raw, 3), 6) * 2) / 2);
+    const obst = r4(Math.min((o.lidarRange || 8) * 0.9, local / 2));
+    return {
+      footprint: [[r4(hl), r4(hw)], [r4(-hl), r4(hw)], [r4(-hl), r4(-hw)], [r4(hl), r4(-hw)]],
+      circumscribedRadius: r4(circ), inflationRadius: r4(circ + 0.10),
+      localCostmap: local, obstacleRange: obst, raytraceRange: r4(obst + 0.5), resolution: 0.05,
+    };
+  }
+
+  function estimateRobotMass(hardwareMass, L, W, H) {
+    return r4(hardwareMass + 30 * L * W * Math.max(1, H / 0.4));
+  }
+
+  function tipping(o) {
+    // quasi-static: a_tip = g·(track/2)/h_cog vs lateral accel v_max·w_max (rule R-MECH-004)
+    const payloadH = o.height + (o.cogOffsetZ || 0), bodyH = o.groundClearance + o.height / 2;
+    const hCog = (o.robotMass * bodyH + o.payload * payloadH) / Math.max(o.robotMass + o.payload, 1e-6);
+    const aTip = G * (o.track / 2) / Math.max(hCog, 1e-3), aLat = o.vMax * o.wMax;
+    return { hCog, aTip, aLat, ok: aLat <= 0.7 * aTip };
+  }
+
+  // ------------------------------------------------------------------ registry / catalog helpers
+  function parseCsv(text) {
+    const rows = [], row = [];
+    let field = '', q = false;
+    text = text.replace(/^\uFEFF/, '');
+    for (let k = 0; k < text.length; k++) {
+      const c = text[k];
+      if (q) {
+        if (c === '"') { if (text[k + 1] === '"') { field += '"'; k++; } else q = false; }
+        else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[k + 1] === '\n') k++;
+        row.push(field); field = ''; rows.push(row.splice(0)); 
+      } else field += c;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row.splice(0)); }
+    if (!rows.length) return [];
+    const header = rows[0].map((h) => h.trim());
+    return rows.slice(1).filter((r) => r.some((v) => v.trim() !== '')).map((r) => {
+      const o = {}; header.forEach((h, idx) => { o[h] = (r[idx] ?? '').trim(); }); return o;
+    });
+  }
+
+  function parseCatalog(text) {
+    return parseCsv(text).map((r) => ({
+      sku: r.sku || '', hardware_ref: r.hardware_ref || '', category: r.category || '',
+      name: r.name_en || r.name_th || r.sku, name_th: r.name_th || '', brand: r.brand || '',
+      price: r.price_thb ? Number(String(r.price_thb).replace(/,/g, '')) : null,
+      stock: r.stock_status || '', shop_url: r.shop_url || '', image_url: r.image_url || '',
+      datasheet_url: r.datasheet_url || '', spec: r.spec_summary || '', notes: r.notes || '',
+    }));
+  }
+
+  function sheetCsvUrl(ref) {
+    const m = ref.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]+)/);
+    const id = m ? m[1] : ref;
+    const gid = ref.match(/[#&?]gid=(\d+)/);
+    return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv` + (gid ? `&gid=${gid[1]}` : '');
+  }
+
+  function catalogUrl(ref) {
+    if (!ref) return './data/products.csv';
+    if (/docs\.google\.com\/spreadsheets/.test(ref)) return sheetCsvUrl(ref);
+    if (/^https?:\/\//.test(ref)) return ref;
+    if (/^[A-Za-z0-9_-]{20,}$/.test(ref)) return sheetCsvUrl(ref);
+    return ref;
+  }
+
+  const STOCK_RANK = { in_stock: 0, preorder: 1, '': 2, out_of_stock: 3, discontinued: 4 };
+  function productsFor(catalog, hwId) {
+    return catalog.filter((p) => p.hardware_ref === hwId)
+      .sort((a, b) => (STOCK_RANK[a.stock] ?? 2) - (STOCK_RANK[b.stock] ?? 2) || (a.price == null) - (b.price == null) || (a.price || 0) - (b.price || 0));
+  }
+
+  const byId = (registry) => Object.fromEntries(registry.hardware.map((h) => [h.id, h]));
+  const byCategory = (registry, cat) => registry.hardware.filter((h) => h.category === cat);
+  const volt = (h) => (h.electrical ? h.electrical.voltage_v : null);
+  const voltMatch = (v, busV) => v == null || Math.abs(v - busV) / busV <= 0.12;
+
+  function motorFits(rec, res) {
+    const m = rec.motor || {};
+    return (m.rated_torque_nm ?? 0) >= res.requiredMotorRatedTorque && (m.peak_torque_nm ?? 0) >= res.requiredMotorPeakTorque && (m.rated_rpm ?? 0) >= res.motorRpm;
+  }
+  function batteryFits(rec, busV, pw) {
+    const b = rec.battery || {};
+    return voltMatch(b.nominal_v ?? volt(rec), busV) && (b.capacity_ah ?? 0) >= pw.capacityAh && (b.max_discharge_a ?? 0) >= pw.peakCurrentA;
+  }
+
+  function recommendMotors(registry, busV, res) {
+    return byCategory(registry, 'motor').map((h) => ({ hw: h, voltOk: voltMatch(volt(h), busV), fits: motorFits(h, res) }))
+      .sort((a, b) => (b.fits && b.voltOk) - (a.fits && a.voltOk) || (a.hw.motor?.rated_torque_nm ?? 0) - (b.hw.motor?.rated_torque_nm ?? 0));
+  }
+  function recommendBatteries(registry, busV, pw) {
+    return byCategory(registry, 'battery').map((h) => ({ hw: h, fits: batteryFits(h, busV, pw) }))
+      .sort((a, b) => b.fits - a.fits || (a.hw.battery?.capacity_ah ?? 0) - (b.hw.battery?.capacity_ah ?? 0));
+  }
+  function railsNeeded(registry, busV, devices) {
+    // devices: registry records; returns [{v, hw|null}] for each voltage other than the bus
+    const need = [...new Set(devices.map(volt).filter((v) => v != null && !voltMatch(v, busV)))].sort((a, b) => a - b);
+    return need.map((v) => {
+      const dcdc = byCategory(registry, 'power_supply').find((h) => voltMatch(volt(h), busV) && Math.abs((h.power_supply?.output_v ?? -1) - v) < 0.5);
+      return { v, hw: dcdc ? dcdc.id : null };
+    });
+  }
+
+  // ------------------------------------------------------------------ Robot Definition v1 (YAML)
+  const yq = (s) => /^[a-z][a-z0-9_]*$/.test(s) ? s : JSON.stringify(s);
+  const yv = (x) => Array.isArray(x) ? `[${x.map((v) => (typeof v === 'number' ? v : yq(String(v)))).join(', ')}]` : x;
+
+  function buildDefinition(d) {
+    // d: normalised design object from the form (see collectDesign)
+    const r = d.wheelDiameter / 2, gc = d.groundClearance, H = d.height, L = d.length;
+    const hw = [];
+    if (d.lidar) hw.push({ id: 'lidar_front', hw: d.lidar, frame: 'laser', xyz: [r4(L / 2 - 0.1), 0, r4(gc + H + 0.05 - r)], rpy: [0, 0, 0] });
+    if (d.imu) hw.push({ id: 'imu', hw: d.imu, frame: 'imu_link', xyz: [0, 0, r4(gc + H / 2 - r)], rpy: [0, 0, 0] });
+    if (d.camera) hw.push({ id: 'cam_front', hw: d.camera, frame: 'camera_link', xyz: [r4(L / 2 - 0.02), 0, r4(gc + H * 0.7 - r)], rpy: [0, 0, 0] });
+    for (let k = 0; k < d.driverCount; k++) hw.push({ id: d.driverCount > 1 ? `motor_driver_${k + 1}` : 'motor_driver', hw: d.driver });
+    if (d.estop) hw.push({ id: 'estop', hw: 'generic_estop', io: 'DI1' });
+    const casters = d.drive === 'differential' ? (L > 0.4 ? [[r4(L / 2 - 0.1), 0, 0], [r4(-(L / 2 - 0.1)), 0, 0]] : [[r4(-(L / 2 - 0.08)), 0, 0]]) : [];
+    const lines = [
+      `# Robot Definition v1 — drafted with TESR Robot Builder Web. Validate with: tesr-rb validate ${d.name}.robot.yaml`,
+      'schema_version: 1',
+      'meta:', `  name: ${d.name}`, `  package_prefix: ${d.prefix}`, `  description: ${JSON.stringify(d.description || d.name)}`,
+      'target:', '  ros_distro: jazzy', '  os: ubuntu-24.04', `  compute: ${d.compute}`, `  arch: ${d.arch}`, '  deployment: docker',
+      'requirements:', `  application: ${d.application}`,
+      `  environment: {type: ${d.envType}, indoor: ${d.indoor}, floor: ${d.floor}, max_slope_deg: ${d.slopeDeg}${d.minAisle ? `, min_aisle_m: ${d.minAisle}` : ''}}`,
+      `  payload: {max_kg: ${d.payload}, cog_offset_m: [0.0, 0.0, ${d.cogOffsetZ}]}`,
+      `  motion: {v_max: ${d.vMax}, a_max: ${d.aMax}, w_max: ${d.wMax}}`,
+      `  runtime_h: ${d.runtimeH}`,
+      'mechanical:', `  dims_m: {length: ${L}, width: ${d.width}, height: ${H}, ground_clearance: ${gc}}`,
+      `  mass_kg: {robot: ${d.robotMassManual ? d.robotMass : 'auto'}, total: auto}`,
+      'drive:', `  type: ${d.drive}`,
+      `  wheels: {diameter_m: ${d.wheelDiameter}, width_m: ${d.wheelWidth}, separation_m: ${d.track}${d.drive === 'mecanum' ? `, wheelbase_m: ${d.wheelbase}` : ''}}`,
+    ];
+    if (casters.length) { lines.push('  casters:'); casters.forEach((c) => lines.push(`    - {xyz: ${yv(c)}}`)); }
+    lines.push(`  motor: {hw: ${d.motor}, count: ${d.drive === 'mecanum' ? 4 : 2}, gear_ratio: ${d.gearRatio}, driver: ${d.driver}}`);
+    lines.push('hardware:');
+    hw.forEach((h) => {
+      const parts = [`id: ${h.id}`, `hw: ${h.hw}`];
+      if (h.frame) parts.push(`frame: ${h.frame}`, 'parent: base_link', `xyz: ${yv(h.xyz)}`, `rpy: ${yv(h.rpy)}`);
+      if (h.io) parts.push(`io: ${h.io}`);
+      lines.push(`  - {${parts.join(', ')}}`);
+    });
+    lines.push('power:', `  battery: {hw: ${d.battery}}`, `  bus_v: ${d.busV}`);
+    if (d.rails.length) { lines.push('  rails:'); d.rails.forEach((rl) => lines.push(`    - {v: ${rl.v}${rl.hw ? `, hw: ${rl.hw}` : ''}}`)); }
+    if (d.estop) lines.push('io: {DI: {1: estop}}');
+    lines.push('comms: [dds, mqtt]', 'ros:', '  control: {stack: ros2_control, controller: auto}',
+      '  localization: {slam: slam_toolbox, amcl: true, ekf: auto}',
+      `  navigation: {profile: indoor_amr, planner: auto, controller: auto, costmap: auto, safety_margin_m: ${d.margin}, features: [manual, slam, nav, waypoints]}`,
+      `  perception: {depth_to_costmap: ${d.camera ? 'true' : 'false'}}`,
+      'sim: {engine: gz_harmonic, world: empty, renderer: ogre1}', 'integrations: {node_red: true, studio_pro: true}');
+    return lines.join('\n') + '\n';
+  }
+
+  // ------------------------------------------------------------------ BOM
+  function billOfMaterials(d, registry, catalog) {
+    const ids = byId(registry), qty = new Map(), role = new Map();
+    const add = (id, n, what) => { if (!id) return; qty.set(id, (qty.get(id) || 0) + n); if (!role.has(id)) role.set(id, what); };
+    add(d.compute, 1, 'compute'); add(d.motor, d.drive === 'mecanum' ? 4 : 2, 'motor'); add(d.driver, d.driverCount, 'motor driver');
+    add(d.lidar, 1, 'LiDAR'); add(d.imu, 1, 'IMU'); add(d.camera, 1, 'camera'); if (d.estop) add('generic_estop', 1, 'E-stop');
+    add(d.battery, 1, 'battery'); d.rails.forEach((rl) => add(rl.hw, 1, `${rl.v} V rail`));
+    const lines = [...qty].map(([id, n]) => {
+      const rec = ids[id], p = productsFor(catalog, id)[0] || null;
+      return { hwId: id, category: rec ? rec.category : '?', name: rec ? rec.name : id, qty: n, role: role.get(id), product: p,
+        unitPrice: p ? p.price : null, lineTotal: p && p.price != null ? p.price * n : null };
+    }).sort((a, b) => a.category.localeCompare(b.category) || a.hwId.localeCompare(b.hwId));
+    const total = lines.reduce((s, l) => s + (l.lineTotal || 0), 0);
+    return { lines, total, missing: lines.filter((l) => !l.product).map((l) => l.hwId), unpriced: lines.filter((l) => l.product && l.unitPrice == null).map((l) => l.hwId) };
+  }
+
+  function bomCsv(bom) {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['hw_id', 'category', 'name', 'qty', 'role', 'sku', 'unit_price_thb', 'line_total_thb', 'stock_status', 'shop_url']];
+    bom.lines.forEach((l) => rows.push([l.hwId, l.category, l.name, l.qty, l.role, l.product?.sku || '', l.unitPrice ?? '', l.lineTotal ?? '', l.product ? (l.product.stock || 'listed') : 'not_in_catalog', l.product?.shop_url || '']));
+    rows.push(['TOTAL', '', `${bom.missing.length} part(s) without catalog entry`, '', '', '', '', bom.total, '', '']);
+    return rows.map((r) => r.map(esc).join(',')).join('\n') + '\n';
+  }
+
+  const api = { sizeDrivetrain, sizeBattery, navSizing, estimateRobotMass, tipping, parseCsv, parseCatalog, catalogUrl, sheetCsvUrl,
+    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, ROLLING_RESISTANCE };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  root.TESR = api;
+
+  // ================================================================== UI (browser only)
+  if (typeof document === 'undefined') return;
+
+  const $ = (id) => document.getElementById(id);
+  const num = (id) => Number($(id).value);
+  const fmt = (x, d = 2) => (x == null || Number.isNaN(x) ? '—' : Number(x).toLocaleString('en-US', { maximumFractionDigits: d }));
+  const thb = (x) => (x == null ? '<span class="muted">ยังไม่มีราคา</span>' : `${fmt(x, 0)} ฿`);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  let registry = null, catalog = [];
+
+  function shopLink(hwId, label = 'TESR Shop') {
+    const p = productsFor(catalog, hwId)[0];
+    if (!p) return `<span class="tag warn" title="เพิ่มแถว hardware_ref=${esc(hwId)} ใน Google Sheet">ไม่มีในแคตตาล็อก</span>`;
+    const price = p.price != null ? `${fmt(p.price, 0)} ฿` : 'ยังไม่มีราคา';
+    const stock = p.stock ? `<span class="tag ${p.stock === 'in_stock' ? 'ok' : 'warn'}">${esc(p.stock)}</span>` : '';
+    return p.shop_url ? `<a class="shop" href="${esc(p.shop_url)}" target="_blank" rel="noopener">🛒 ${label} · ${price}</a> ${stock}` : `<span class="tag">${price}</span> ${stock}`;
+  }
+
+  function fillSelect(id, records, opts = {}) {
+    const el = $(id), prev = el.value;
+    el.innerHTML = (opts.none ? `<option value="">— ${opts.none} —</option>` : '') +
+      records.map((h) => `<option value="${h.id}">${esc(h.name)}${opts.suffix ? ' ' + esc(opts.suffix(h)) : ''}</option>`).join('');
+    if (prev && [...el.options].some((o) => o.value === prev)) el.value = prev;
+    else if (opts.defaultFirst && records.length) el.value = records[0].id;
+  }
+
+  function populateSelects() {
+    const busV = num('busV');
+    fillSelect('compute', byCategory(registry, 'compute'));
+    fillSelect('lidar', byCategory(registry, 'lidar'), { none: 'ไม่มี', defaultFirst: true, suffix: (h) => `(${h.sensor?.range_m ?? '?'} m)` });
+    fillSelect('camera', byCategory(registry, 'depth_camera'), { none: 'ไม่มี' });
+    fillSelect('imu', byCategory(registry, 'imu'), { none: 'ไม่มี', defaultFirst: true });
+    fillSelect('motor', byCategory(registry, 'motor'), { suffix: (h) => `(${volt(h) ?? '?'} V, ${h.motor?.rated_torque_nm ?? '?'} Nm)` });
+    fillSelect('driver', byCategory(registry, 'motor_driver'), { suffix: (h) => `(${volt(h) ?? '?'} V)` });
+    fillSelect('battery', byCategory(registry, 'battery'), { suffix: (h) => `(${h.battery?.nominal_v ?? '?'} V ${h.battery?.capacity_ah ?? '?'} Ah)` });
+    // pre-select parts that match the bus voltage
+    const pick = (id, cat, vfn) => { if ($(id).dataset.user) return; const m = byCategory(registry, cat).find((h) => vfn(h) != null && voltMatch(vfn(h), busV)); if (m) $(id).value = m.id; };
+    pick('motor', 'motor', volt); pick('driver', 'motor_driver', volt); pick('battery', 'battery', (h) => h.battery?.nominal_v ?? volt(h));
+  }
+
+  function collectDesign() {
+    const ids = byId(registry);
+    const drive = $('drive').value, busV = num('busV');
+    const devices = ['compute', 'lidar', 'camera', 'imu'].map((k) => ids[$(k).value]).filter(Boolean);
+    const d = {
+      name: ($('name').value || 'my_robot').toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^[^a-z]+/, 'r'),
+      prefix: ($('prefix').value || 'tesr_robot').toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+      description: $('description').value,
+      application: $('application').value, envType: $('envType').value, indoor: $('envType').value !== 'outdoor', floor: $('floor').value,
+      slopeDeg: num('slopeDeg'), minAisle: num('minAisle') || null,
+      payload: num('payload'), cogOffsetZ: num('cogOffsetZ'), vMax: num('vMax'), aMax: num('aMax'), wMax: num('wMax'), runtimeH: num('runtimeH'),
+      length: num('length'), width: num('width'), height: num('height'), groundClearance: num('groundClearance'),
+      drive, wheelDiameter: num('wheelDiameter'), wheelWidth: num('wheelWidth'), track: num('track'), wheelbase: num('wheelbase'),
+      gearRatio: num('gearRatio'), busV, margin: num('margin'),
+      compute: $('compute').value, arch: ids[$('compute').value]?.compute?.arch || 'arm64',
+      lidar: $('lidar').value || null, camera: $('camera').value || null, imu: $('imu').value || null, estop: $('estop').checked,
+      motor: $('motor').value, driver: $('driver').value, driverCount: Math.max(1, Math.round(num('driverCount') || (drive === 'mecanum' ? 2 : 1))),
+      battery: $('battery').value, robotMassManual: $('robotMassManual').checked,
+    };
+    const nDrive = drive === 'mecanum' ? 4 : 2;
+    const hwMass = devices.reduce((s, h) => s + (h.mass_kg || 0), 0) + (ids[d.motor]?.mass_kg || 0) * nDrive + (ids[d.battery]?.mass_kg || 0) + (ids[d.driver]?.mass_kg || 0) * d.driverCount;
+    d.robotMass = d.robotMassManual ? num('robotMass') : estimateRobotMass(hwMass, d.length, d.width, d.height);
+    d.totalMass = d.robotMass + d.payload;
+    d.electronicsW = devices.reduce((s, h) => s + (h.electrical?.typical_w || 0), 0) || 30;
+    d.rails = railsNeeded(registry, busV, devices.concat([ids[d.driver]].filter(Boolean)));
+    d.devices = devices; d.nDrive = nDrive;
+    return d;
+  }
+
+  function render() {
+    if (!registry) return;
+    const ids = byId(registry);
+    const d = collectDesign();
+    $('wheelbaseRow').style.display = d.drive === 'mecanum' ? '' : 'none';
+    $('robotMass').disabled = !d.robotMassManual;
+    if (!d.robotMassManual) $('robotMass').value = d.robotMass;
+
+    // --- drivetrain
+    const dt = sizeDrivetrain({ totalMass: d.totalMass, vMax: d.vMax, aMax: d.aMax, wheelDiameter: d.wheelDiameter, nDrive: d.nDrive, gearRatio: d.gearRatio, slopeDeg: d.slopeDeg, floor: d.floor });
+    const tp = tipping({ height: d.height, cogOffsetZ: d.cogOffsetZ, groundClearance: d.groundClearance, robotMass: d.robotMass, payload: d.payload, track: d.track, vMax: d.vMax, wMax: d.wMax });
+    $('drivetrainOut').innerHTML = `
+      <table class="kv">
+        <tr><td>มวลรวม (robot ${fmt(d.robotMass, 1)} + payload ${fmt(d.payload, 0)})</td><td><b>${fmt(d.totalMass, 1)} kg</b></td></tr>
+        <tr><td>แรงขับต่อเนื่อง (พื้น ${esc(d.floor)}, C_rr ${dt.cRr})</td><td>${fmt(dt.forceCont, 1)} N</td></tr>
+        <tr><td>แรงขับสูงสุด (ทางลาด ${d.slopeDeg}° + a ${d.aMax} m/s²)</td><td>${fmt(dt.forcePeak, 1)} N</td></tr>
+        <tr><td>ทอร์กที่ล้อ ต่อเนื่อง / สูงสุด (ต่อล้อขับ ${d.nDrive} ล้อ)</td><td>${fmt(dt.wheelTorqueCont)} / ${fmt(dt.wheelTorquePeak)} N·m</td></tr>
+        <tr><td>ทอร์กที่มอเตอร์ ต่อเนื่อง / สูงสุด (i = ${d.gearRatio}, η 0.85)</td><td>${fmt(dt.motorTorqueCont, 3)} / ${fmt(dt.motorTorquePeak, 3)} N·m</td></tr>
+        <tr><td><b>มอเตอร์ที่ต้องการ</b> rated ≥ (SF 1.3) / peak ≥ / rpm ≥</td><td><b>${fmt(dt.requiredMotorRatedTorque, 3)} N·m / ${fmt(dt.requiredMotorPeakTorque, 3)} N·m / ${fmt(dt.motorRpm, 0)} rpm</b></td></tr>
+        <tr><td>กำลังกล ต่อเนื่อง / สูงสุด (ทั้งหุ่น)</td><td>${fmt(dt.powerMechCont, 0)} / ${fmt(dt.powerMechPeak, 0)} W</td></tr>
+        <tr><td>เสถียรภาพ: a_tip ${fmt(tp.aTip)} m/s² vs a_lat ${fmt(tp.aLat)} m/s² (CoG ${fmt(tp.hCog)} m)</td><td>${tp.ok ? '<span class="tag ok">ผ่าน</span>' : '<span class="tag err">เสี่ยงพลิก — ลด w_max/v_max หรือขยาย track</span>'}</td></tr>
+      </table>`;
+    const motors = recommendMotors(registry, d.busV, dt);
+    $('motorRec').innerHTML = motors.length ? motors.map((m) => `
+      <div class="rec ${m.fits && m.voltOk ? 'fit' : ''}">
+        <div><b>${esc(m.hw.name)}</b> <span class="muted">${volt(m.hw) ?? '?'} V · rated ${m.hw.motor?.rated_torque_nm ?? '?'} N·m · peak ${m.hw.motor?.peak_torque_nm ?? '?'} N·m · ${m.hw.motor?.rated_rpm ?? '?'} rpm</span>
+          ${m.fits && m.voltOk ? '<span class="tag ok">เหมาะ</span>' : m.fits ? '<span class="tag warn">แรงบิดพอ แต่แรงดันไม่ตรง bus</span>' : '<span class="tag">แรงบิด/รอบไม่พอ</span>'}</div>
+        <div>${shopLink(m.hw.id)} <button class="mini" data-pick="motor" data-id="${m.hw.id}">เลือก</button></div></div>`).join('') : '<p class="muted">ไม่มีมอเตอร์ใน registry</p>';
+
+    // --- power
+    const pw = sizeBattery({ powerMechCont: dt.powerMechCont, powerElecPeak: dt.powerElecPeak, runtimeH: d.runtimeH, busV: d.busV, electronicsW: d.electronicsW });
+    $('powerOut').innerHTML = `
+      <table class="kv">
+        <tr><td>อิเล็กทรอนิกส์ (compute + sensors จาก registry)</td><td>${fmt(pw.electronicsW, 0)} W</td></tr>
+        <tr><td>ขับเคลื่อนเฉลี่ย (duty 0.6, η 0.85)</td><td>${fmt(pw.driveAvgW, 0)} W</td></tr>
+        <tr><td>พลังงานที่ต้องการ ${d.runtimeH} h (DoD 0.8)</td><td><b>${fmt(pw.energyWh, 0)} Wh</b></td></tr>
+        <tr><td><b>ความจุแบตเตอรี่ที่ ${d.busV} V</b></td><td><b>${fmt(pw.capacityAh, 1)} Ah</b></td></tr>
+        <tr><td>กระแสสูงสุดที่แบตต้องจ่ายได้</td><td>${fmt(pw.peakCurrentA, 1)} A</td></tr>
+      </table>`;
+    const bats = recommendBatteries(registry, d.busV, pw);
+    $('batteryRec').innerHTML = bats.map((b) => `
+      <div class="rec ${b.fits ? 'fit' : ''}">
+        <div><b>${esc(b.hw.name)}</b> <span class="muted">${b.hw.battery?.nominal_v ?? '?'} V · ${b.hw.battery?.capacity_ah ?? '?'} Ah · ${b.hw.battery?.max_discharge_a ?? '?'} A · ${b.hw.mass_kg} kg</span>
+          ${b.fits ? '<span class="tag ok">เหมาะ</span>' : '<span class="tag">แรงดัน/ความจุ/กระแสไม่พอ</span>'}</div>
+        <div>${shopLink(b.hw.id)} <button class="mini" data-pick="battery" data-id="${b.hw.id}">เลือก</button></div></div>`).join('');
+
+    // --- compatibility (subset of the Python rules)
+    const compute = ids[d.compute], issues = [];
+    const usb3 = d.devices.filter((h) => (h.interfaces || []).includes('usb3')).length;
+    if (compute?.compute && usb3 > compute.compute.usb3_ports) issues.push(`⚠️ อุปกรณ์ USB 3 ${usb3} ตัว แต่ ${esc(compute.name)} มี ${compute.compute.usb3_ports} พอร์ต — ใช้ hub หรือย้ายไป Ethernet`);
+    if (!voltMatch(volt(ids[d.driver]), d.busV)) issues.push(`🔴 มอเตอร์ไดรเวอร์ ${esc(ids[d.driver]?.name)} เป็น ${volt(ids[d.driver])} V ไม่ตรง bus ${d.busV} V`);
+    if (!voltMatch(volt(ids[d.motor]), d.busV)) issues.push(`🔴 มอเตอร์ ${esc(ids[d.motor]?.name)} เป็น ${volt(ids[d.motor])} V ไม่ตรง bus ${d.busV} V`);
+    d.rails.forEach((rl) => issues.push(rl.hw ? `✅ ต้องมี rail ${rl.v} V → ใช้ ${esc(ids[rl.hw].name)}` : `🔴 ต้องมี rail ${rl.v} V แต่ไม่มี DC-DC ${d.busV}→${rl.v} V ใน registry`));
+    if (!d.lidar) issues.push('🔴 SLAM/Nav ต้องมี 2D LiDAR');
+    if (d.payload > 50 && !d.estop) issues.push('🔴 payload > 50 kg ต้องมี E-stop (R-SAFE-001)');
+    if (d.minAisle && d.width + 2 * d.margin > d.minAisle) issues.push(`🔴 หุ่นกว้าง ${fmt(d.width + 2 * d.margin)} m แต่ช่องทางแคบสุด ${d.minAisle} m`);
+    if (d.track / 2 + d.wheelWidth / 2 > d.width / 2 + 0.005) issues.push('⚠️ ล้อยื่นออกนอกตัวถัง (R-MECH-001)');
+    $('compatOut').innerHTML = (issues.length ? issues : ['✅ ไม่พบปัญหาความเข้ากันได้ในชุดตรวจของหน้าเว็บ']).map((s) => `<div>${s}</div>`).join('') +
+      '<p class="muted">ชุดตรวจเต็ม 15 rules อยู่ใน <code>tesr-rb validate</code></p>';
+
+    // --- nav sizing
+    const nav = navSizing({ length: d.length, width: d.width, margin: d.margin, vMax: d.vMax, aMax: d.aMax, lidarRange: ids[d.lidar]?.sensor?.range_m });
+    $('navOut').innerHTML = `<table class="kv">
+        <tr><td>footprint (base_link, margin ${d.margin} m)</td><td><code>${JSON.stringify(nav.footprint)}</code></td></tr>
+        <tr><td>inflation_radius (circumscribed ${nav.circumscribedRadius} + 0.10)</td><td>${nav.inflationRadius} m</td></tr>
+        <tr><td>local costmap</td><td>${nav.localCostmap} m @ ${nav.resolution} m</td></tr>
+        <tr><td>obstacle_range / raytrace_range (LiDAR ${ids[d.lidar]?.sensor?.range_m ?? '—'} m)</td><td>${nav.obstacleRange} / ${nav.raytraceRange} m</td></tr>
+      </table>`;
+
+    // --- definition + BOM
+    const yaml = buildDefinition(d);
+    $('yamlOut').value = yaml;
+    $('cmdOut').textContent = `tesr-rb validate ${d.name}.robot.yaml\ntesr-rb generate ${d.name}.robot.yaml -o ${d.name}_ws\ntesr-rb bom ${d.name}.robot.yaml -o ${d.name}_bom.csv`;
+    const bom = billOfMaterials(d, registry, catalog);
+    $('bomOut').innerHTML = `<table class="bom"><thead><tr><th>#</th><th>รายการ</th><th>หมวด</th><th>ราคา/หน่วย</th><th>รวม</th><th>สั่งซื้อ</th></tr></thead><tbody>` +
+      bom.lines.map((l) => `<tr><td>${l.qty}</td><td>${esc(l.name)}<br><span class="muted">${esc(l.role)} · ${esc(l.hwId)}</span></td><td>${esc(l.category)}</td><td>${thb(l.unitPrice)}</td><td>${thb(l.lineTotal)}</td><td>${shopLink(l.hwId, 'ซื้อ')}</td></tr>`).join('') +
+      `</tbody><tfoot><tr><td colspan="4">รวม (เฉพาะรายการที่มีราคา)</td><td colspan="2"><b>${fmt(bom.total, 0)} ฿</b></td></tr></tfoot></table>` +
+      (bom.missing.length ? `<p class="muted">รายการที่ต้องเพิ่มใน Google Sheet (hardware_ref): <code>${bom.missing.join(', ')}</code></p>` : '') +
+      (bom.unpriced.length ? `<p class="muted">มีในแคตตาล็อกแต่ยังไม่มีราคา: <code>${bom.unpriced.join(', ')}</code></p>` : '');
+    root.__tesr = { d, dt, pw, nav, yaml, bom };
+  }
+
+  function download(name, text, type = 'text/plain') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  async function loadCatalog(ref) {
+    const url = catalogUrl(ref);
+    const status = $('catalogStatus');
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      catalog = parseCatalog(await res.text());
+      const priced = catalog.filter((p) => p.price != null).length;
+      status.innerHTML = `✅ แคตตาล็อก ${catalog.length} รายการ (มีราคา ${priced}) จาก <code>${esc(url.length > 70 ? url.slice(0, 70) + '…' : url)}</code>`;
+      if (ref) localStorage.setItem('tesr_rb_catalog', ref);
+    } catch (e) {
+      catalog = [];
+      status.innerHTML = `⚠️ โหลดแคตตาล็อกไม่ได้ (${esc(e.message)}) — แสดงผลโดยไม่มีราคา/ลิงก์`;
+    }
+    render();
+  }
+
+  async function init() {
+    const res = await fetch('./data/registry.json', { cache: 'no-store' });
+    registry = await res.json();
+    $('registryStatus').textContent = `registry ${registry.hardware.length} รายการ · hash ${registry.registry_hash} · engine ${registry.generator}`;
+    populateSelects();
+    const params = new URLSearchParams(location.search);
+    const ref = params.get('catalog') || localStorage.getItem('tesr_rb_catalog') || '';
+    $('catalogRef').value = ref;
+    await loadCatalog(ref);
+    document.querySelectorAll('input, select').forEach((el) => el.addEventListener('input', (ev) => {
+      if (['motor', 'driver', 'battery'].includes(ev.target.id)) ev.target.dataset.user = '1';
+      if (ev.target.id === 'busV') populateSelects();
+      render();
+    }));
+    document.body.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-pick]');
+      if (b) { $(b.dataset.pick).value = b.dataset.id; $(b.dataset.pick).dataset.user = '1'; render(); }
+    });
+    $('loadCatalog').onclick = () => loadCatalog($('catalogRef').value.trim());
+    $('downloadYaml').onclick = () => download(`${root.__tesr.d.name}.robot.yaml`, root.__tesr.yaml, 'text/yaml');
+    $('copyYaml').onclick = () => navigator.clipboard.writeText(root.__tesr.yaml).then(() => { $('copyYaml').textContent = 'คัดลอกแล้ว ✓'; setTimeout(() => ($('copyYaml').textContent = 'คัดลอก YAML'), 1500); });
+    $('downloadBom').onclick = () => download(`${root.__tesr.d.name}_bom.csv`, bomCsv(root.__tesr.bom), 'text/csv');
+    $('downloadDesign').onclick = () => download(`${root.__tesr.d.name}_design.json`, JSON.stringify({ design: root.__tesr.d, drivetrain: root.__tesr.dt, power: root.__tesr.pw, nav: root.__tesr.nav }, null, 2), 'application/json');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => init().catch((e) => { $('registryStatus').textContent = `โหลด data/registry.json ไม่ได้: ${e.message} — เปิดผ่าน http server (python3 -m http.server -d docs)`; }));
+})(typeof globalThis !== 'undefined' ? globalThis : this);

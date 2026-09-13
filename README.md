@@ -25,7 +25,22 @@ Form / NL requirement ─▶ robot.yaml ─▶ resolve (auto → numbers) ─▶
 | ✅ | Generators: `<prefix>_description` (URDF/Xacro, display launch, RViz) and `<prefix>_bringup` (robot.launch.py, capabilities.json) |
 | ✅ | Regenerate-safe writes: generated-file headers, hash manifest, `overrides/` deep-merge |
 | ✅ | CLI `tesr-rb` · tests (schema, calc, rules, xacro expansion, determinism) · CI with `colcon build` in `ros:jazzy` |
-| ⏳ Phase 1 | ros2_control, sensor drivers, EKF, SLAM Toolbox, AMCL, Nav2 auto-sizing, Gazebo Harmonic, Docker |
+| ✅ | **Web app** (`docs/index.html`, GitHub Pages) — requirement → drivetrain/power/Nav2 sizing → part recommendations with TESR Shop links → `robot.yaml` + BOM, no install needed |
+| ✅ | **Product catalog** (`catalog/products.csv` or a shared Google Sheet) joined to the registry by `hardware_ref`; `tesr-rb bom` prices any definition |
+| ⏳ Phase 1 | ros2_control, sensor drivers, EKF, SLAM Toolbox, AMCL, Nav2 auto-sizing, Gazebo Harmonic, Docker; validate/generate in the browser (Pyodide) |
+
+## Web app (no install)
+
+Open the GitHub Pages site (Settings → Pages → branch `main`, folder `/docs`) or run it locally:
+
+```bash
+python3 -m http.server -d docs 8080     # then http://localhost:8080
+```
+
+Four steps, each with output you can use immediately: sizing numbers → recommended motors/batteries with
+🛒 TESR Shop links → compatibility + Nav2 sizing → `robot.yaml` (for `tesr-rb generate`) and a BOM CSV.
+Paste the team's Google Sheet link in the catalog box (or `index.html?catalog=<sheet id>`) to get live prices;
+see [`catalog/README.md`](catalog/README.md).
 
 ## Quick start
 
@@ -38,6 +53,8 @@ tesr-rb generate examples/ironx_gen2.robot.yaml -o out/ironx_ws
 tesr-rb resolve  examples/mecanum_demo.robot.yaml        # every resolved value
 tesr-rb schema   -o robot-definition.schema.json          # JSON Schema for editors / web UI
 tesr-rb registry                                          # loaded hardware + drivers
+tesr-rb bom      examples/warehouse_amr_300.robot.yaml -o bom.csv   # BOM with TESR Shop prices/links
+tesr-rb export-web                                        # refresh docs/data for the web app
 ```
 
 On a machine with ROS 2 Jazzy (or in the `ros:jazzy` container):
@@ -61,11 +78,14 @@ src/tesr_robot_builder/
   resolve.py   auto → resolved values (+ lock file content)
   rules/       validation engine + built-in rules (add a rule = add a function)
   generators/  template plugins (Jinja2) — description, bringup; pipeline with overrides + manifest
+  catalog.py   product catalog (CSV / Google Sheet) + bill of materials
+  web_export.py  registry.json / products.csv for the web app
   cli.py       tesr-rb
 registry/      hardware records, driver manifests, drive/nav profiles (data — becomes its own repo later)
+catalog/       products.csv — SKU, price, tesrshop link per hardware_ref (team-edited; see catalog/README.md)
+docs/          index.html + app.js (web app, GitHub Pages) · data/ · architecture-roadmap.md · adr/
 examples/      ironx_gen2 · mecanum_demo · warehouse_amr_300
 tests/         unit + xacro expansion + determinism
-docs/          architecture-roadmap.md, adr/
 .github/       CI: pytest + colcon build of every example in ros:jazzy
 ```
 
@@ -80,7 +100,8 @@ docs/          architecture-roadmap.md, adr/
 
 | Want to… | Do |
 |---|---|
-| add a hardware part | `registry/hardware/<category>/<id>.yaml` (+ `registry/drivers/<id>/jazzy/manifest.yaml` for sensors/drivers) |
+| add a hardware part | `registry/hardware/<category>/<id>.yaml` (+ `registry/drivers/<id>/jazzy/manifest.yaml` for sensors/drivers), then `tesr-rb export-web` |
+| add a product / price / shop link | one row in the catalog sheet (`hardware_ref` = registry id) |
 | add a validation rule | a function in `src/tesr_robot_builder/rules/builtin.py` decorated with `@register(id, category, description)` |
 | add a generator | a class in `src/tesr_robot_builder/generators/` with `render(ctx)` + templates under `generators/templates/<id>/`, registered in `pipeline.py` |
 | change defaults for a drive type / nav profile | `registry/profiles/drive/*.yaml`, `registry/profiles/nav/*.yaml` |
