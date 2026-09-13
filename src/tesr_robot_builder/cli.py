@@ -16,6 +16,7 @@ import typer
 import yaml
 
 from . import __version__
+from .catalog import Catalog, CatalogError, bill_of_materials, bom_csv
 from .generators.pipeline import UserEditedError, generate, render_all
 from .registry import Registry, RegistryError
 from .resolve import ResolveError, resolve
@@ -26,6 +27,7 @@ app = typer.Typer(add_completion=False, no_args_is_help=True, help="TESR Robot B
 
 ICON = {"PASS": "✅", "WARN": "⚠️ ", "ERROR": "🔴"}
 REGISTRY_OPT = typer.Option(None, "--registry", "-r", help="registry directory (default: $TESR_RB_REGISTRY or ./registry)")
+CATALOG_OPT = typer.Option(None, "--catalog", "-c", help="products CSV path, https CSV URL, or Google Sheet id/URL (default: $TESR_RB_CATALOG or ./catalog/products.csv)")
 
 
 def _load(definition: Path, registry: Optional[Path]):
@@ -163,6 +165,67 @@ def registry_cmd(
         drivers = [d for (h, d) in reg.drivers if h == rec.id]
         flag = "" if rec.verified else "  [unverified]"
         typer.echo(f"  {rec.category:13} {rec.id:26} {rec.name:34} drivers={','.join(drivers) or '-'}{flag}")
+
+
+@app.command()
+def bom(
+    definition: Path = typer.Argument(..., exists=True, readable=True, help="*.robot.yaml"),
+    out: Optional[Path] = typer.Option(None, "--out", "-o", help="write the BOM as CSV to this file"),
+    registry: Optional[Path] = REGISTRY_OPT,
+    catalog: Optional[str] = CATALOG_OPT,
+):
+    """Bill of materials with TESR Shop prices/links from the product catalog."""
+    reg, defn = _load(definition, registry)
+    try:
+        cat = Catalog.load(catalog)
+    except (CatalogError, OSError) as exc:
+        typer.secho(f"catalog: {exc} — continuing without prices", fg=typer.colors.YELLOW, err=True)
+        cat = None
+    try:
+        res = resolve(defn, reg)
+    except ResolveError as exc:
+        typer.secho(f"resolve error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(2)
+    lines = bill_of_materials(res, reg, cat)
+    typer.secho(f"BOM — {defn.meta.name}" + (f"  (catalog: {cat.source})" if cat else ""), bold=True)
+    for l in lines:
+        price = f"{l.unit_price:,.0f} THB" if l.unit_price is not None else "—"
+        status = ((l.product.stock_status or "listed") if l.unit_price is not None else "needs price/link") if l.product else "NOT IN CATALOG"
+        typer.echo(f"  {l.qty:>2} × {l.name:40} {l.category:13} {price:>12}  {status}")
+    total = sum(l.line_total for l in lines if l.line_total is not None)
+    missing = [l.hw_id for l in lines if l.product is None]
+    typer.secho(f"\ntotal (priced parts): {total:,.0f} THB", bold=True)
+    if missing:
+        typer.secho("add to catalog: " + ", ".join(missing), fg=typer.colors.YELLOW)
+    if cat and cat.problems:
+        for pr in cat.problems:
+            typer.secho(f"catalog warning: {pr}", fg=typer.colors.YELLOW, err=True)
+    if out:
+        out.write_text(bom_csv(lines), encoding="utf-8")
+        typer.echo(f"wrote {out}")
+
+
+@app.command(name="export-web")
+def export_web_cmd(
+    out: Path = typer.Option(Path("docs/data"), "--out", "-o", help="folder served by GitHub Pages"),
+    registry: Optional[Path] = REGISTRY_OPT,
+    catalog: Optional[str] = CATALOG_OPT,
+):
+    """Write registry.json + products.csv for the web app (docs/index.html)."""
+    from .web_export import export_web_data
+
+    try:
+        reg = Registry.load(registry)
+    except RegistryError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(2)
+    try:
+        cat = Catalog.load(catalog)
+    except (CatalogError, OSError) as exc:
+        typer.secho(f"catalog: {exc} — exporting registry only", fg=typer.colors.YELLOW, err=True)
+        cat = None
+    for p in export_web_data(reg, cat, out):
+        typer.echo(f"wrote {p}")
 
 
 if __name__ == "__main__":  # pragma: no cover

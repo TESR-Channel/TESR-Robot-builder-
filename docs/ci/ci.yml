@@ -19,6 +19,15 @@ jobs:
       - name: Validate every example
         run: |
           for f in examples/*.robot.yaml; do tesr-rb validate "$f" --hide-pass; done
+      - name: Web data is in sync with registry + catalog
+        run: |
+          tesr-rb export-web -o /tmp/webdata
+          python3 - <<'PY'
+          import json, pathlib
+          a, b = pathlib.Path("docs/data"), pathlib.Path("/tmp/webdata")
+          assert json.loads((a/"registry.json").read_text()) == json.loads((b/"registry.json").read_text()), "docs/data/registry.json is stale — run tesr-rb export-web"
+          assert (a/"products.csv").read_text().strip() == (b/"products.csv").read_text().strip(), "docs/data/products.csv is stale — run tesr-rb export-web"
+          PY
 
   colcon:
     name: colcon build (ros:jazzy)

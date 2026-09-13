@@ -14,5 +14,5 @@ Jobs:
 
 | Job | Runs | Proves |
 |---|---|---|
-| `python` | `pip install -e .[dev]` · `pytest -q` · `tesr-rb validate` on every example | schema, calculators, rules, generators, xacro expansion, determinism |
+| `python` | `pip install -e .[dev]` · `pytest -q` (incl. Node cross-check of `docs/app.js`) · `tesr-rb validate` on every example · `tesr-rb export-web` must leave `docs/data` unchanged | schema, calculators, rules, generators, xacro expansion, determinism, web ↔ engine parity |
 | `colcon` (container `ros:jazzy`) | generate a workspace from every example → `rosdep install` → `colcon build` → `xacro` + `check_urdf` | **Phase 0 exit gate**: generated packages build on real ROS 2 Jazzy |
