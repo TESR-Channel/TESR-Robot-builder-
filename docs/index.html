@@ -92,7 +92,7 @@
 
       <section class="step" id="s4">
         <h2>4 · อุปกรณ์</h2>
-        <div class="hint"><b>เลือกให้แล้วจากผลคำนวณ</b> — มอเตอร์/ไดรเวอร์/แบตกรองตามแรงดันระบบให้ เปลี่ยนได้ทุกช่อง ถ้าหุ่นต้องเดินเอง (SLAM/Nav) ต้องมี LiDAR อย่างน้อย 1 ตัว</div>
+        <div class="hint"><b>เลือกให้แล้วจากผลคำนวณ แต่ไม่ล็อก</b> — ทุกช่องเปลี่ยนได้ เช่นมีแบต 12 V อยู่แล้วก็ใช้ได้ ระบบจะบอกว่าต้องต่ออนุกรมกี่ก้อนหรือต้องมี DC-DC และคิด BOM ให้ ถ้าหุ่นต้องเดินเอง (SLAM/Nav) ต้องมี LiDAR อย่างน้อย 1 ตัว</div>
         <div class="grid">
           <label>ล้อ + มอเตอร์ <select id="motor"></select></label>
           <label>Low-level control (ไดรเวอร์) <select id="driver"></select></label>
@@ -104,7 +104,6 @@
           <label>จำนวนกล้อง <select id="cameraLayout"><option value="front1">1 ตัว หน้า</option><option value="fr2">2 ตัว หน้า + หลัง</option></select></label>
           <label>IMU <select id="imu"></select></label>
           <label class="check"><input id="estop" type="checkbox" checked> มี E-stop</label>
-          <label class="check"><input id="showAllParts" type="checkbox"> แสดงอุปกรณ์ทุกแรงดัน</label>
           <label>จำนวนไดรเวอร์ <input id="driverCount" type="number" step="1" min="1" max="4" value="1"></label>
         </div>
         <details>
@@ -156,7 +155,7 @@
     <h2>ไปต่อ <small>ส่งต่อให้ขั้นถัดไปอัตโนมัติ</small></h2>
     <div class="steps">
       <a href="#" id="toModel"><b>2 · โมเดล 3D →</b><small>วาง STL บนโครงหุ่นนี้ ดูและแก้ออนไลน์</small></a>
-      <a href="#" id="toBuild"><b>3 · สร้าง ROS 2 workspace →</b><small>ตรวจ 15 rules แล้วดาวน์โหลด zip</small></a>
+      <a href="#" id="toBuild"><b>3 · สร้าง ROS 2 workspace →</b><small>ตรวจ 16 rules แล้วดาวน์โหลด zip</small></a>
     </div>
     <details>
       <summary>robot.yaml ของหุ่นนี้</summary>
