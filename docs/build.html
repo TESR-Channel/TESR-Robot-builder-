@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESR Robot Builder — Definition & Generate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./theme.css">
+<style>
+  main { display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); gap:12px; padding:12px; }
+  @media (max-width:980px) { main { grid-template-columns:1fr; } }
+  textarea#yaml { width:100%; min-height:520px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:12.5px; line-height:1.45; }
+  .engine { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .bar { flex:1; min-width:160px; height:6px; background:#1c1c22; border-radius:3px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg, var(--crimson-2), var(--gold)); transition:width .3s; }
+  .finding { padding:5px 8px; border-left:3px solid var(--line); margin:4px 0; font-size:13px; }
+  .finding.ERROR { border-color:var(--err); } .finding.WARN { border-color:var(--warn); } .finding.PASS { border-color:var(--ok); color:var(--muted); }
+  .files { max-height:320px; overflow:auto; font-size:12.5px; }
+  .files div { padding:3px 6px; cursor:pointer; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .files div:hover, .files div.sel { background:rgba(201,168,76,.12); color:var(--gold); }
+  pre#preview { max-height:340px; }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin:8px 0; }
+  .kpi div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .kpi b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:16px; }
+  .kpi span { color:var(--muted); font-size:11.5px; }
+</style>
+</head>
+<body>
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav><a href="./index.html">1 · Spec &amp; Sizing</a><a href="./model.html">2 · Model Studio</a><a class="active" href="./build.html">3 · Definition &amp; Generate</a></nav>
+  <div class="status" id="status">โหลด engine…</div>
+</header>
+<main>
+  <div class="panel">
+    <h2>Robot Definition <small>robot.yaml — แหล่งความจริงเดียวของหุ่น</small></h2>
+    <div class="engine">
+      <span class="muted" id="engineText">กำลังเตรียม engine ในเบราว์เซอร์ (Python ผ่าน Pyodide, ครั้งแรก ~20–40 s)</span>
+      <div class="bar"><i id="engineBar"></i></div>
+    </div>
+    <div class="actions">
+      <button class="ghost mini" id="fromProject" title="YAML ที่ร่างจากขั้น 1">จากขั้น 1</button>
+      <button class="ghost mini" data-example="warehouse_amr_300">ตัวอย่าง AMR 300 kg</button>
+      <button class="ghost mini" data-example="mecanum_demo">ตัวอย่าง Mecanum</button>
+      <button class="ghost mini" data-example="ironx_gen2">ตัวอย่าง IRON-X</button>
+      <button class="ghost mini" id="loadYaml">เปิดไฟล์ .robot.yaml</button>
+      <input id="yamlInput" type="file" accept=".yaml,.yml" style="display:none">
+    </div>
+    <textarea id="yaml" spellcheck="false" placeholder="# วาง robot.yaml ที่นี่"></textarea>
+    <div class="actions">
+      <button id="validate" disabled>ตรวจสอบ (15 rules)</button>
+      <button class="gold" id="generate" disabled>สร้าง ROS 2 workspace</button>
+      <button class="ghost mini" id="saveYaml">ดาวน์โหลด .robot.yaml</button>
+    </div>
+    <h3>ไฟล์เพิ่มเติมที่จะใส่ใน workspace</h3>
+    <div class="drop" id="drop">ลาก STL ที่จัดวางไว้ใน Model Studio มาวาง → ไปที่ <code>&lt;prefix&gt;_description/meshes/</code></div>
+    <input id="extraInput" type="file" multiple accept=".stl,.dae,.STL,.DAE" style="display:none">
+    <p class="muted" id="extraNote">—</p>
+  </div>
+
+  <div class="panel">
+    <h2>ผลตรวจ &amp; workspace <small>ทุกอย่างรันในเบราว์เซอร์ ไม่มีเซิร์ฟเวอร์</small></h2>
+    <div id="summary"></div>
+    <div id="report"><p class="muted">กด "ตรวจสอบ" เพื่อรัน schema + 15 engineering rules</p></div>
+    <div id="workspace" style="display:none">
+      <div class="actions"><button class="gold" id="downloadZip">ดาวน์โหลด workspace (.zip)</button><span class="muted" id="zipNote"></span></div>
+      <div class="files" id="files"></div>
+      <pre id="preview" class="muted">คลิกไฟล์เพื่อดูเนื้อหา</pre>
+      <h3>ถัดไป — build/simulate บนเครื่องที่มี Docker (ไม่ต้องติดตั้ง ROS)</h3>
+      <pre id="nextCmd"></pre>
+    </div>
+  </div>
+</main>
+<footer class="tesr">TESR Co., Ltd. · engine เดียวกับ CLI/CI รันใน Pyodide · ไม่มีข้อมูลออกจากเบราว์เซอร์</footer>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="./model-core.js"></script>
+<script type="module" src="./build.js"></script>
+</body>
+</html>
