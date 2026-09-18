@@ -6,7 +6,7 @@
 <title>TESR Robot Builder — ออกแบบหุ่นยนต์ในเบราว์เซอร์</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
 </head>
 <body>
 <header class="tesr">
@@ -15,111 +15,196 @@
   <div class="status" id="registryStatus">กำลังโหลด…</div>
 </header>
 <main class="wrap">
+  <div class="wizard">
+    <div class="panel">
+      <div class="stepbar" id="stepbar"><span></span><span></span><span></span><span></span></div>
+      <svg class="guide" viewBox="0 0 340 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <line class="ground" x1="10" y1="172" x2="330" y2="172"/>
+        <rect id="g-payload" class="part" x="95" y="42" width="140" height="48" rx="4"/>
+        <text id="l-payload" class="label" x="165" y="72" text-anchor="middle">ของที่บรรทุก</text>
+        <rect id="g-chassis" class="part" x="60" y="92" width="210" height="52" rx="6"/>
+        <text id="l-chassis" class="label" x="165" y="90" text-anchor="middle" dy="-58">ตัวถัง</text>
+        <rect id="g-battery" class="part" x="72" y="104" width="62" height="30" rx="3"/>
+        <text id="l-battery" class="label" x="103" y="123" text-anchor="middle">แบตเตอรี่</text>
+        <rect id="g-compute" class="part" x="150" y="104" width="52" height="30" rx="3"/>
+        <text id="l-compute" class="label" x="176" y="123" text-anchor="middle">คอมพ์</text>
+        <rect id="g-driver" class="part" x="214" y="104" width="44" height="30" rx="3"/>
+        <text id="l-driver" class="label" x="236" y="123" text-anchor="middle">ไดรเวอร์</text>
+        <circle id="g-wheel1" class="part" cx="105" cy="150" r="22"/>
+        <circle id="g-wheel2" class="part" cx="225" cy="150" r="22"/>
+        <text id="l-wheels" class="label" x="165" y="188" text-anchor="middle">ล้อ + มอเตอร์</text>
+        <rect id="g-mast" class="part" x="182" y="20" width="6" height="22"/>
+        <circle id="g-lidar" class="part" cx="185" cy="14" r="9"/>
+        <text id="l-lidar" class="label" x="215" y="18">LiDAR 360°</text>
+        <rect id="g-camera" class="part" x="262" y="98" width="14" height="12" rx="2"/>
+        <text id="l-camera" class="label" x="282" y="108">กล้อง</text>
+        <line id="g-dimL" class="part" x1="60" y1="160" x2="270" y2="160"/>
+        <text id="l-dimL" class="label" x="165" y="158" text-anchor="middle">ยาว L</text>
+        <line id="g-dimH" class="part" x1="290" y1="92" x2="290" y2="144"/>
+        <text id="l-dimH" class="label" x="296" y="122">สูง H</text>
+      </svg>
 
-  <div class="panel">
-    <h2>เริ่มจากหุ่นแบบไหน <small>เลือกแล้วแก้แค่ไม่กี่ช่อง — ที่เหลือคำนวณให้</small></h2>
-    <div class="grid">
-      <label>รูปแบบหุ่น <select id="preset">
-        <option value="amr_300">AMR โรงงาน 300 kg (differential)</option>
-        <option value="service_60">Service robot 60 kg (โรงพยาบาล/สำนักงาน)</option>
-        <option value="edu_small">หุ่นเรียนขนาดเล็ก IRON-X class</option>
-        <option value="mecanum_demo">Mecanum 4 ล้อ 30 kg</option>
-      </select></label>
-      <label>ชื่อหุ่น (a–z, 0–9, _) <input id="name" value="warehouse_amr_300"></label>
-      <label>Payload สูงสุด (kg) <input id="payload" type="number" step="1" min="0" value="300"></label>
-      <label>ความเร็วสูงสุด (m/s) <input id="vMax" type="number" step="0.1" min="0.1" max="5" value="1.0"></label>
-      <label>ใช้งานต่อชาร์จ (h) <input id="runtimeH" type="number" step="0.5" min="0.5" value="8"></label>
-      <label>สภาพแวดล้อม <select id="envType"><option value="factory">โรงงาน</option><option value="warehouse">คลังสินค้า</option><option value="hospital">โรงพยาบาล</option><option value="office">สำนักงาน</option><option value="laboratory">ห้องแลป</option><option value="outdoor">กลางแจ้ง</option><option value="custom">อื่น ๆ</option></select></label>
-      <label>พื้น <select id="floor"><option value="concrete">คอนกรีต</option><option value="epoxy">อีพ็อกซี</option><option value="tile">กระเบื้อง</option><option value="carpet">พรม</option><option value="asphalt">ยางมะตอย</option><option value="gravel">กรวด</option><option value="mixed">ผสม</option></select></label>
-      <label>ระบบขับ <select id="drive"><option value="differential">Differential (2 ล้อขับ)</option><option value="mecanum">Mecanum (4 ล้อ)</option></select></label>
-      <label>ยาว L (m) <input id="length" type="number" step="0.01" min="0.1" value="1.0"></label>
-      <label>กว้าง W (m) <input id="width" type="number" step="0.01" min="0.1" value="0.7"></label>
-      <label>สูง H (m) <input id="height" type="number" step="0.01" min="0.05" value="0.45"></label>
-      <label>แรงดันระบบ (V) <select id="busV"><option>12</option><option>24</option><option selected>48</option></select></label>
+      <section class="step now" id="s1">
+        <h2>1 · หุ่นตัวนี้ทำงานอะไร</h2>
+        <div class="hint"><b>คิดจากงานก่อน</b> — ของที่ต้องขน หนักเท่าไร วิ่งที่ไหน แล้วระบบจะเลือกล้อ มอเตอร์ แบต และเซนเซอร์ให้เอง ถ้ายังไม่แน่ใจ เลือกรูปแบบใกล้เคียงแล้วค่อยปรับ</div>
+        <div class="grid">
+          <label>รูปแบบหุ่นที่ใกล้เคียง <select id="preset">
+            <option value="amr_300">AMR โรงงาน 300 kg</option>
+            <option value="service_60">หุ่นบริการ 60 kg (โรงพยาบาล/สำนักงาน)</option>
+            <option value="edu_small">หุ่นเรียนขนาดเล็ก (IRON-X class)</option>
+            <option value="mecanum_demo">Mecanum 4 ล้อ 30 kg</option>
+          </select></label>
+          <label>น้ำหนักของที่บรรทุก (kg) <input id="payload" type="number" step="1" min="0" value="300"></label>
+          <label>ใช้งานที่ไหน <select id="envType"><option value="factory">โรงงาน</option><option value="warehouse">คลังสินค้า</option><option value="hospital">โรงพยาบาล</option><option value="office">สำนักงาน</option><option value="laboratory">ห้องแลป</option><option value="outdoor">กลางแจ้ง</option><option value="custom">อื่น ๆ</option></select></label>
+          <label>พื้นเป็นแบบไหน <select id="floor"><option value="concrete">คอนกรีต</option><option value="epoxy">อีพ็อกซี</option><option value="tile">กระเบื้อง</option><option value="carpet">พรม</option><option value="asphalt">ยางมะตอย</option><option value="gravel">กรวด</option><option value="mixed">ผสม</option></select></label>
+          <label>ชื่อหุ่น (a–z, 0–9, _) <input id="name" value="warehouse_amr_300"></label>
+        </div>
+      </section>
+
+      <section class="step" id="s2">
+        <h2>2 · ตัวถังใหญ่แค่ไหน</h2>
+        <div class="hint"><b>วัดจากขอบนอก</b> ยาว × กว้าง × สูง ของตัวหุ่น (ไม่รวมของที่บรรทุก) ระบบใช้ตัวเลขนี้คำนวณเสถียรภาพ, ช่องทางที่ผ่านได้ และค่า Nav2 ให้อัตโนมัติ</div>
+        <div class="grid">
+          <label>ยาว L (m) <input id="length" type="number" step="0.01" min="0.1" value="1.0"></label>
+          <label>กว้าง W (m) <input id="width" type="number" step="0.01" min="0.1" value="0.7"></label>
+          <label>สูง H (m) <input id="height" type="number" step="0.01" min="0.05" value="0.45"></label>
+          <label>ระบบขับ <select id="drive"><option value="differential">2 ล้อขับ + ล้อประคอง (differential)</option><option value="mecanum">4 ล้อ mecanum (เคลื่อนที่ทุกทิศ)</option></select></label>
+        </div>
+        <details>
+          <summary>ตั้งค่าล้อและตัวถังเพิ่มเติม (ถ้ารู้)</summary>
+          <div class="grid">
+            <label>ระยะใต้ท้อง (m) <input id="groundClearance" type="number" step="0.005" min="0" value="0.05"></label>
+            <label>เส้นผ่านศูนย์กลางล้อ (m) <input id="wheelDiameter" type="number" step="0.005" min="0.02" value="0.16"></label>
+            <label>หน้ากว้างล้อ (m) <input id="wheelWidth" type="number" step="0.005" min="0.01" value="0.05"></label>
+            <label>ระยะห่างล้อซ้าย-ขวา (m) <input id="track" type="number" step="0.01" min="0.05" value="0.60"></label>
+            <label id="wheelbaseRow" style="display:none">wheelbase หน้า-หลัง (m) <input id="wheelbase" type="number" step="0.01" min="0.05" value="0.40"></label>
+            <label>อัตราทดเกียร์ i <input id="gearRatio" type="number" step="1" min="1" value="20"></label>
+            <label>ช่องทางแคบสุดที่ต้องผ่าน (m) <input id="minAisle" type="number" step="0.05" min="0" value="1.2"></label>
+            <label>CoG ของที่บรรทุกเหนือตัวถัง (m) <input id="cogOffsetZ" type="number" step="0.05" value="0.25"></label>
+            <label class="check"><input id="robotMassManual" type="checkbox"> กำหนดมวลหุ่นเอง</label>
+            <label>มวลหุ่นเปล่า (kg) <input id="robotMass" type="number" step="0.5" min="1" value="50" disabled></label>
+          </div>
+        </details>
+      </section>
+
+      <section class="step" id="s3">
+        <h2>3 · วิ่งเร็วแค่ไหน นานแค่ไหน</h2>
+        <div class="hint"><b>ความเร็วกำหนดมอเตอร์ เวลากำหนดแบต</b> — หุ่นในอาคารส่วนใหญ่ 0.5–1.0 m/s; แรงดันระบบ 12 V สำหรับหุ่นเล็ก, 24 V ทั่วไป, 48 V สำหรับหุ่นหนัก</div>
+        <div class="grid">
+          <label>ความเร็วสูงสุด (m/s) <input id="vMax" type="number" step="0.1" min="0.1" max="5" value="1.0"></label>
+          <label>ใช้งานต่อการชาร์จ (h) <input id="runtimeH" type="number" step="0.5" min="0.5" value="8"></label>
+          <label>แรงดันระบบ (V) <select id="busV"><option>12</option><option>24</option><option selected>48</option></select></label>
+        </div>
+        <details>
+          <summary>ตั้งค่าการเคลื่อนที่เพิ่มเติม</summary>
+          <div class="grid">
+            <label>อัตราเร่งสูงสุด a_max (m/s²) <input id="aMax" type="number" step="0.1" min="0.1" max="5" value="0.5"></label>
+            <label>หมุนเร็วสุด w_max (rad/s) <input id="wMax" type="number" step="0.1" min="0.1" max="6.28" value="1.0"></label>
+            <label>ความชันสูงสุด (°) <input id="slopeDeg" type="number" step="0.5" min="0" max="30" value="5"></label>
+            <label>safety margin สำหรับ Nav (m) <input id="margin" type="number" step="0.01" min="0" value="0.05"></label>
+          </div>
+        </details>
+      </section>
+
+      <section class="step" id="s4">
+        <h2>4 · อุปกรณ์</h2>
+        <div class="hint"><b>เลือกให้แล้วจากผลคำนวณ</b> — มอเตอร์/ไดรเวอร์/แบตกรองตามแรงดันระบบให้ เปลี่ยนได้ทุกช่อง ถ้าหุ่นต้องเดินเอง (SLAM/Nav) ต้องมี LiDAR อย่างน้อย 1 ตัว</div>
+        <div class="grid">
+          <label>ล้อ + มอเตอร์ <select id="motor"></select></label>
+          <label>Low-level control (ไดรเวอร์) <select id="driver"></select></label>
+          <label>แบตเตอรี่ <select id="battery"></select></label>
+          <label>คอมพิวเตอร์ <select id="compute"></select></label>
+          <label>LiDAR <select id="lidar"></select></label>
+          <label>กล้อง depth <select id="camera"></select></label>
+          <label>IMU <select id="imu"></select></label>
+          <label class="check"><input id="estop" type="checkbox" checked> มี E-stop</label>
+          <label class="check"><input id="showAllParts" type="checkbox"> แสดงอุปกรณ์ทุกแรงดัน</label>
+          <label>จำนวนไดรเวอร์ <input id="driverCount" type="number" step="1" min="1" max="4" value="1"></label>
+        </div>
+        <details>
+          <summary>ดูตัวเลือกมอเตอร์และแบตทั้งหมด พร้อมเหตุผล</summary>
+          <div class="two"><div><h3>มอเตอร์</h3><div id="motorRec"></div></div><div><h3>แบตเตอรี่</h3><div id="batteryRec"></div></div></div>
+        </details>
+        <details>
+          <summary>ตั้งค่าโครงการ / แคตตาล็อกราคา</summary>
+          <div class="grid">
+            <label>package prefix <input id="prefix" value="tesr_robot"></label>
+            <label>คำอธิบาย <input id="description" value="300 kg AMR สำหรับโลจิสติกส์ในโรงงาน"></label>
+            <label>ประเภทงาน <select id="application"><option value="amr">AMR</option><option value="agv">AGV</option><option value="service">Service</option><option value="delivery">Delivery</option><option value="inspection">Inspection</option><option value="research">Research / Education</option><option value="mobile_manipulator">Mobile manipulator</option><option value="outdoor">Outdoor</option><option value="custom">Custom</option></select></label>
+          </div>
+          <div class="catalog" style="margin-top:8px">
+            <input id="catalogRef" placeholder="ลิงก์ Google Sheet ราคาของทีม (ว่าง = data/products.csv)">
+            <button class="mini" id="loadCatalog">โหลด</button>
+          </div>
+          <p class="muted" id="catalogStatus">—</p>
+        </details>
+      </section>
+
+      <div class="navrow">
+        <button class="ghost" id="prevStep">← ย้อนกลับ</button>
+        <span class="muted" id="stepText"></span>
+        <button class="gold" id="nextStep">ถัดไป →</button>
+      </div>
     </div>
-    <details>
-      <summary>ตั้งค่าขั้นสูง (ล้อ เกียร์ ความชัน ระยะปลอดภัย ฯลฯ)</summary>
-      <div class="grid">
-        <label>package prefix <input id="prefix" value="tesr_robot"></label>
-        <label>คำอธิบาย <input id="description" value="300 kg AMR สำหรับโลจิสติกส์ในโรงงาน"></label>
-        <label>ประเภทงาน <select id="application"><option value="amr">AMR</option><option value="agv">AGV</option><option value="service">Service</option><option value="delivery">Delivery</option><option value="inspection">Inspection</option><option value="research">Research / Education</option><option value="mobile_manipulator">Mobile manipulator</option><option value="outdoor">Outdoor</option><option value="custom">Custom</option></select></label>
-        <label>ความชันสูงสุด (°) <input id="slopeDeg" type="number" step="0.5" min="0" max="30" value="5"></label>
-        <label>ช่องทางแคบสุด (m, ว่างได้) <input id="minAisle" type="number" step="0.05" min="0" value="1.2"></label>
-        <label>CoG ของ payload เหนือตัวถัง (m) <input id="cogOffsetZ" type="number" step="0.05" value="0.25"></label>
-        <label>a_max (m/s²) <input id="aMax" type="number" step="0.1" min="0.1" max="5" value="0.5"></label>
-        <label>w_max (rad/s) <input id="wMax" type="number" step="0.1" min="0.1" max="6.28" value="1.0"></label>
-        <label>ระยะใต้ท้อง (m) <input id="groundClearance" type="number" step="0.005" min="0" value="0.05"></label>
-        <label>เส้นผ่านศูนย์กลางล้อ (m) <input id="wheelDiameter" type="number" step="0.005" min="0.02" value="0.16"></label>
-        <label>หน้ากว้างล้อ (m) <input id="wheelWidth" type="number" step="0.005" min="0.01" value="0.05"></label>
-        <label>ระยะห่างล้อซ้าย-ขวา (m) <input id="track" type="number" step="0.01" min="0.05" value="0.60"></label>
-        <label id="wheelbaseRow" style="display:none">wheelbase หน้า-หลัง (m) <input id="wheelbase" type="number" step="0.01" min="0.05" value="0.40"></label>
-        <label>อัตราทดเกียร์ i <input id="gearRatio" type="number" step="1" min="1" value="20"></label>
-        <label>safety margin สำหรับ Nav (m) <input id="margin" type="number" step="0.01" min="0" value="0.05"></label>
-        <label>จำนวนมอเตอร์ไดรเวอร์ <input id="driverCount" type="number" step="1" min="1" max="4" value="1"></label>
-        <label class="check"><input id="robotMassManual" type="checkbox"> กำหนดมวลหุ่นเอง</label>
-        <label>มวลหุ่นเปล่า (kg) <input id="robotMass" type="number" step="0.5" min="1" value="50" disabled></label>
-      </div>
-      <h3>แคตตาล็อกราคา</h3>
-      <div class="catalog">
-        <input id="catalogRef" placeholder="ลิงก์ Google Sheet ของทีม (ว่าง = data/products.csv ใน repo)">
-        <button class="mini" id="loadCatalog">โหลด</button>
-      </div>
-      <p class="muted" id="catalogStatus">—</p>
-    </details>
-  </div>
 
-  <div class="panel">
-    <h2>หุ่นของคุณ <small>คำนวณสดทุกครั้งที่แก้ค่า</small></h2>
-    <div class="kpi" id="kpi"></div>
-    <div id="compatOut"></div>
-    <details>
-      <summary>ดูรายละเอียดการคำนวณ (drivetrain · แบตเตอรี่ · Nav2)</summary>
-      <div class="two">
-        <div><h3>ระบบขับ</h3><div id="drivetrainOut"></div></div>
-        <div><h3>พลังงาน</h3><div id="powerOut"></div><h3>Nav2 sizing</h3><div id="navOut"></div></div>
-      </div>
-    </details>
-  </div>
-
-  <div class="panel">
-    <h2>อุปกรณ์ <small>เลือกให้อัตโนมัติจากผลคำนวณ — เปลี่ยนได้</small></h2>
-    <div class="grid">
-      <label>มอเตอร์ <select id="motor"></select></label>
-      <label>มอเตอร์ไดรเวอร์ <select id="driver"></select></label>
-      <label>แบตเตอรี่ <select id="battery"></select></label>
-      <label>คอมพิวเตอร์ <select id="compute"></select></label>
-      <label>2D LiDAR <select id="lidar"></select></label>
-      <label>กล้อง depth <select id="camera"></select></label>
-      <label>IMU <select id="imu"></select></label>
-      <label class="check"><input id="estop" type="checkbox" checked> มี E-stop</label>
+    <div class="panel sticky">
+      <h2>หุ่นของคุณ <small>อัปเดตทันทีที่แก้ค่า</small></h2>
+      <div class="kpi" id="kpi"></div>
+      <div id="compatOut"></div>
+      <details>
+        <summary>รายละเอียดการคำนวณ</summary>
+        <h3>ระบบขับ</h3><div id="drivetrainOut"></div>
+        <h3>พลังงาน</h3><div id="powerOut"></div>
+        <h3>Nav2</h3><div id="navOut"></div>
+      </details>
     </div>
-    <details>
-      <summary>ดูตัวเลือกมอเตอร์และแบตเตอรี่ทั้งหมด พร้อมเหตุผลว่าเหมาะหรือไม่</summary>
-      <div class="two"><div><h3>มอเตอร์</h3><div id="motorRec"></div></div><div><h3>แบตเตอรี่</h3><div id="batteryRec"></div></div></div>
-    </details>
   </div>
 
-  <div class="panel">
-    <h2>รายการสั่งซื้อ <small>ราคาและลิงก์จาก TESR Shop</small></h2>
+  <div class="panel" id="bomPanel">
+    <h2>รายการสั่งซื้อ <small>แยกตามหมวด · ราคาและปุ่มซื้อจาก TESR Shop</small></h2>
     <div id="bomOut"></div>
     <div class="actions"><button class="mini ghost" id="downloadBom">ดาวน์โหลด BOM (CSV)</button></div>
   </div>
 
   <div class="panel">
-    <h2>ไปต่อ <small>ทุกอย่างส่งต่อให้ขั้นถัดไปอัตโนมัติ</small></h2>
+    <h2>ไปต่อ <small>ส่งต่อให้ขั้นถัดไปอัตโนมัติ</small></h2>
     <div class="steps">
       <a href="#" id="toModel"><b>2 · โมเดล 3D →</b><small>วาง STL บนโครงหุ่นนี้ ดูและแก้ออนไลน์</small></a>
       <a href="#" id="toBuild"><b>3 · สร้าง ROS 2 workspace →</b><small>ตรวจ 15 rules แล้วดาวน์โหลด zip</small></a>
     </div>
     <details>
-      <summary>robot.yaml ของหุ่นนี้ (ดาวน์โหลด / คัดลอก)</summary>
+      <summary>robot.yaml ของหุ่นนี้</summary>
       <div class="actions"><button class="mini" id="downloadYaml">ดาวน์โหลด .robot.yaml</button><button class="mini ghost" id="copyYaml">คัดลอก YAML</button><button class="mini ghost" id="downloadDesign">ดาวน์โหลดผลคำนวณ (JSON)</button></div>
       <textarea id="yamlOut" class="yaml" readonly></textarea>
       <pre id="cmdOut" class="muted"></pre>
     </details>
   </div>
 </main>
-<footer class="tesr">TESR Co., Ltd. · Real-World AI &amp; Robotics Engineering Partner · ทุกอย่างรันในเบราว์เซอร์ ไม่มีข้อมูลออกจากเครื่องคุณ</footer>
+<footer class="tesr">TESR Co., Ltd. · Thai Embedded System and Robotics · ทุกอย่างรันในเบราว์เซอร์ ไม่มีข้อมูลออกจากเครื่องคุณ</footer>
 <script src="./app.js"></script>
+<script>
+(function () {
+  const steps = ['s1', 's2', 's3', 's4'];
+  const parts = { s1: ['payload'], s2: ['chassis', 'dimL', 'dimH'], s3: ['wheel1', 'wheel2', 'battery'], s4: ['lidar', 'camera', 'compute', 'driver', 'mast'] };
+  const labels = { s1: ['payload'], s2: ['chassis', 'dimL', 'dimH'], s3: ['wheels', 'battery'], s4: ['lidar', 'camera', 'compute', 'driver'] };
+  let i = 0;
+  const $ = (id) => document.getElementById(id);
+  function show(n) {
+    i = Math.max(0, Math.min(steps.length - 1, n));
+    steps.forEach((s, k) => $(s).classList.toggle('now', k === i));
+    [...$('stepbar').children].forEach((el, k) => { el.className = k < i ? 'done' : k === i ? 'now' : ''; });
+    document.querySelectorAll('.guide .part').forEach((el) => el.classList.remove('hl'));
+    document.querySelectorAll('.guide .label').forEach((el) => el.classList.remove('hl'));
+    parts[steps[i]].forEach((p) => $('g-' + p)?.classList.add('hl'));
+    labels[steps[i]].forEach((p) => $('l-' + p)?.classList.add('hl'));
+    $('prevStep').style.visibility = i === 0 ? 'hidden' : 'visible';
+    $('nextStep').textContent = i === steps.length - 1 ? 'ดูรายการสั่งซื้อ ↓' : 'ถัดไป →';
+    $('stepText').textContent = `ขั้น ${i + 1} / ${steps.length}`;
+  }
+  $('prevStep').onclick = () => show(i - 1);
+  $('nextStep').onclick = () => { if (i === steps.length - 1) $('bomPanel').scrollIntoView({ behavior: 'smooth' }); else show(i + 1); };
+  show(0);
+})();
+</script>
 </body>
 </html>
