@@ -126,6 +126,21 @@
       .sort((a, b) => (STOCK_RANK[a.stock] ?? 2) - (STOCK_RANK[b.stock] ?? 2) || (a.price == null) - (b.price == null) || (a.price || 0) - (b.price || 0));
   }
 
+  // LiDAR placements (pos name → x/y offsets from the chassis edges, yaw). Diagonal pairs (front-left + rear-right) are the
+  // classic industrial AMR layout (KURO-X / Beary-X): two scanners cover 360° with no blind side.
+  const LIDAR_LAYOUTS = {
+    front1:  { label: '1 ตัว หน้า', spots: [['front', 1, 0, 0]] },
+    diag2:   { label: '2 ตัว เฉียง (หน้าซ้าย + หลังขวา)', spots: [['front_left', 1, 1, 0.7854], ['rear_right', -1, -1, -2.3562]] },
+    fr2:     { label: '2 ตัว หน้า + หลัง', spots: [['front', 1, 0, 0], ['rear', -1, 0, 3.14159]] },
+    rear3:   { label: '3 ตัว หน้า + มุมหลัง 2', spots: [['front', 1, 0, 0], ['rear_left', -1, 1, 2.3562], ['rear_right', -1, -1, -2.3562]] },
+    corner4: { label: '4 ตัว ทุกมุม', spots: [['front_left', 1, 1, 0.7854], ['front_right', 1, -1, -0.7854], ['rear_left', -1, 1, 2.3562], ['rear_right', -1, -1, -2.3562]] },
+  };
+  const CAMERA_LAYOUTS = { front1: [['front', 1, 0, 0]], fr2: [['front', 1, 0, 0], ['rear', -1, 0, 3.14159]] };
+  // caster layouts for differential drive (x/y as fractions of the half-length / half-width, inset 0.1 m)
+  const CASTER_LAYOUTS = { front_rear: [[1, 0], [-1, 0]], corners4: [[1, 1], [1, -1], [-1, 1], [-1, -1]], rear1: [[-1, 0]], front1: [[1, 0]] };
+  function sensorSpots(spots, L, W, inset) {
+    return spots.map(([pos, fx, fy, yaw]) => ({ pos, x: r4(fx * (L / 2 - inset)), y: r4(fy * (W / 2 - inset)), yaw }));
+  }
   const CATEGORY_LABELS = [['wheel', 'ล้อ'], ['motor', 'มอเตอร์'], ['motor_driver', 'Low-level control (มอเตอร์ไดรเวอร์)'], ['encoder', 'เอ็นโค้ดเดอร์'],
     ['compute', 'คอมพิวเตอร์'], ['lidar', 'LiDAR'], ['depth_camera', 'กล้อง depth'], ['rgb_camera', 'กล้อง'], ['imu', 'IMU'],
     ['battery', 'แบตเตอรี่'], ['power_supply', 'แหล่งจ่ายไฟ / DC-DC'], ['estop', 'ความปลอดภัย (E-stop)'], ['accessory', 'อุปกรณ์เสริม']];
@@ -182,15 +197,15 @@
     const r = d.wheelDiameter / 2, gc = d.groundClearance, H = d.height, L = d.length;
     const hw = [];
     const zl = r4(gc + H + 0.05 - r), zc = r4(gc + H * 0.7 - r), W = d.width;
-    const lidars = { 1: [['front', L / 2 - 0.1, 0, 0]], 2: [['front', L / 2 - 0.1, 0, 0], ['rear', -(L / 2 - 0.1), 0, 3.14159]],
-      3: [['front', L / 2 - 0.1, 0, 0], ['rear_left', -(L / 2 - 0.1), W / 2 - 0.1, 2.35619], ['rear_right', -(L / 2 - 0.1), -(W / 2 - 0.1), -2.35619]] }[d.lidarCount || 1];
-    if (d.lidar) lidars.forEach(([pos, x, y, yaw]) => hw.push({ id: `lidar_${pos}`, hw: d.lidar, frame: `laser_${pos}`, xyz: [r4(x), r4(y), zl], rpy: [0, 0, yaw] }));
+    const lidars = sensorSpots((LIDAR_LAYOUTS[d.lidarLayout] || LIDAR_LAYOUTS.front1).spots, L, W, 0.1);
+    if (d.lidar) lidars.forEach((p) => hw.push({ id: `lidar_${p.pos}`, hw: d.lidar, frame: `laser_${p.pos}`, xyz: [p.x, p.y, zl], rpy: [0, 0, p.yaw] }));
     if (d.imu) hw.push({ id: 'imu', hw: d.imu, frame: 'imu_link', xyz: [0, 0, r4(gc + H / 2 - r)], rpy: [0, 0, 0] });
-    const cams = { 1: [['front', L / 2 - 0.02, 0]], 2: [['front', L / 2 - 0.02, 0], ['rear', -(L / 2 - 0.02), 3.14159]] }[d.cameraCount || 1] || [];
-    if (d.camera) cams.forEach(([pos, x, yaw]) => hw.push({ id: `cam_${pos}`, hw: d.camera, frame: `camera_${pos}`, xyz: [r4(x), 0, zc], rpy: [0, 0, yaw] }));
+    const cams = sensorSpots(CAMERA_LAYOUTS[d.cameraLayout] || CAMERA_LAYOUTS.front1, L, W, 0.02);
+    if (d.camera) cams.forEach((p) => hw.push({ id: `cam_${p.pos}`, hw: d.camera, frame: `camera_${p.pos}`, xyz: [p.x, 0, zc], rpy: [0, 0, p.yaw] }));
     for (let k = 0; k < d.driverCount; k++) hw.push({ id: d.driverCount > 1 ? `motor_driver_${k + 1}` : 'motor_driver', hw: d.driver });
     if (d.estop) hw.push({ id: 'estop', hw: 'generic_estop', io: 'DI1' });
-    const casters = d.drive === 'differential' ? (L > 0.4 ? [[r4(L / 2 - 0.1), 0, 0], [r4(-(L / 2 - 0.1)), 0, 0]] : [[r4(-(L / 2 - 0.08)), 0, 0]]) : [];
+    const inset = L > 0.4 ? 0.1 : 0.06;
+    const casters = d.drive === 'differential' ? (CASTER_LAYOUTS[d.casterLayout] || CASTER_LAYOUTS.front_rear).map(([fx, fy]) => [r4(fx * (L / 2 - inset)), r4(fy * (d.width / 2 - inset)), 0]) : [];
     const lines = [
       `# Robot Definition v1 — drafted with TESR Robot Builder Web. Validate with: tesr-rb validate ${d.name}.robot.yaml`,
       'schema_version: 1',
@@ -253,7 +268,7 @@
   }
 
   const api = { sizeDrivetrain, sizeBattery, navSizing, estimateRobotMass, tipping, parseCsv, parseCatalog, catalogUrl, sheetCsvUrl,
-    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, ROLLING_RESISTANCE, CATEGORY_TH };
+    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, ROLLING_RESISTANCE, CATEGORY_TH, LIDAR_LAYOUTS, CAMERA_LAYOUTS, CASTER_LAYOUTS, sensorSpots };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR = api;
@@ -273,16 +288,16 @@
   const PRESETS = {
     amr_300: { name: 'warehouse_amr_300', prefix: 'tesr_robot', description: '300 kg AMR สำหรับโลจิสติกส์ในโรงงาน', application: 'amr', envType: 'factory', floor: 'concrete', slopeDeg: 5, minAisle: 1.2,
       payload: 300, cogOffsetZ: 0.25, vMax: 1.0, aMax: 0.5, wMax: 1.0, runtimeH: 8, length: 1.0, width: 0.7, height: 0.45, groundClearance: 0.05, drive: 'differential',
-      wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, busV: 48, margin: 0.05, driverCount: 1, estop: true, lidarCount: 2, cameraCount: 1 },
+      wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, busV: 48, margin: 0.05, driverCount: 1, estop: true, lidarLayout: 'diag2', cameraLayout: 'front1', casterLayout: 'corners4' },
     service_60: { name: 'service_robot_60', prefix: 'tesr_service', description: 'หุ่นบริการ 60 kg ในโรงพยาบาล/สำนักงาน', application: 'service', envType: 'hospital', floor: 'tile', slopeDeg: 3, minAisle: 1.0,
       payload: 60, cogOffsetZ: 0.3, vMax: 0.8, aMax: 0.5, wMax: 1.2, runtimeH: 10, length: 0.6, width: 0.5, height: 0.9, groundClearance: 0.04, drive: 'differential',
-      wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 1, estop: true, lidarCount: 1, cameraCount: 1 },
+      wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 1, estop: true, lidarLayout: 'front1', cameraLayout: 'front1', casterLayout: 'front_rear' },
     edu_small: { name: 'edu_robot', prefix: 'edu_robot', description: 'หุ่นเรียนขนาดเล็กสำหรับ TESR Academy', application: 'research', envType: 'laboratory', floor: 'tile', slopeDeg: 3, minAisle: '',
       payload: 2, cogOffsetZ: 0.05, vMax: 0.5, aMax: 0.5, wMax: 1.5, runtimeH: 2, length: 0.26, width: 0.24, height: 0.10, groundClearance: 0.02, drive: 'differential',
-      wheelDiameter: 0.10, wheelWidth: 0.03, track: 0.23, wheelbase: 0.2, gearRatio: 30, busV: 12, margin: 0.03, driverCount: 1, estop: false, lidarCount: 1, cameraCount: 1 },
+      wheelDiameter: 0.10, wheelWidth: 0.03, track: 0.23, wheelbase: 0.2, gearRatio: 30, busV: 12, margin: 0.03, driverCount: 1, estop: false, lidarLayout: 'front1', cameraLayout: 'front1', casterLayout: 'rear1' },
     mecanum_demo: { name: 'mecanum_demo', prefix: 'mecanum_demo', description: 'หุ่น mecanum 4 ล้อ สำหรับงานวิจัย', application: 'research', envType: 'laboratory', floor: 'epoxy', slopeDeg: 2, minAisle: 1.0,
       payload: 30, cogOffsetZ: 0.15, vMax: 1.0, aMax: 0.8, wMax: 1.5, runtimeH: 4, length: 0.6, width: 0.5, height: 0.3, groundClearance: 0.05, drive: 'mecanum',
-      wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 2, estop: true, lidarCount: 1, cameraCount: 1 },
+      wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 2, estop: true, lidarLayout: 'front1', cameraLayout: 'front1', casterLayout: 'front_rear' },
   };
   function applyPreset(id) {
     const p = PRESETS[id]; if (!p) return;
@@ -334,7 +349,8 @@
   function collectDesign() {
     const ids = byId(registry);
     const drive = $('drive').value, busV = num('busV');
-    const lidarCount = Number($('lidarCount')?.value || 1), cameraCount = $('camera').value ? Number($('cameraCount')?.value || 1) : 0;
+    const lidarLayout = $('lidarLayout')?.value || 'front1', cameraLayout = $('cameraLayout')?.value || 'front1', casterLayout = $('casterLayout')?.value || 'front_rear';
+    const lidarCount = (LIDAR_LAYOUTS[lidarLayout] || LIDAR_LAYOUTS.front1).spots.length, cameraCount = $('camera').value ? (CAMERA_LAYOUTS[cameraLayout] || CAMERA_LAYOUTS.front1).length : 0;
     const devices = [ids[$('compute').value], ...Array(lidarCount).fill(ids[$('lidar').value]), ...Array(cameraCount).fill(ids[$('camera').value]), ids[$('imu').value]].filter(Boolean);
     const d = {
       name: ($('name').value || 'my_robot').toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^[^a-z]+/, 'r'),
@@ -349,7 +365,7 @@
       compute: $('compute').value, arch: ids[$('compute').value]?.compute?.arch || 'arm64',
       lidar: $('lidar').value || null, camera: $('camera').value || null, imu: $('imu').value || null, estop: $('estop').checked,
       motor: $('motor').value, driver: $('driver').value, driverCount: Math.max(1, Math.round(num('driverCount') || (drive === 'mecanum' ? 2 : 1))),
-      battery: $('battery').value, robotMassManual: $('robotMassManual').checked, lidarCount, cameraCount: cameraCount || ($('camera').value ? 1 : 0),
+      battery: $('battery').value, robotMassManual: $('robotMassManual').checked, lidarCount, cameraCount, lidarLayout, cameraLayout, casterLayout,
     };
     const nDrive = drive === 'mecanum' ? 4 : 2;
     const hwMass = devices.reduce((s, h) => s + (h.mass_kg || 0), 0) + (ids[d.motor]?.mass_kg || 0) * nDrive + (ids[d.battery]?.mass_kg || 0) + (ids[d.driver]?.mass_kg || 0) * d.driverCount;
@@ -358,6 +374,9 @@
     d.electronicsW = devices.reduce((s, h) => s + (h.electrical?.typical_w || 0), 0) || 30;
     d.rails = railsNeeded(registry, busV, devices.concat([ids[d.driver]].filter(Boolean)));
     d.devices = devices; d.nDrive = nDrive;
+    d.lidarSpots = d.lidar ? sensorSpots((LIDAR_LAYOUTS[lidarLayout] || LIDAR_LAYOUTS.front1).spots, d.length, d.width, 0.1) : [];
+    d.cameraSpots = d.camera ? sensorSpots(CAMERA_LAYOUTS[cameraLayout] || CAMERA_LAYOUTS.front1, d.length, d.width, 0.02) : [];
+    d.casterSpots = drive === 'differential' ? (CASTER_LAYOUTS[casterLayout] || CASTER_LAYOUTS.front_rear).map(([fx, fy]) => ({ x: fx * (d.length / 2 - (d.length > 0.4 ? 0.1 : 0.06)), y: fy * (d.width / 2 - (d.length > 0.4 ? 0.1 : 0.06)) })) : [];
     return d;
   }
 
