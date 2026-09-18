@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   python:
     name: schema · calc · rules · generators
@@ -31,18 +38,33 @@ jobs:
           PY
 
   colcon:
-    name: colcon build (ros:jazzy)
+    name: colcon build (ros:jazzy-ros-base)
     runs-on: ubuntu-latest
-    container: ros:jazzy
+    container: ros:jazzy-ros-base
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Install TESR Robot Builder
+        shell: bash
         run: |
-          apt-get update
-          apt-get install -y python3-pip git liburdfdom-tools
-          pip install --break-system-packages -e ".[dev]"
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          # The ROS apt key in older ros:* images has expired; refresh the ROS apt source package first so apt-get update cannot fail on it.
+          rm -f /etc/apt/sources.list.d/ros2*.list /etc/apt/sources.list.d/ros2*.sources || true
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl ca-certificates python3-pip git liburdfdom-tools python3-colcon-common-extensions python3-rosdep
+          codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
+          ver=$(curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F '"tag_name"' | awk -F'"' '{print $4}')
+          curl -fsSL -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ver}/ros2-apt-source_${ver}.${codename}_all.deb"
+          dpkg -i /tmp/ros2-apt-source.deb
+          apt-get update -qq
+          python3 -m pip install --break-system-packages --upgrade pip
+          python3 -m pip install --break-system-packages ".[dev]"
+          tesr-rb --help > /dev/null
       - name: Generate a workspace from every example
+        shell: bash
         run: |
+          set -euo pipefail
           for f in examples/*.robot.yaml; do
             n=$(basename "$f" .robot.yaml)
             tesr-rb generate "$f" -o "build/ws_$n"
@@ -50,7 +72,9 @@ jobs:
       - name: rosdep + colcon build
         shell: bash
         run: |
+          set -euo pipefail
           source /opt/ros/jazzy/setup.bash
+          rosdep init 2>/dev/null || true
           rosdep update --rosdistro jazzy
           for ws in build/ws_*; do
             echo "::group::$ws"
@@ -63,6 +87,7 @@ jobs:
       - name: xacro + check_urdf on every generated model
         shell: bash
         run: |
+          set -euo pipefail
           source /opt/ros/jazzy/setup.bash
           for ws in build/ws_*; do
             source "$ws/install/setup.bash"
