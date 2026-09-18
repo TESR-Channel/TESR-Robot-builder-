@@ -1,0 +1,10 @@
+id: generic_bldc_24v_200w
+category: motor
+name: 200 W BLDC gear motor (24 V, service robot class)
+manufacturer: generic
+mass_kg: 2.0
+dims_m: [0.11, 0.08, 0.08]
+electrical: {voltage_v: 24, typical_w: 100, peak_w: 200}
+interfaces: [hall, encoder]
+motor: {rated_torque_nm: 0.64, peak_torque_nm: 1.9, rated_rpm: 3000}
+verified: false

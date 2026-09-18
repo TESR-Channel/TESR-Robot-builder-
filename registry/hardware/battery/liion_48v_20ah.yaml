@@ -1,0 +1,9 @@
+id: liion_48v_20ah
+category: battery
+name: Li-ion 48 V 20 Ah pack
+manufacturer: generic
+mass_kg: 6.5
+dims_m: [0.30, 0.15, 0.10]
+electrical: {voltage_v: 48, typical_w: 0, peak_w: 0}
+battery: {chemistry: liion, nominal_v: 50.4, capacity_ah: 20, max_discharge_a: 40}
+verified: false

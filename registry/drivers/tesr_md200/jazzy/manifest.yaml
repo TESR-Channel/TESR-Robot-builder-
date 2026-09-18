@@ -1,0 +1,7 @@
+hw: tesr_md200
+distro: jazzy
+package: tesr_md400_hardware
+apt: [ros-jazzy-ros2-control, ros-jazzy-ros2-controllers]
+ros2_control_plugin: tesr_md400_hardware/MD400System
+topics: {main: /joint_states}
+notes: ros2_control SystemInterface; exposes velocity command + position/velocity state per wheel joint.

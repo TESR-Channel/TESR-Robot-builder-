@@ -1,0 +1,10 @@
+id: generic_bldc_12v_60w
+category: motor
+name: 60 W BLDC hub motor (12 V, for small robots)
+manufacturer: generic
+mass_kg: 0.6
+dims_m: [0.09, 0.05, 0.09]
+electrical: {voltage_v: 12, typical_w: 30, peak_w: 60}
+interfaces: [hall, encoder]
+motor: {rated_torque_nm: 0.25, peak_torque_nm: 0.75, rated_rpm: 2000}
+verified: false

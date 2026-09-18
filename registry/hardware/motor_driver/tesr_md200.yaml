@@ -1,0 +1,10 @@
+id: tesr_md200
+category: motor_driver
+name: TESR MD-200 dual BLDC driver (24 V)
+manufacturer: TESR
+mass_kg: 0.3
+dims_m: [0.10, 0.08, 0.03]
+electrical: {voltage_v: 24, typical_w: 3, peak_w: 10}
+interfaces: [can, serial]
+notes: Placeholder — 24 V sibling of the MD-400; same ros2_control interface (registry/drivers/tesr_md400).
+verified: false
