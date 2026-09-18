@@ -27,21 +27,26 @@ Form / NL requirement ─▶ robot.yaml ─▶ resolve (auto → numbers) ─▶
 | ✅ | CLI `tesr-rb` · tests (schema, calc, rules, xacro expansion, determinism) · CI with `colcon build` in `ros:jazzy` |
 | ✅ | **Web app** (`docs/index.html`, GitHub Pages) — requirement → drivetrain/power/Nav2 sizing → part recommendations with TESR Shop links → `robot.yaml` + BOM, no install needed |
 | ✅ | **Model Studio** (`docs/model.html`) — upload STL/URDF, view and edit in 3D online (Z-up, metres), ghost reference from step 1, export URDF / Xacro / model.json / PNG |
+| ✅ | **Definition & Generate in the browser** (`docs/build.html`) — the same Python engine runs in Pyodide: edit `robot.yaml`, run the 15 rules, generate the ROS 2 workspace and download it as a zip; no install |
 | ✅ | **Product catalog** (`catalog/products.csv` or a shared Google Sheet) joined to the registry by `hardware_ref`; `tesr-rb bom` prices any definition |
-| ⏳ Phase 1 | ros2_control, sensor drivers, EKF, SLAM Toolbox, AMCL, Nav2 auto-sizing, Gazebo Harmonic, Docker; validate/generate in the browser (Pyodide) |
+| ⏳ Phase 1 | ros2_control, sensor drivers, EKF, SLAM Toolbox, AMCL, Nav2 auto-sizing, Gazebo Harmonic, Docker |
 
-## Web app (no install)
+## Web app — everything runs in the browser
 
-Open the GitHub Pages site (Settings → Pages → branch `main`, folder `/docs`) or run it locally:
+GitHub Pages serves `docs/` (Settings → Pages → branch `main`, folder `/docs`). No server, no install; files never leave the browser.
 
-```bash
-python3 -m http.server -d docs 8080     # then http://localhost:8080
-```
+| Step | Page | You get |
+|---|---|---|
+| 1 · Spec & Sizing | `index.html` | drivetrain / battery / Nav2 sizing, recommended parts with 🛒 TESR Shop links, `robot.yaml`, BOM CSV |
+| 2 · Model Studio | `model.html` | upload STL/URDF, view + edit in 3D, ghost reference from step 1, export URDF / Xacro / model.json / PNG |
+| 3 · Definition & Generate | `build.html` | edit `robot.yaml`, run schema + 15 rules, generate the ROS 2 workspace (Python engine in Pyodide), download `<name>_ws.zip` |
 
-Step 1 (Spec & Sizing) and Step 2 (Model Studio: STL/URDF upload, 3D edit, URDF export) run entirely in the browser — files never leave your machine. Four sizing steps, each with output you can use immediately: sizing numbers → recommended motors/batteries with
-🛒 TESR Shop links → compatibility + Nav2 sizing → `robot.yaml` (for `tesr-rb generate`) and a BOM CSV.
-Paste the team's Google Sheet link in the catalog box (or `index.html?catalog=<sheet id>`) to get live prices;
-see [`catalog/README.md`](catalog/README.md).
+Each step saves into a shared project (browser storage) and every step can import/export its own files, so a
+result can be used on its own or handed to the next step. Only `colcon build`, simulation and deploy need a
+machine with Docker/ROS — the zip contains the one-line Docker command.
+
+Live prices come from the team's Google Sheet (paste the link in the catalog box, or `index.html?catalog=<sheet id>`);
+see [`catalog/README.md`](catalog/README.md). The CLI below is the same engine for scripts and CI.
 
 ## Quick start
 
@@ -80,11 +85,12 @@ src/tesr_robot_builder/
   rules/       validation engine + built-in rules (add a rule = add a function)
   generators/  template plugins (Jinja2) — description, bringup; pipeline with overrides + manifest
   catalog.py   product catalog (CSV / Google Sheet) + bill of materials
-  web_export.py  registry.json / products.csv for the web app
+  web_entry.py   build_json(yaml) — the call the browser (Pyodide) makes
+  web_export.py  registry.json / products.csv / engine bundle+manifest for the web app
   cli.py       tesr-rb
 registry/      hardware records, driver manifests, drive/nav profiles (data — becomes its own repo later)
 catalog/       products.csv — SKU, price, tesrshop link per hardware_ref (team-edited; see catalog/README.md)
-docs/          index.html + app.js (Spec & Sizing) · model.html + model.js + model-core.js (Model Studio) · theme.css · data/ · adr/
+docs/          web app: index.html/app.js (Spec & Sizing) · model.html/model.js/model-core.js (Model Studio) · build.html/build.js (Pyodide engine) · theme.css · data/ · adr/
 examples/      ironx_gen2 · mecanum_demo · warehouse_amr_300
 tests/         unit + xacro expansion + determinism
 .github/       CI: pytest + colcon build of every example in ros:jazzy
