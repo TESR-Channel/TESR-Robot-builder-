@@ -62,6 +62,13 @@
     return r4(hardwareMass + 30 * L * W * Math.max(1, H / 0.4));
   }
 
+  // System voltage suggestion from peak electrical power and total mass: small robots 12 V, general 24 V, heavy AMR 48 V
+  function suggestBusV(powerElecPeakW, totalMassKg = 0) {
+    if (powerElecPeakW < 120 && totalMassKg <= 40) return 12;
+    if (powerElecPeakW < 400 && totalMassKg <= 150) return 24;
+    return 48;
+  }
+
   function tipping(o) {
     // quasi-static: a_tip = g·(track/2)/h_cog vs lateral accel v_max·w_max (rule R-MECH-004)
     const payloadH = o.height + (o.cogOffsetZ || 0), bodyH = o.groundClearance + o.height / 2;
@@ -268,7 +275,7 @@
   }
 
   const api = { sizeDrivetrain, sizeBattery, navSizing, estimateRobotMass, tipping, parseCsv, parseCatalog, catalogUrl, sheetCsvUrl,
-    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, ROLLING_RESISTANCE, CATEGORY_TH, LIDAR_LAYOUTS, CAMERA_LAYOUTS, CASTER_LAYOUTS, sensorSpots };
+    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, suggestBusV, ROLLING_RESISTANCE, CATEGORY_TH, LIDAR_LAYOUTS, CAMERA_LAYOUTS, CASTER_LAYOUTS, sensorSpots };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR = api;
@@ -302,7 +309,7 @@
   function applyPreset(id) {
     const p = PRESETS[id]; if (!p) return;
     Object.entries(p).forEach(([k, v]) => { const el = $(k); if (!el) return; if (el.type === 'checkbox') el.checked = !!v; else el.value = v; });
-    ['motor', 'driver', 'battery'].forEach((k) => { delete $(k).dataset.user; });
+    ['motor', 'driver', 'battery', 'busV'].forEach((k) => { delete $(k).dataset.user; });
     $('robotMassManual').checked = false;
     populateSelects(); render();
   }
@@ -390,6 +397,9 @@
 
     // --- drivetrain
     const dt = sizeDrivetrain({ totalMass: d.totalMass, vMax: d.vMax, aMax: d.aMax, wheelDiameter: d.wheelDiameter, nDrive: d.nDrive, gearRatio: d.gearRatio, slopeDeg: d.slopeDeg, floor: d.floor });
+    const sv = suggestBusV(dt.powerElecPeak, d.totalMass);
+    if (!$('busV').dataset.user && d.busV !== sv) { $('busV').value = sv; populateSelects(); return render(); }
+    document.querySelectorAll('#voltCards .vcard').forEach((c) => { c.classList.toggle('sel', Number(c.dataset.v) === d.busV); c.classList.toggle('rec', Number(c.dataset.v) === sv); });
     const tp = tipping({ height: d.height, cogOffsetZ: d.cogOffsetZ, groundClearance: d.groundClearance, robotMass: d.robotMass, payload: d.payload, track: d.track, vMax: d.vMax, wMax: d.wMax });
     $('drivetrainOut').innerHTML = `
       <table class="kv">
@@ -470,7 +480,7 @@
         <div><b>${fmt(d.totalMass, 0)} kg</b><span>มวลรวม (หุ่น ${fmt(d.robotMass, 0)} + payload ${fmt(d.payload, 0)})</span></div>
         <div><b>${fmt(dt.requiredMotorRatedTorque, 2)} N·m</b><span>มอเตอร์ ×${d.nDrive} ที่ ≥ ${fmt(dt.motorRpm, 0)} rpm (i = ${d.gearRatio})</span></div>
         <div><b>${fmt(pw.capacityAh, 0)} Ah</b><span>แบตเตอรี่ ${d.busV} V สำหรับ ${d.runtimeH} h</span></div>
-        <div><b>${fmt(dt.powerMechPeak, 0)} W</b><span>กำลังสูงสุด · ${fmt(pw.peakCurrentA, 0)} A</span></div>
+        <div><b>${d.busV} V</b><span>ระบบไฟ${d.busV === sv ? ' (แนะนำ)' : ` · แนะนำ ${sv} V`} · สูงสุด ${fmt(dt.powerMechPeak, 0)} W / ${fmt(pw.peakCurrentA, 0)} A</span></div>
         <div><b>${d.lidarCount} LiDAR · ${d.cameraCount} กล้อง</b><span>costmap ${nav.localCostmap} m · inflation ${nav.inflationRadius} m</span></div>
         <div><b>${bom.total ? fmt(bom.total, 0) + ' ฿' : '—'}</b><span>ราคาอุปกรณ์${bom.total ? ` (มีราคา ${bom.lines.length - bom.missing.length - bom.unpriced.length}/${bom.lines.length})` : ' — รอทีมเติมราคา'}</span></div>`;
     }
@@ -510,7 +520,7 @@
     $('catalogRef').value = ref;
     await loadCatalog(ref);
     document.querySelectorAll('input, select').forEach((el) => el.addEventListener('input', (ev) => {
-      if (['motor', 'driver', 'battery'].includes(ev.target.id)) ev.target.dataset.user = '1';
+      if (['motor', 'driver', 'battery', 'busV'].includes(ev.target.id)) ev.target.dataset.user = '1';
       if (ev.target.id === 'busV' || ev.target.id === 'showAllParts') populateSelects();
       render();
     }));
@@ -518,6 +528,7 @@
       const b = ev.target.closest('button[data-pick]');
       if (b) { $(b.dataset.pick).value = b.dataset.id; $(b.dataset.pick).dataset.user = '1'; render(); }
     });
+    document.querySelectorAll('#voltCards .vcard').forEach((c) => c.addEventListener('click', () => { $('busV').value = c.dataset.v; $('busV').dataset.user = '1'; populateSelects(); render(); }));
     $('loadCatalog').onclick = () => loadCatalog($('catalogRef').value.trim());
     $('downloadYaml').onclick = () => download(`${root.__tesr.d.name}.robot.yaml`, root.__tesr.yaml, 'text/yaml');
     $('copyYaml').onclick = () => navigator.clipboard.writeText(root.__tesr.yaml).then(() => { $('copyYaml').textContent = 'คัดลอกแล้ว ✓'; setTimeout(() => ($('copyYaml').textContent = 'คัดลอก YAML'), 1500); });
