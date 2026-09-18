@@ -3,157 +3,123 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TESR Robot Builder — Web</title>
+<title>TESR Robot Builder — ออกแบบหุ่นยนต์ในเบราว์เซอร์</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  :root { --bg:#0b0b0d; --panel:#141417; --line:#26262b; --text:#e8e6e1; --muted:#9a978f; --crimson:#8B0000; --crimson-2:#b3171b; --gold:#C9A84C; --ok:#2e8b57; --warn:#c98b1e; --err:#c0392b; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:'IBM Plex Sans Thai', system-ui, sans-serif; font-size:15px; line-height:1.5; }
-  header { padding:18px 22px; border-bottom:2px solid var(--crimson); display:flex; flex-wrap:wrap; gap:8px 18px; align-items:baseline; }
-  header h1 { font-family:'Chakra Petch', sans-serif; font-size:22px; margin:0; letter-spacing:.5px; }
-  header h1 span { color:var(--gold); }
-  header .status { color:var(--muted); font-size:13px; }
-  header nav a { color:var(--muted); text-decoration:none; font-size:13px; margin-right:14px; padding-bottom:2px; border-bottom:1px solid transparent; }
-  header nav a.active, header nav a:hover { color:var(--gold); border-color:var(--gold); }
-  main { max-width:1180px; margin:0 auto; padding:18px 16px 60px; display:grid; gap:18px; }
-  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
-  section h2 { font-family:'Chakra Petch', sans-serif; font-size:17px; margin:0 0 12px; color:var(--gold); }
-  section h2 small { color:var(--muted); font-family:'IBM Plex Sans Thai'; font-weight:400; font-size:13px; margin-left:8px; }
-  h3 { font-size:14px; margin:14px 0 6px; color:var(--text); }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px 14px; }
-  label { display:flex; flex-direction:column; gap:3px; font-size:12.5px; color:var(--muted); }
-  input, select, textarea { background:#0f0f12; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px 9px; font:inherit; font-size:14px; }
-  input:focus, select:focus, textarea:focus { outline:1px solid var(--gold); }
-  input[type=checkbox] { width:18px; height:18px; accent-color:var(--crimson-2); }
-  .check { flex-direction:row; align-items:center; gap:8px; padding-top:18px; color:var(--text); }
-  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  @media (max-width:820px) { .two { grid-template-columns:1fr; } }
-  table.kv { width:100%; border-collapse:collapse; font-size:14px; }
-  table.kv td { padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
-  table.kv td:last-child { text-align:right; white-space:nowrap; }
-  table.bom { width:100%; border-collapse:collapse; font-size:13.5px; }
-  table.bom th { text-align:left; color:var(--gold); font-weight:600; padding:6px; border-bottom:1px solid var(--crimson); }
-  table.bom td { padding:6px; border-bottom:1px solid var(--line); vertical-align:top; }
-  table.bom tfoot td { border-bottom:none; padding-top:10px; }
-  .rec { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:8px 10px; border:1px solid var(--line); border-radius:8px; margin:6px 0; flex-wrap:wrap; }
-  .rec.fit { border-color:var(--gold); background:#1a1712; }
-  .tag { display:inline-block; font-size:11.5px; padding:1px 7px; border-radius:10px; border:1px solid var(--line); color:var(--muted); margin-left:4px; }
-  .tag.ok { border-color:var(--ok); color:#7fd39b; } .tag.warn { border-color:var(--warn); color:#e9b45a; } .tag.err { border-color:var(--err); color:#ff8a80; }
-  .muted { color:var(--muted); font-size:13px; }
-  a.shop { color:var(--gold); text-decoration:none; border:1px solid var(--gold); padding:3px 9px; border-radius:6px; font-size:13px; }
-  a.shop:hover { background:var(--gold); color:#000; }
-  button { background:var(--crimson); color:#fff; border:none; border-radius:6px; padding:8px 14px; font:inherit; cursor:pointer; }
-  button:hover { background:var(--crimson-2); } button.mini { padding:3px 9px; font-size:12.5px; background:#2a2a30; } button.mini:hover { background:#3a3a42; }
-  .actions { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
-  textarea { width:100%; min-height:340px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:12.5px; }
-  pre { background:#0f0f12; border:1px solid var(--line); border-radius:6px; padding:10px; overflow:auto; font-size:12.5px; }
-  code { color:var(--gold); font-size:12.5px; }
-  .catalog { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .catalog input { flex:1; min-width:260px; }
-  footer { text-align:center; color:var(--muted); font-size:12.5px; padding:16px; }
-</style>
+<link rel="stylesheet" href="./theme.css">
 </head>
 <body>
-<header>
-  <h1>TESR <span>Robot Builder</span> · Web</h1>
-  <nav><a class="active" href="./index.html">1 · Spec &amp; Sizing</a><a href="./model.html">2 · Model Studio</a><a href="./build.html">3 · Definition &amp; Generate</a></nav>
-  <div class="status" id="registryStatus">กำลังโหลด registry…</div>
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav><a class="active" href="./index.html">1 · ออกแบบ &amp; เลือกอุปกรณ์</a><a href="./model.html">2 · โมเดล 3D</a><a href="./build.html">3 · สร้าง ROS 2 workspace</a></nav>
+  <div class="status" id="registryStatus">กำลังโหลด…</div>
 </header>
-<main>
-  <section>
-    <h2>แคตตาล็อกสินค้า <small>ราคาและลิงก์ TESR Shop มาจาก Google Sheet ที่ทีมช่วยกันเติม</small></h2>
-    <div class="catalog">
-      <input id="catalogRef" placeholder="วางลิงก์ Google Sheet หรือ CSV URL (เว้นว่าง = data/products.csv ใน repo)">
-      <button id="loadCatalog">โหลด</button>
-    </div>
-    <div class="muted" id="catalogStatus" style="margin-top:8px">—</div>
-  </section>
+<main class="wrap">
 
-  <section>
-    <h2>1 · ความต้องการ <small>งานที่หุ่นต้องทำ</small></h2>
+  <div class="panel">
+    <h2>เริ่มจากหุ่นแบบไหน <small>เลือกแล้วแก้แค่ไม่กี่ช่อง — ที่เหลือคำนวณให้</small></h2>
     <div class="grid">
+      <label>รูปแบบหุ่น <select id="preset">
+        <option value="amr_300">AMR โรงงาน 300 kg (differential)</option>
+        <option value="service_60">Service robot 60 kg (โรงพยาบาล/สำนักงาน)</option>
+        <option value="edu_small">หุ่นเรียนขนาดเล็ก IRON-X class</option>
+        <option value="mecanum_demo">Mecanum 4 ล้อ 30 kg</option>
+      </select></label>
       <label>ชื่อหุ่น (a–z, 0–9, _) <input id="name" value="warehouse_amr_300"></label>
-      <label>package prefix <input id="prefix" value="tesr_robot"></label>
-      <label>คำอธิบาย <input id="description" value="300 kg AMR สำหรับโลจิสติกส์ในโรงงาน"></label>
-      <label>ประเภทงาน <select id="application"><option value="amr">AMR</option><option value="agv">AGV</option><option value="service">Service</option><option value="delivery">Delivery</option><option value="inspection">Inspection</option><option value="research">Research / Education</option><option value="mobile_manipulator">Mobile manipulator</option><option value="outdoor">Outdoor</option><option value="custom">Custom</option></select></label>
+      <label>Payload สูงสุด (kg) <input id="payload" type="number" step="1" min="0" value="300"></label>
+      <label>ความเร็วสูงสุด (m/s) <input id="vMax" type="number" step="0.1" min="0.1" max="5" value="1.0"></label>
+      <label>ใช้งานต่อชาร์จ (h) <input id="runtimeH" type="number" step="0.5" min="0.5" value="8"></label>
       <label>สภาพแวดล้อม <select id="envType"><option value="factory">โรงงาน</option><option value="warehouse">คลังสินค้า</option><option value="hospital">โรงพยาบาล</option><option value="office">สำนักงาน</option><option value="laboratory">ห้องแลป</option><option value="outdoor">กลางแจ้ง</option><option value="custom">อื่น ๆ</option></select></label>
       <label>พื้น <select id="floor"><option value="concrete">คอนกรีต</option><option value="epoxy">อีพ็อกซี</option><option value="tile">กระเบื้อง</option><option value="carpet">พรม</option><option value="asphalt">ยางมะตอย</option><option value="gravel">กรวด</option><option value="mixed">ผสม</option></select></label>
-      <label>ความชันสูงสุด (°) <input id="slopeDeg" type="number" step="0.5" min="0" max="30" value="5"></label>
-      <label>ช่องทางแคบสุด (m, ว่างได้) <input id="minAisle" type="number" step="0.05" min="0" value="1.2"></label>
-      <label>Payload สูงสุด (kg) <input id="payload" type="number" step="1" min="0" value="300"></label>
-      <label>CoG ของ payload เหนือตัวถัง (m) <input id="cogOffsetZ" type="number" step="0.05" value="0.25"></label>
-      <label>v_max (m/s) <input id="vMax" type="number" step="0.1" min="0.1" max="5" value="1.0"></label>
-      <label>a_max (m/s²) <input id="aMax" type="number" step="0.1" min="0.1" max="5" value="0.5"></label>
-      <label>w_max (rad/s) <input id="wMax" type="number" step="0.1" min="0.1" max="6.28" value="1.0"></label>
-      <label>เวลาทำงานต่อชาร์จ (h) <input id="runtimeH" type="number" step="0.5" min="0.5" value="8"></label>
-    </div>
-  </section>
-
-  <section>
-    <h2>2 · ตัวถังและระบบขับ <small>ผลคำนวณอัปเดตทันที — ใช้เลือกมอเตอร์/แบตได้เลย</small></h2>
-    <div class="grid">
+      <label>ระบบขับ <select id="drive"><option value="differential">Differential (2 ล้อขับ)</option><option value="mecanum">Mecanum (4 ล้อ)</option></select></label>
       <label>ยาว L (m) <input id="length" type="number" step="0.01" min="0.1" value="1.0"></label>
       <label>กว้าง W (m) <input id="width" type="number" step="0.01" min="0.1" value="0.7"></label>
       <label>สูง H (m) <input id="height" type="number" step="0.01" min="0.05" value="0.45"></label>
-      <label>ระยะใต้ท้อง (m) <input id="groundClearance" type="number" step="0.005" min="0" value="0.05"></label>
-      <label>ระบบขับ <select id="drive"><option value="differential">Differential (2 ล้อขับ)</option><option value="mecanum">Mecanum (4 ล้อ)</option></select></label>
-      <label>เส้นผ่านศูนย์กลางล้อ (m) <input id="wheelDiameter" type="number" step="0.005" min="0.02" value="0.16"></label>
-      <label>หน้ากว้างล้อ (m) <input id="wheelWidth" type="number" step="0.005" min="0.01" value="0.05"></label>
-      <label>ระยะห่างล้อซ้าย-ขวา track (m) <input id="track" type="number" step="0.01" min="0.05" value="0.60"></label>
-      <label id="wheelbaseRow" style="display:none">wheelbase หน้า-หลัง (m) <input id="wheelbase" type="number" step="0.01" min="0.05" value="0.40"></label>
-      <label>อัตราทดเกียร์ i <input id="gearRatio" type="number" step="1" min="1" value="20"></label>
-      <label>แรงดัน bus (V) <select id="busV"><option>12</option><option>24</option><option selected>48</option></select></label>
-      <label>safety margin สำหรับ Nav (m) <input id="margin" type="number" step="0.01" min="0" value="0.05"></label>
-      <label class="check"><input id="robotMassManual" type="checkbox"> กำหนดมวลหุ่นเอง</label>
-      <label>มวลหุ่นเปล่า (kg) <input id="robotMass" type="number" step="0.5" min="1" value="50" disabled></label>
+      <label>แรงดันระบบ (V) <select id="busV"><option>12</option><option>24</option><option selected>48</option></select></label>
     </div>
-    <div class="two">
-      <div><h3>ขนาดระบบขับ (drivetrain)</h3><div id="drivetrainOut"></div>
-        <h3>มอเตอร์ที่แนะนำ</h3><div id="motorRec"></div></div>
-      <div><h3>พลังงานและแบตเตอรี่</h3><div id="powerOut"></div>
-        <h3>แบตเตอรี่ที่แนะนำ</h3><div id="batteryRec"></div></div>
-    </div>
-  </section>
+    <details>
+      <summary>ตั้งค่าขั้นสูง (ล้อ เกียร์ ความชัน ระยะปลอดภัย ฯลฯ)</summary>
+      <div class="grid">
+        <label>package prefix <input id="prefix" value="tesr_robot"></label>
+        <label>คำอธิบาย <input id="description" value="300 kg AMR สำหรับโลจิสติกส์ในโรงงาน"></label>
+        <label>ประเภทงาน <select id="application"><option value="amr">AMR</option><option value="agv">AGV</option><option value="service">Service</option><option value="delivery">Delivery</option><option value="inspection">Inspection</option><option value="research">Research / Education</option><option value="mobile_manipulator">Mobile manipulator</option><option value="outdoor">Outdoor</option><option value="custom">Custom</option></select></label>
+        <label>ความชันสูงสุด (°) <input id="slopeDeg" type="number" step="0.5" min="0" max="30" value="5"></label>
+        <label>ช่องทางแคบสุด (m, ว่างได้) <input id="minAisle" type="number" step="0.05" min="0" value="1.2"></label>
+        <label>CoG ของ payload เหนือตัวถัง (m) <input id="cogOffsetZ" type="number" step="0.05" value="0.25"></label>
+        <label>a_max (m/s²) <input id="aMax" type="number" step="0.1" min="0.1" max="5" value="0.5"></label>
+        <label>w_max (rad/s) <input id="wMax" type="number" step="0.1" min="0.1" max="6.28" value="1.0"></label>
+        <label>ระยะใต้ท้อง (m) <input id="groundClearance" type="number" step="0.005" min="0" value="0.05"></label>
+        <label>เส้นผ่านศูนย์กลางล้อ (m) <input id="wheelDiameter" type="number" step="0.005" min="0.02" value="0.16"></label>
+        <label>หน้ากว้างล้อ (m) <input id="wheelWidth" type="number" step="0.005" min="0.01" value="0.05"></label>
+        <label>ระยะห่างล้อซ้าย-ขวา (m) <input id="track" type="number" step="0.01" min="0.05" value="0.60"></label>
+        <label id="wheelbaseRow" style="display:none">wheelbase หน้า-หลัง (m) <input id="wheelbase" type="number" step="0.01" min="0.05" value="0.40"></label>
+        <label>อัตราทดเกียร์ i <input id="gearRatio" type="number" step="1" min="1" value="20"></label>
+        <label>safety margin สำหรับ Nav (m) <input id="margin" type="number" step="0.01" min="0" value="0.05"></label>
+        <label>จำนวนมอเตอร์ไดรเวอร์ <input id="driverCount" type="number" step="1" min="1" max="4" value="1"></label>
+        <label class="check"><input id="robotMassManual" type="checkbox"> กำหนดมวลหุ่นเอง</label>
+        <label>มวลหุ่นเปล่า (kg) <input id="robotMass" type="number" step="0.5" min="1" value="50" disabled></label>
+      </div>
+      <h3>แคตตาล็อกราคา</h3>
+      <div class="catalog">
+        <input id="catalogRef" placeholder="ลิงก์ Google Sheet ของทีม (ว่าง = data/products.csv ใน repo)">
+        <button class="mini" id="loadCatalog">โหลด</button>
+      </div>
+      <p class="muted" id="catalogStatus">—</p>
+    </details>
+  </div>
 
-  <section>
-    <h2>3 · เซนเซอร์ คอมพิวเตอร์ ไดรเวอร์ <small>ตรวจความเข้ากันได้ + ค่า Nav2 ที่คำนวณให้</small></h2>
+  <div class="panel">
+    <h2>หุ่นของคุณ <small>คำนวณสดทุกครั้งที่แก้ค่า</small></h2>
+    <div class="kpi" id="kpi"></div>
+    <div id="compatOut"></div>
+    <details>
+      <summary>ดูรายละเอียดการคำนวณ (drivetrain · แบตเตอรี่ · Nav2)</summary>
+      <div class="two">
+        <div><h3>ระบบขับ</h3><div id="drivetrainOut"></div></div>
+        <div><h3>พลังงาน</h3><div id="powerOut"></div><h3>Nav2 sizing</h3><div id="navOut"></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2>อุปกรณ์ <small>เลือกให้อัตโนมัติจากผลคำนวณ — เปลี่ยนได้</small></h2>
     <div class="grid">
+      <label>มอเตอร์ <select id="motor"></select></label>
+      <label>มอเตอร์ไดรเวอร์ <select id="driver"></select></label>
+      <label>แบตเตอรี่ <select id="battery"></select></label>
       <label>คอมพิวเตอร์ <select id="compute"></select></label>
       <label>2D LiDAR <select id="lidar"></select></label>
       <label>กล้อง depth <select id="camera"></select></label>
       <label>IMU <select id="imu"></select></label>
-      <label>มอเตอร์ <select id="motor"></select></label>
-      <label>มอเตอร์ไดรเวอร์ <select id="driver"></select></label>
-      <label>จำนวนไดรเวอร์ <input id="driverCount" type="number" step="1" min="1" max="4" value="1"></label>
-      <label>แบตเตอรี่ <select id="battery"></select></label>
       <label class="check"><input id="estop" type="checkbox" checked> มี E-stop</label>
     </div>
-    <div class="two">
-      <div><h3>ความเข้ากันได้</h3><div id="compatOut"></div></div>
-      <div><h3>Nav2 sizing</h3><div id="navOut"></div></div>
-    </div>
-  </section>
+    <details>
+      <summary>ดูตัวเลือกมอเตอร์และแบตเตอรี่ทั้งหมด พร้อมเหตุผลว่าเหมาะหรือไม่</summary>
+      <div class="two"><div><h3>มอเตอร์</h3><div id="motorRec"></div></div><div><h3>แบตเตอรี่</h3><div id="batteryRec"></div></div></div>
+    </details>
+  </div>
 
-  <section>
-    <h2>4 · ส่งออก <small>robot.yaml สำหรับ <code>tesr-rb generate</code> และ BOM พร้อมลิงก์สั่งซื้อ</small></h2>
-    <div class="two">
-      <div>
-        <h3>Robot Definition (robot.yaml)</h3>
-        <div class="actions"><button id="downloadYaml">ดาวน์โหลด .robot.yaml</button><button id="copyYaml" class="mini">คัดลอก YAML</button><button id="downloadDesign" class="mini">ดาวน์โหลดผลคำนวณ (JSON)</button><button id="toModel" class="mini" title="บันทึกแบบนี้ลงโปรเจกต์แล้วเปิด Model Studio เพื่อวาง STL บนโครงอ้างอิง">ส่งไป Model Studio →</button></div>
-        <textarea id="yamlOut" readonly></textarea>
-        <h3>คำสั่งถัดไป (บนเครื่องที่ติดตั้ง tesr-robot-builder)</h3>
-        <pre id="cmdOut"></pre>
-      </div>
-      <div>
-        <h3>Bill of Materials</h3>
-        <div class="actions"><button id="downloadBom">ดาวน์โหลด BOM (CSV)</button></div>
-        <div id="bomOut"></div>
-      </div>
+  <div class="panel">
+    <h2>รายการสั่งซื้อ <small>ราคาและลิงก์จาก TESR Shop</small></h2>
+    <div id="bomOut"></div>
+    <div class="actions"><button class="mini ghost" id="downloadBom">ดาวน์โหลด BOM (CSV)</button></div>
+  </div>
+
+  <div class="panel">
+    <h2>ไปต่อ <small>ทุกอย่างส่งต่อให้ขั้นถัดไปอัตโนมัติ</small></h2>
+    <div class="steps">
+      <a href="#" id="toModel"><b>2 · โมเดล 3D →</b><small>วาง STL บนโครงหุ่นนี้ ดูและแก้ออนไลน์</small></a>
+      <a href="#" id="toBuild"><b>3 · สร้าง ROS 2 workspace →</b><small>ตรวจ 15 rules แล้วดาวน์โหลด zip</small></a>
     </div>
-  </section>
+    <details>
+      <summary>robot.yaml ของหุ่นนี้ (ดาวน์โหลด / คัดลอก)</summary>
+      <div class="actions"><button class="mini" id="downloadYaml">ดาวน์โหลด .robot.yaml</button><button class="mini ghost" id="copyYaml">คัดลอก YAML</button><button class="mini ghost" id="downloadDesign">ดาวน์โหลดผลคำนวณ (JSON)</button></div>
+      <textarea id="yamlOut" class="yaml" readonly></textarea>
+      <pre id="cmdOut" class="muted"></pre>
+    </details>
+  </div>
 </main>
-<footer>TESR Co., Ltd. · Real-World AI &amp; Robotics Engineering Partner · Robot Definition → Validation → ROS 2 workspace</footer>
+<footer class="tesr">TESR Co., Ltd. · Real-World AI &amp; Robotics Engineering Partner · ทุกอย่างรันในเบราว์เซอร์ ไม่มีข้อมูลออกจากเครื่องคุณ</footer>
 <script src="./app.js"></script>
 </body>
 </html>
