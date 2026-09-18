@@ -181,9 +181,13 @@
     // d: normalised design object from the form (see collectDesign)
     const r = d.wheelDiameter / 2, gc = d.groundClearance, H = d.height, L = d.length;
     const hw = [];
-    if (d.lidar) hw.push({ id: 'lidar_front', hw: d.lidar, frame: 'laser', xyz: [r4(L / 2 - 0.1), 0, r4(gc + H + 0.05 - r)], rpy: [0, 0, 0] });
+    const zl = r4(gc + H + 0.05 - r), zc = r4(gc + H * 0.7 - r), W = d.width;
+    const lidars = { 1: [['front', L / 2 - 0.1, 0, 0]], 2: [['front', L / 2 - 0.1, 0, 0], ['rear', -(L / 2 - 0.1), 0, 3.14159]],
+      3: [['front', L / 2 - 0.1, 0, 0], ['rear_left', -(L / 2 - 0.1), W / 2 - 0.1, 2.35619], ['rear_right', -(L / 2 - 0.1), -(W / 2 - 0.1), -2.35619]] }[d.lidarCount || 1];
+    if (d.lidar) lidars.forEach(([pos, x, y, yaw]) => hw.push({ id: `lidar_${pos}`, hw: d.lidar, frame: `laser_${pos}`, xyz: [r4(x), r4(y), zl], rpy: [0, 0, yaw] }));
     if (d.imu) hw.push({ id: 'imu', hw: d.imu, frame: 'imu_link', xyz: [0, 0, r4(gc + H / 2 - r)], rpy: [0, 0, 0] });
-    if (d.camera) hw.push({ id: 'cam_front', hw: d.camera, frame: 'camera_link', xyz: [r4(L / 2 - 0.02), 0, r4(gc + H * 0.7 - r)], rpy: [0, 0, 0] });
+    const cams = { 1: [['front', L / 2 - 0.02, 0]], 2: [['front', L / 2 - 0.02, 0], ['rear', -(L / 2 - 0.02), 3.14159]] }[d.cameraCount || 1] || [];
+    if (d.camera) cams.forEach(([pos, x, yaw]) => hw.push({ id: `cam_${pos}`, hw: d.camera, frame: `camera_${pos}`, xyz: [r4(x), 0, zc], rpy: [0, 0, yaw] }));
     for (let k = 0; k < d.driverCount; k++) hw.push({ id: d.driverCount > 1 ? `motor_driver_${k + 1}` : 'motor_driver', hw: d.driver });
     if (d.estop) hw.push({ id: 'estop', hw: 'generic_estop', io: 'DI1' });
     const casters = d.drive === 'differential' ? (L > 0.4 ? [[r4(L / 2 - 0.1), 0, 0], [r4(-(L / 2 - 0.1)), 0, 0]] : [[r4(-(L / 2 - 0.08)), 0, 0]]) : [];
@@ -229,7 +233,7 @@
     add(d.compute, 1, 'compute'); add(d.motor, d.drive === 'mecanum' ? 4 : 2, 'motor'); add(d.driver, d.driverCount, 'motor driver');
     const wheel = wheelFor(registry, d.drive, d.wheelDiameter);
     if (wheel) { const per = Number(wheel.wheel?.per_set || 1); add(wheel.id, Math.max(1, Math.ceil((d.drive === 'mecanum' ? 4 : 2) / per)), 'wheel'); }
-    add(d.lidar, 1, 'LiDAR'); add(d.imu, 1, 'IMU'); add(d.camera, 1, 'camera'); if (d.estop) add('generic_estop', 1, 'E-stop');
+    add(d.lidar, d.lidarCount || 1, 'LiDAR'); add(d.imu, 1, 'IMU'); add(d.camera, d.cameraCount || 1, 'camera'); if (d.estop) add('generic_estop', 1, 'E-stop');
     add(d.battery, 1, 'battery'); d.rails.forEach((rl) => add(rl.hw, 1, `${rl.v} V rail`));
     const lines = [...qty].map(([id, n]) => {
       const rec = ids[id], p = productsFor(catalog, id)[0] || null;
@@ -269,16 +273,16 @@
   const PRESETS = {
     amr_300: { name: 'warehouse_amr_300', prefix: 'tesr_robot', description: '300 kg AMR สำหรับโลจิสติกส์ในโรงงาน', application: 'amr', envType: 'factory', floor: 'concrete', slopeDeg: 5, minAisle: 1.2,
       payload: 300, cogOffsetZ: 0.25, vMax: 1.0, aMax: 0.5, wMax: 1.0, runtimeH: 8, length: 1.0, width: 0.7, height: 0.45, groundClearance: 0.05, drive: 'differential',
-      wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, busV: 48, margin: 0.05, driverCount: 1, estop: true },
+      wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, busV: 48, margin: 0.05, driverCount: 1, estop: true, lidarCount: 2, cameraCount: 1 },
     service_60: { name: 'service_robot_60', prefix: 'tesr_service', description: 'หุ่นบริการ 60 kg ในโรงพยาบาล/สำนักงาน', application: 'service', envType: 'hospital', floor: 'tile', slopeDeg: 3, minAisle: 1.0,
       payload: 60, cogOffsetZ: 0.3, vMax: 0.8, aMax: 0.5, wMax: 1.2, runtimeH: 10, length: 0.6, width: 0.5, height: 0.9, groundClearance: 0.04, drive: 'differential',
-      wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 1, estop: true },
+      wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 1, estop: true, lidarCount: 1, cameraCount: 1 },
     edu_small: { name: 'edu_robot', prefix: 'edu_robot', description: 'หุ่นเรียนขนาดเล็กสำหรับ TESR Academy', application: 'research', envType: 'laboratory', floor: 'tile', slopeDeg: 3, minAisle: '',
       payload: 2, cogOffsetZ: 0.05, vMax: 0.5, aMax: 0.5, wMax: 1.5, runtimeH: 2, length: 0.26, width: 0.24, height: 0.10, groundClearance: 0.02, drive: 'differential',
-      wheelDiameter: 0.10, wheelWidth: 0.03, track: 0.23, wheelbase: 0.2, gearRatio: 30, busV: 12, margin: 0.03, driverCount: 1, estop: false },
+      wheelDiameter: 0.10, wheelWidth: 0.03, track: 0.23, wheelbase: 0.2, gearRatio: 30, busV: 12, margin: 0.03, driverCount: 1, estop: false, lidarCount: 1, cameraCount: 1 },
     mecanum_demo: { name: 'mecanum_demo', prefix: 'mecanum_demo', description: 'หุ่น mecanum 4 ล้อ สำหรับงานวิจัย', application: 'research', envType: 'laboratory', floor: 'epoxy', slopeDeg: 2, minAisle: 1.0,
       payload: 30, cogOffsetZ: 0.15, vMax: 1.0, aMax: 0.8, wMax: 1.5, runtimeH: 4, length: 0.6, width: 0.5, height: 0.3, groundClearance: 0.05, drive: 'mecanum',
-      wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 2, estop: true },
+      wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 2, estop: true, lidarCount: 1, cameraCount: 1 },
   };
   function applyPreset(id) {
     const p = PRESETS[id]; if (!p) return;
@@ -288,12 +292,18 @@
     populateSelects(); render();
   }
 
+  const SHOP_SEARCH = 'https://tesrshop.com/?s=';
   function shopLink(hwId, label = 'TESR Shop') {
     const p = productsFor(catalog, hwId)[0];
     if (!p) return `<span class="tag warn" title="เพิ่มแถว hardware_ref=${esc(hwId)} ใน Google Sheet">ไม่มีในแคตตาล็อก</span>`;
     const price = p.price != null ? `${fmt(p.price, 0)} ฿` : 'ยังไม่มีราคา';
     const stock = p.stock ? `<span class="tag ${p.stock === 'in_stock' ? 'ok' : 'warn'}">${esc(p.stock)}</span>` : '';
     return p.shop_url ? `<a class="shop" href="${esc(p.shop_url)}" target="_blank" rel="noopener">🛒 ${label} · ${price}</a> ${stock}` : `<span class="tag">${price}</span> ${stock}`;
+  }
+  function shopUrlCell(hwId, name) {
+    const p = productsFor(catalog, hwId)[0];
+    if (p && p.shop_url) return `<a class="shop" href="${esc(p.shop_url)}" target="_blank" rel="noopener">🛒 สั่งซื้อ</a>`;
+    return `<a class="shop ghost" href="${SHOP_SEARCH}${encodeURIComponent(name)}" target="_blank" rel="noopener" title="ยังไม่มีลิงก์ตรง — ค้นหาใน TESR Shop">🔍 ค้นหาใน Shop</a>`;
   }
 
   function fillSelect(id, records, opts = {}) {
@@ -324,7 +334,8 @@
   function collectDesign() {
     const ids = byId(registry);
     const drive = $('drive').value, busV = num('busV');
-    const devices = ['compute', 'lidar', 'camera', 'imu'].map((k) => ids[$(k).value]).filter(Boolean);
+    const lidarCount = Number($('lidarCount')?.value || 1), cameraCount = $('camera').value ? Number($('cameraCount')?.value || 1) : 0;
+    const devices = [ids[$('compute').value], ...Array(lidarCount).fill(ids[$('lidar').value]), ...Array(cameraCount).fill(ids[$('camera').value]), ids[$('imu').value]].filter(Boolean);
     const d = {
       name: ($('name').value || 'my_robot').toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^[^a-z]+/, 'r'),
       prefix: ($('prefix').value || 'tesr_robot').toLowerCase().replace(/[^a-z0-9_]/g, '_'),
@@ -338,7 +349,7 @@
       compute: $('compute').value, arch: ids[$('compute').value]?.compute?.arch || 'arm64',
       lidar: $('lidar').value || null, camera: $('camera').value || null, imu: $('imu').value || null, estop: $('estop').checked,
       motor: $('motor').value, driver: $('driver').value, driverCount: Math.max(1, Math.round(num('driverCount') || (drive === 'mecanum' ? 2 : 1))),
-      battery: $('battery').value, robotMassManual: $('robotMassManual').checked,
+      battery: $('battery').value, robotMassManual: $('robotMassManual').checked, lidarCount, cameraCount: cameraCount || ($('camera').value ? 1 : 0),
     };
     const nDrive = drive === 'mecanum' ? 4 : 2;
     const hwMass = devices.reduce((s, h) => s + (h.mass_kg || 0), 0) + (ids[d.motor]?.mass_kg || 0) * nDrive + (ids[d.battery]?.mass_kg || 0) + (ids[d.driver]?.mass_kg || 0) * d.driverCount;
@@ -425,13 +436,14 @@
     $('cmdOut').textContent = `tesr-rb validate ${d.name}.robot.yaml\ntesr-rb generate ${d.name}.robot.yaml -o ${d.name}_ws\ntesr-rb bom ${d.name}.robot.yaml -o ${d.name}_bom.csv`;
     const bom = billOfMaterials(d, registry, catalog);
     let lastCat = null;
-    $('bomOut').innerHTML = `<table class="bom"><thead><tr><th>จำนวน</th><th>รายการ</th><th>ราคา/หน่วย</th><th>รวม</th><th>สั่งซื้อ</th></tr></thead><tbody>` +
+    $('bomOut').innerHTML = `<table class="bom"><thead><tr><th>จำนวน</th><th>รายการ</th><th>ราคา/หน่วย</th><th>รวม</th><th>สต๊อก</th><th>ลิงก์ TESR Shop</th></tr></thead><tbody>` +
       bom.lines.map((l) => {
-        const head = l.category !== lastCat ? `<tr class="cat"><td colspan="5">${esc(CATEGORY_TH[l.category] || l.category)}</td></tr>` : '';
+        const head = l.category !== lastCat ? `<tr class="cat"><td colspan="6">${esc(CATEGORY_TH[l.category] || l.category)}</td></tr>` : '';
         lastCat = l.category;
-        return head + `<tr><td>${l.qty}</td><td>${esc(l.name)}<br><span class="muted">${esc(l.role)} · ${esc(l.hwId)}</span></td><td>${thb(l.unitPrice)}</td><td>${thb(l.lineTotal)}</td><td>${shopLink(l.hwId, 'ซื้อ')}</td></tr>`;
+        const stock = l.product && l.product.stock ? `<span class="tag ${l.product.stock === 'in_stock' ? 'ok' : 'warn'}">${esc(l.product.stock)}</span>` : '<span class="muted">—</span>';
+        return head + `<tr><td>${l.qty}</td><td>${esc(l.name)}<br><span class="muted">${esc(l.role)} · ${esc(l.hwId)}</span></td><td>${thb(l.unitPrice)}</td><td>${thb(l.lineTotal)}</td><td>${stock}</td><td>${shopUrlCell(l.hwId, l.name)}</td></tr>`;
       }).join('') +
-      `</tbody><tfoot><tr><td colspan="3">รวม (เฉพาะรายการที่มีราคา)</td><td colspan="2"><b>${fmt(bom.total, 0)} ฿</b></td></tr></tfoot></table>` +
+      `</tbody><tfoot><tr><td colspan="3">รวม (เฉพาะรายการที่มีราคา)</td><td colspan="3"><b>${fmt(bom.total, 0)} ฿</b></td></tr></tfoot></table>` +
       (bom.missing.length ? `<p class="muted">รายการที่ต้องเพิ่มใน Google Sheet (hardware_ref): <code>${bom.missing.join(', ')}</code></p>` : '') +
       (bom.unpriced.length ? `<p class="muted">มีในแคตตาล็อกแต่ยังไม่มีราคา: <code>${bom.unpriced.join(', ')}</code></p>` : '');
     if ($('kpi')) {
@@ -440,7 +452,7 @@
         <div><b>${fmt(dt.requiredMotorRatedTorque, 2)} N·m</b><span>มอเตอร์ ×${d.nDrive} ที่ ≥ ${fmt(dt.motorRpm, 0)} rpm (i = ${d.gearRatio})</span></div>
         <div><b>${fmt(pw.capacityAh, 0)} Ah</b><span>แบตเตอรี่ ${d.busV} V สำหรับ ${d.runtimeH} h</span></div>
         <div><b>${fmt(dt.powerMechPeak, 0)} W</b><span>กำลังสูงสุด · ${fmt(pw.peakCurrentA, 0)} A</span></div>
-        <div><b>${nav.localCostmap} m</b><span>local costmap · inflation ${nav.inflationRadius} m</span></div>
+        <div><b>${d.lidarCount} LiDAR · ${d.cameraCount} กล้อง</b><span>costmap ${nav.localCostmap} m · inflation ${nav.inflationRadius} m</span></div>
         <div><b>${bom.total ? fmt(bom.total, 0) + ' ฿' : '—'}</b><span>ราคาอุปกรณ์${bom.total ? ` (มีราคา ${bom.lines.length - bom.missing.length - bom.unpriced.length}/${bom.lines.length})` : ' — รอทีมเติมราคา'}</span></div>`;
     }
     root.__tesr = { d, dt, pw, nav, yaml, bom };
