@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESR Robot Builder — Model Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./theme.css">
+<style>
+  main { display:grid; grid-template-columns:290px minmax(0, 1fr) 320px; gap:12px; padding:12px; height:calc(100vh - 62px); }
+  aside { overflow:auto; display:flex; flex-direction:column; gap:12px; }
+  #viewport { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:radial-gradient(ellipse at 50% 60%, #14141a, #07070a 70%); min-height:360px; }
+  #viewport canvas { display:block; width:100%; height:100%; }
+  #hud { position:absolute; left:10px; top:10px; display:flex; gap:6px; flex-wrap:wrap; }
+  #hint { position:absolute; left:10px; bottom:10px; color:var(--muted); font-size:12px; background:rgba(7,7,10,.6); padding:4px 8px; border-radius:6px; }
+  #loading { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(7,7,10,.7); font-family:'Chakra Petch'; color:var(--gold); letter-spacing:1px; }
+  @media (max-width:980px) { main { grid-template-columns:1fr; height:auto; } #viewport { height:60vh; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+  "urdf-loader": "https://cdn.jsdelivr.net/npm/urdf-loader@0.13.1/src/URDFLoader.js"
+} }
+</script>
+</head>
+<body>
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav><a href="./index.html">1 · Spec &amp; Sizing</a><a class="active" href="./model.html">2 · Model Studio</a><a href="./index.html#export" title="Phase 2">3 · Definition</a><a title="Phase 2">4 · Generate</a></nav>
+  <div class="status" id="status">Model Studio · upload STL / URDF · edit online · export</div>
+</header>
+<main>
+  <aside>
+    <div class="panel">
+      <h2>ไฟล์ <small>STL · URDF (+ STL/DAE meshes)</small></h2>
+      <div class="drop" id="drop">ลากไฟล์มาวาง หรือคลิกเลือก<br><span class="muted">.stl หลายไฟล์ได้ · .urdf พร้อม mesh ที่มันอ้างถึง</span></div>
+      <input id="fileInput" type="file" multiple accept=".stl,.urdf,.dae,.STL,.URDF,.DAE" style="display:none">
+      <div class="actions">
+        <button class="ghost mini" id="importJson">นำเข้า model.json</button>
+        <button class="ghost mini" id="fromBuilder" title="วาดตัวถัง/ล้อ/เซนเซอร์จากขั้น 1 เป็นเงาอ้างอิง">อ้างอิงจากขั้น 1</button>
+        <button class="ghost mini" id="clearAll">ล้าง</button>
+      </div>
+      <input id="jsonInput" type="file" accept=".json" style="display:none">
+      <p class="muted" id="fileNote">ยังไม่มีไฟล์ — ไฟล์อยู่ในเบราว์เซอร์ของคุณเท่านั้น ไม่ถูกอัปโหลดไปที่ไหน</p>
+    </div>
+    <div class="panel">
+      <h2>ชิ้นส่วน <small>คลิกเพื่อเลือก</small></h2>
+      <div id="layers"><p class="muted">—</p></div>
+      <h3 id="jointsTitle" style="display:none">ข้อต่อ (URDF)</h3>
+      <div id="joints"></div>
+    </div>
+  </aside>
+
+  <div id="viewport">
+    <div id="hud">
+      <button class="ghost mini active" data-mode="translate" title="W">ย้าย</button>
+      <button class="ghost mini" data-mode="rotate" title="E">หมุน</button>
+      <button class="ghost mini" data-mode="scale" title="R">ย่อขยาย</button>
+      <button class="ghost mini" id="toggleGrid">กริด</button>
+      <button class="ghost mini" id="toggleGhost">เงาอ้างอิง</button>
+      <button class="ghost mini" id="fitView">พอดีจอ</button>
+    </div>
+    <div id="hint">ลาก = หมุนมุมมอง · ล้อเมาส์ = ซูม · คลิกขวาลาก = เลื่อน · คลิกชิ้นส่วน = เลือก · หน่วยเมตร, Z ขึ้น</div>
+    <div id="loading">LOADING…</div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <h2>คุณสมบัติ <small id="propTitle">ยังไม่ได้เลือก</small></h2>
+      <div id="props" style="display:none">
+        <label>ชื่อ <input id="pName"></label>
+        <h3>ตำแหน่ง (m)</h3>
+        <div class="grid3"><label>x <input id="px" type="number" step="0.001"></label><label>y <input id="py" type="number" step="0.001"></label><label>z <input id="pz" type="number" step="0.001"></label></div>
+        <h3>หมุน (°)</h3>
+        <div class="grid3"><label>roll <input id="rr" type="number" step="1"></label><label>pitch <input id="rp" type="number" step="1"></label><label>yaw <input id="ry" type="number" step="1"></label></div>
+        <h3>สเกล</h3>
+        <div class="grid3"><label>sx <input id="sx" type="number" step="0.001"></label><label>sy <input id="sy" type="number" step="0.001"></label><label>sz <input id="sz" type="number" step="0.001"></label></div>
+        <div class="actions"><button class="ghost mini" data-scale="0.001">mm → m</button><button class="ghost mini" data-scale="0.0254">inch → m</button><button class="ghost mini" data-scale="1">×1</button></div>
+        <div class="grid3" style="grid-template-columns:1fr 1fr"><label>สี <input id="pColor" type="color"></label><label>แสดง <input id="pVisible" type="checkbox" checked></label></div>
+        <p class="muted" id="pInfo"></p>
+        <div class="actions"><button class="ghost mini" id="centerXY">จัดกึ่งกลาง XY</button><button class="ghost mini" id="dropToGround">วางบนพื้น</button><button class="mini" id="deleteMesh">ลบ</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>ส่งออก <small>ใช้ได้ทันที / ส่งต่อขั้นถัดไป</small></h2>
+      <label>ชื่อหุ่น <input id="robotName" value="my_robot"></label>
+      <label>package prefix <input id="prefix" value="tesr_robot"></label>
+      <div class="actions">
+        <button class="gold" id="exportUrdf">URDF</button>
+        <button class="gold" id="exportXacro">Xacro macro</button>
+        <button id="exportJson">model.json</button>
+        <button class="ghost" id="exportPng">ภาพ PNG</button>
+      </div>
+      <div class="actions"><button id="saveProject">บันทึกลงโปรเจกต์ → ขั้นถัดไป</button></div>
+      <p class="muted">URDF/Xacro อ้าง mesh เป็น <code>package://&lt;prefix&gt;_description/meshes/&lt;file&gt;</code> — ก๊อปไฟล์ STL ไปไว้ในโฟลเดอร์นั้น แล้ว <code>tesr-rb generate</code> จะรวมเข้า workspace (Phase 1)</p>
+      <p class="muted" id="urdfNote"></p>
+    </div>
+  </aside>
+</main>
+<script src="./model-core.js"></script>
+<script type="module" src="./model.js"></script>
+</body>
+</html>
