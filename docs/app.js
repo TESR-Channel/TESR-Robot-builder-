@@ -247,6 +247,29 @@
 
   let registry = null, catalog = [];
 
+  // Robot presets — pick one, then change only a few fields. Values are form ids.
+  const PRESETS = {
+    amr_300: { name: 'warehouse_amr_300', prefix: 'tesr_robot', description: '300 kg AMR สำหรับโลจิสติกส์ในโรงงาน', application: 'amr', envType: 'factory', floor: 'concrete', slopeDeg: 5, minAisle: 1.2,
+      payload: 300, cogOffsetZ: 0.25, vMax: 1.0, aMax: 0.5, wMax: 1.0, runtimeH: 8, length: 1.0, width: 0.7, height: 0.45, groundClearance: 0.05, drive: 'differential',
+      wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, busV: 48, margin: 0.05, driverCount: 1, estop: true },
+    service_60: { name: 'service_robot_60', prefix: 'tesr_service', description: 'หุ่นบริการ 60 kg ในโรงพยาบาล/สำนักงาน', application: 'service', envType: 'hospital', floor: 'tile', slopeDeg: 3, minAisle: 1.0,
+      payload: 60, cogOffsetZ: 0.3, vMax: 0.8, aMax: 0.5, wMax: 1.2, runtimeH: 10, length: 0.6, width: 0.5, height: 0.9, groundClearance: 0.04, drive: 'differential',
+      wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 1, estop: true },
+    edu_small: { name: 'edu_robot', prefix: 'edu_robot', description: 'หุ่นเรียนขนาดเล็กสำหรับ TESR Academy', application: 'research', envType: 'laboratory', floor: 'tile', slopeDeg: 3, minAisle: '',
+      payload: 2, cogOffsetZ: 0.05, vMax: 0.5, aMax: 0.5, wMax: 1.5, runtimeH: 2, length: 0.26, width: 0.24, height: 0.10, groundClearance: 0.02, drive: 'differential',
+      wheelDiameter: 0.10, wheelWidth: 0.03, track: 0.23, wheelbase: 0.2, gearRatio: 30, busV: 12, margin: 0.03, driverCount: 1, estop: false },
+    mecanum_demo: { name: 'mecanum_demo', prefix: 'mecanum_demo', description: 'หุ่น mecanum 4 ล้อ สำหรับงานวิจัย', application: 'research', envType: 'laboratory', floor: 'epoxy', slopeDeg: 2, minAisle: 1.0,
+      payload: 30, cogOffsetZ: 0.15, vMax: 1.0, aMax: 0.8, wMax: 1.5, runtimeH: 4, length: 0.6, width: 0.5, height: 0.3, groundClearance: 0.05, drive: 'mecanum',
+      wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, busV: 24, margin: 0.05, driverCount: 2, estop: true },
+  };
+  function applyPreset(id) {
+    const p = PRESETS[id]; if (!p) return;
+    Object.entries(p).forEach(([k, v]) => { const el = $(k); if (!el) return; if (el.type === 'checkbox') el.checked = !!v; else el.value = v; });
+    ['motor', 'driver', 'battery'].forEach((k) => { delete $(k).dataset.user; });
+    $('robotMassManual').checked = false;
+    populateSelects(); render();
+  }
+
   function shopLink(hwId, label = 'TESR Shop') {
     const p = productsFor(catalog, hwId)[0];
     if (!p) return `<span class="tag warn" title="เพิ่มแถว hardware_ref=${esc(hwId)} ใน Google Sheet">ไม่มีในแคตตาล็อก</span>`;
@@ -385,6 +408,15 @@
       `</tbody><tfoot><tr><td colspan="4">รวม (เฉพาะรายการที่มีราคา)</td><td colspan="2"><b>${fmt(bom.total, 0)} ฿</b></td></tr></tfoot></table>` +
       (bom.missing.length ? `<p class="muted">รายการที่ต้องเพิ่มใน Google Sheet (hardware_ref): <code>${bom.missing.join(', ')}</code></p>` : '') +
       (bom.unpriced.length ? `<p class="muted">มีในแคตตาล็อกแต่ยังไม่มีราคา: <code>${bom.unpriced.join(', ')}</code></p>` : '');
+    if ($('kpi')) {
+      $('kpi').innerHTML = `
+        <div><b>${fmt(d.totalMass, 0)} kg</b><span>มวลรวม (หุ่น ${fmt(d.robotMass, 0)} + payload ${fmt(d.payload, 0)})</span></div>
+        <div><b>${fmt(dt.requiredMotorRatedTorque, 2)} N·m</b><span>มอเตอร์ ×${d.nDrive} ที่ ≥ ${fmt(dt.motorRpm, 0)} rpm (i = ${d.gearRatio})</span></div>
+        <div><b>${fmt(pw.capacityAh, 0)} Ah</b><span>แบตเตอรี่ ${d.busV} V สำหรับ ${d.runtimeH} h</span></div>
+        <div><b>${fmt(dt.powerMechPeak, 0)} W</b><span>กำลังสูงสุด · ${fmt(pw.peakCurrentA, 0)} A</span></div>
+        <div><b>${nav.localCostmap} m</b><span>local costmap · inflation ${nav.inflationRadius} m</span></div>
+        <div><b>${bom.total ? fmt(bom.total, 0) + ' ฿' : '—'}</b><span>ราคาอุปกรณ์${bom.total ? ` (มีราคา ${bom.lines.length - bom.missing.length - bom.unpriced.length}/${bom.lines.length})` : ' — รอทีมเติมราคา'}</span></div>`;
+    }
     root.__tesr = { d, dt, pw, nav, yaml, bom };
   }
 
@@ -433,12 +465,16 @@
     $('downloadYaml').onclick = () => download(`${root.__tesr.d.name}.robot.yaml`, root.__tesr.yaml, 'text/yaml');
     $('copyYaml').onclick = () => navigator.clipboard.writeText(root.__tesr.yaml).then(() => { $('copyYaml').textContent = 'คัดลอกแล้ว ✓'; setTimeout(() => ($('copyYaml').textContent = 'คัดลอก YAML'), 1500); });
     $('downloadBom').onclick = () => download(`${root.__tesr.d.name}_bom.csv`, bomCsv(root.__tesr.bom), 'text/csv');
-    $('toModel').onclick = () => {
+    const handoff = (page) => (ev) => {
+      if (ev) ev.preventDefault();
       const project = JSON.parse(localStorage.getItem('tesr_rb_project') || '{}');
       Object.assign(project, { design: root.__tesr.d, drivetrain: root.__tesr.dt, power: root.__tesr.pw, nav: root.__tesr.nav, yaml: root.__tesr.yaml, saved_at: new Date().toISOString() });
       localStorage.setItem('tesr_rb_project', JSON.stringify(project));
-      location.href = './model.html';
+      location.href = page;
     };
+    $('toModel').onclick = handoff('./model.html');
+    if ($('toBuild')) $('toBuild').onclick = handoff('./build.html');
+    if ($('preset')) $('preset').addEventListener('change', () => applyPreset($('preset').value));
     $('downloadDesign').onclick = () => download(`${root.__tesr.d.name}_design.json`, JSON.stringify({ design: root.__tesr.d, drivetrain: root.__tesr.dt, power: root.__tesr.pw, nav: root.__tesr.nav }, null, 2), 'application/json');
   }
 
