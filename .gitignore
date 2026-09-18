@@ -8,3 +8,4 @@ build/
 /out/
 /ws_*/
 .tesr-cache/
+docs/data/engine.json

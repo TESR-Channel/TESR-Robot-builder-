@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -61,8 +62,11 @@ def test_drivetrain_and_power_fit_helpers():
 def test_export_web_writes_registry_json(registry, tmp_path):
     cat = Catalog.load(ROOT / "catalog" / "products.csv")
     written = export_web_data(registry, cat, tmp_path)
-    assert {p.name for p in written} == {"registry.json", "products.csv"}
-    import json
+    assert {p.name for p in written} == {"registry.json", "products.csv", "engine.json", "engine-manifest.json"}
+    engine = json.loads((tmp_path / "engine.json").read_text())
+    assert "src/tesr_robot_builder/web_entry.py" in engine["files"] and "src/tesr_robot_builder/cli.py" not in engine["files"]
+    assert any(k.endswith(".j2") for k in engine["files"]) and "registry/profiles/drive/mecanum.yaml" in engine["files"]
+    assert "examples/warehouse_amr_300.robot.yaml" in engine["files"]
     data = json.loads((tmp_path / "registry.json").read_text())
     assert len(data["hardware"]) == len(registry.hardware) and "drive_profiles" in data
     assert any(h.get("motor") for h in data["hardware"])  # category extras survive the export

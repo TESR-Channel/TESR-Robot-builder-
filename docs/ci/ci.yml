@@ -27,6 +27,7 @@ jobs:
           a, b = pathlib.Path("docs/data"), pathlib.Path("/tmp/webdata")
           assert json.loads((a/"registry.json").read_text()) == json.loads((b/"registry.json").read_text()), "docs/data/registry.json is stale — run tesr-rb export-web"
           assert (a/"products.csv").read_text().strip() == (b/"products.csv").read_text().strip(), "docs/data/products.csv is stale — run tesr-rb export-web"
+          assert json.loads((a/"engine-manifest.json").read_text())["files"] == json.loads((b/"engine-manifest.json").read_text())["files"], "docs/data/engine-manifest.json is stale — run tesr-rb export-web"
           PY
 
   colcon:
