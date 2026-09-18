@@ -229,3 +229,20 @@ def voltages_match(ctx: RuleContext) -> list[Finding]:
             out.append(Finding("R-PWR-001", "power", "ERROR", f"{h.id} needs {rec.electrical.voltage_v} V but no rail supplies it", path="power.rails",
                                suggestion=f"add a {rec.electrical.voltage_v} V rail (DC-DC) to power.rails"))
     return out
+
+
+@register("R-PWR-002", "power", "battery pack voltage (nominal x series) matches the bus")
+def battery_pack_matches_bus(ctx: RuleContext) -> list[Finding]:
+    b = ctx.defn.power.battery
+    rec = ctx.registry.hw(b.hw)
+    ex = rec.model_dump() if rec else {}
+    nominal = (ex.get("battery") or {}).get("nominal_v") or (rec.electrical.voltage_v if rec and rec.electrical else None)
+    if not nominal:
+        return [Finding("R-PWR-002", "power", "PASS", "battery has no nominal voltage on record", path="power.battery")]
+    pack_v = nominal * b.series
+    bus = ctx.defn.power.bus_v
+    if abs(pack_v - bus) / bus <= 0.15:
+        return [Finding("R-PWR-002", "power", "PASS", f"battery pack {pack_v:g} V ({nominal:g} V x {b.series} in series) matches bus {bus:g} V", path="power.battery")]
+    n = max(1, round(bus / nominal))
+    return [Finding("R-PWR-002", "power", "WARN", f"battery pack {pack_v:g} V ({nominal:g} V x {b.series}) does not match bus {bus:g} V", path="power.battery.series",
+                    suggestion=f"set power.battery.series: {n} ({n} x {nominal:g} V = {n * nominal:g} V) or add a DC-DC converter between the pack and the bus")]

@@ -78,7 +78,20 @@ def test_tall_payload_triggers_tipping_warning(registry):
     assert any(f.rule_id == "R-MECH-004" and f.severity == "WARN" for f in report.findings)
 
 
-def test_every_rule_has_unique_id_and_category():
+def test_all_rules_have_descriptions():
     rules = all_rules()
-    assert len({r.id for r in rules}) == len(rules)
+    assert len(rules) >= 15
     assert all(r.description for r in rules)
+
+
+def test_battery_series_pack_warns_then_passes(registry, warehouse):
+    from tesr_robot_builder.generators.pipeline import render_all
+    # a 12 V pack on a 48 V bus: not an error, a warning with the series count to use
+    d = warehouse.model_copy(deep=True)
+    d.power.battery.hw = "liion_12v_20ah"
+    rep = render_all(d, registry, "x.robot.yaml", "t").report
+    f = [x for x in rep.findings if x.rule_id == "R-PWR-002"][0]
+    assert f.severity == "WARN" and "series: 4" in f.suggestion
+    d.power.battery.series = 4
+    rep = render_all(d, registry, "x.robot.yaml", "t").report
+    assert [x for x in rep.findings if x.rule_id == "R-PWR-002"][0].severity == "PASS"

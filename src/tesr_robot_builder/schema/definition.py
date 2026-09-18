@@ -178,6 +178,8 @@ class HardwareInstance(StrictModel):
 # --------------------------------------------------------------------------- #
 class Battery(StrictModel):
     hw: Ident
+    series: int = Field(1, ge=1, le=16, description="packs connected in series (pack voltage = nominal x series)")
+    parallel: int = Field(1, ge=1, le=8, description="strings connected in parallel (capacity = Ah x parallel)")
 
 
 class Rail(StrictModel):
