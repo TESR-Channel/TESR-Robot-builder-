@@ -88,11 +88,15 @@ textarea.yaml { width:100%; min-height:300px; font-family:ui-monospace, Menlo, C
 .step h2 { font-size:17px; }
 .hint { background:#0d0d11; border-left:3px solid var(--gold); border-radius:6px; padding:8px 12px; margin:6px 0 12px; font-size:13.5px; color:var(--text); }
 .hint b { color:var(--gold); }
-.guide { width:100%; max-width:420px; display:block; margin:0 auto 10px; }
-.guide .part { fill:#1c1c22; stroke:#4a4a52; stroke-width:1.5; transition:.25s; }
-.guide .part.hl { fill:rgba(201,168,76,.28); stroke:var(--gold); stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(201,168,76,.6)); }
+.guide { width:100%; max-width:460px; display:block; margin:0 auto 6px; background:radial-gradient(ellipse at 50% 50%, #131318, #0b0b0e 75%); border:1px solid var(--line); border-radius:12px; }
+.guide .part { opacity:.55; transition:.25s; }
+.guide .part.hl { opacity:1; filter:drop-shadow(0 0 5px var(--c)); }
 .guide .label { fill:#9a978f; font-size:9px; font-family:'IBM Plex Sans Thai', sans-serif; }
 .guide .label.hl { fill:var(--gold); font-weight:600; }
 .guide .ground { stroke:#3a3a42; stroke-width:1; stroke-dasharray:4 3; }
 .navrow { display:flex; justify-content:space-between; gap:8px; margin-top:12px; }
 table.bom tr.cat td { color:var(--gold); font-family:'Chakra Petch'; font-size:12.5px; letter-spacing:.4px; text-transform:uppercase; padding-top:12px; border-bottom:1px solid rgba(201,168,76,.35); }
+a.shop.ghost { color:var(--muted); border-color:var(--line); }
+a.shop.ghost:hover { background:#26262b; color:var(--text); }
+.legend { display:flex; gap:10px 14px; flex-wrap:wrap; justify-content:center; font-size:11.5px; color:var(--muted); margin:-4px 0 10px; }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
