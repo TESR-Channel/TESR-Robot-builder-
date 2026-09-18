@@ -1,0 +1,8 @@
+id: pu_wheel_160
+category: wheel
+name: PU drive wheel Ø160 mm (hub bore, keyed)
+manufacturer: generic
+mass_kg: 1.2
+dims_m: [0.16, 0.05, 0.16]
+wheel: {type: standard, diameter_m: 0.16, width_m: 0.05, load_kg: 200}
+verified: false

@@ -1,6 +1,6 @@
 {
  "generator": "0.1.0",
- "registry_hash": "90fb87f55ab6",
+ "registry_hash": "39cc3d8b4560",
  "raw_url": "https://raw.githubusercontent.com/TESR-Channel/TESR-Robot-builder-/main/",
  "files": [
   "examples/ironx_gen2.robot.yaml",
@@ -39,6 +39,9 @@
   "registry/hardware/power/dcdc_48_12.yaml",
   "registry/hardware/power/dcdc_48_5.yaml",
   "registry/hardware/safety/generic_estop.yaml",
+  "registry/hardware/wheel/mecanum_wheel_152.yaml",
+  "registry/hardware/wheel/pu_wheel_100.yaml",
+  "registry/hardware/wheel/pu_wheel_160.yaml",
   "registry/profiles/drive/differential.yaml",
   "registry/profiles/drive/mecanum.yaml",
   "registry/profiles/nav/indoor_amr.yaml",

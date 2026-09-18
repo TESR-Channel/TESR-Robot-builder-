@@ -1,0 +1,8 @@
+id: pu_wheel_100
+category: wheel
+name: Rubber drive wheel Ø100 mm (for small robots)
+manufacturer: generic
+mass_kg: 0.15
+dims_m: [0.10, 0.03, 0.10]
+wheel: {type: standard, diameter_m: 0.10, width_m: 0.03, load_kg: 15}
+verified: false

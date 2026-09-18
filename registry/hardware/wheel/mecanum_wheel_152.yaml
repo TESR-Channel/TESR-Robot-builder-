@@ -1,0 +1,8 @@
+id: mecanum_wheel_152
+category: wheel
+name: "Mecanum wheel Ø152 mm (set of 4, 2 left + 2 right)"
+manufacturer: generic
+mass_kg: 1.0
+dims_m: [0.152, 0.05, 0.152]
+wheel: {type: mecanum, diameter_m: 0.152, width_m: 0.05, load_kg: 60, per_set: 4}
+verified: false
