@@ -433,6 +433,12 @@
     $('downloadYaml').onclick = () => download(`${root.__tesr.d.name}.robot.yaml`, root.__tesr.yaml, 'text/yaml');
     $('copyYaml').onclick = () => navigator.clipboard.writeText(root.__tesr.yaml).then(() => { $('copyYaml').textContent = 'คัดลอกแล้ว ✓'; setTimeout(() => ($('copyYaml').textContent = 'คัดลอก YAML'), 1500); });
     $('downloadBom').onclick = () => download(`${root.__tesr.d.name}_bom.csv`, bomCsv(root.__tesr.bom), 'text/csv');
+    $('toModel').onclick = () => {
+      const project = JSON.parse(localStorage.getItem('tesr_rb_project') || '{}');
+      Object.assign(project, { design: root.__tesr.d, drivetrain: root.__tesr.dt, power: root.__tesr.pw, nav: root.__tesr.nav, yaml: root.__tesr.yaml, saved_at: new Date().toISOString() });
+      localStorage.setItem('tesr_rb_project', JSON.stringify(project));
+      location.href = './model.html';
+    };
     $('downloadDesign').onclick = () => download(`${root.__tesr.d.name}_design.json`, JSON.stringify({ design: root.__tesr.d, drivetrain: root.__tesr.dt, power: root.__tesr.pw, nav: root.__tesr.nav }, null, 2), 'application/json');
   }
 
