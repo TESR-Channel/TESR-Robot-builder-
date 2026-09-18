@@ -237,7 +237,8 @@
       if (h.io) parts.push(`io: ${h.io}`);
       lines.push(`  - {${parts.join(', ')}}`);
     });
-    lines.push('power:', `  battery: {hw: ${d.battery}}`, `  bus_v: ${d.busV}`);
+    const packOpts = (d.batterySeries > 1 ? `, series: ${d.batterySeries}` : '') + (d.batteryParallel > 1 ? `, parallel: ${d.batteryParallel}` : '');
+    lines.push('power:', `  battery: {hw: ${d.battery}${packOpts}}`, `  bus_v: ${d.busV}`);
     if (d.rails.length) { lines.push('  rails:'); d.rails.forEach((rl) => lines.push(`    - {v: ${rl.v}${rl.hw ? `, hw: ${rl.hw}` : ''}}`)); }
     if (d.estop) lines.push('io: {DI: {1: estop}}');
     lines.push('comms: [dds, mqtt]', 'ros:', '  control: {stack: ros2_control, controller: auto}',
@@ -256,7 +257,7 @@
     const wheel = wheelFor(registry, d.drive, d.wheelDiameter);
     if (wheel) { const per = Number(wheel.wheel?.per_set || 1); add(wheel.id, Math.max(1, Math.ceil((d.drive === 'mecanum' ? 4 : 2) / per)), 'wheel'); }
     add(d.lidar, d.lidarCount || 1, 'LiDAR'); add(d.imu, 1, 'IMU'); add(d.camera, d.cameraCount || 1, 'camera'); if (d.estop) add('generic_estop', 1, 'E-stop');
-    add(d.battery, 1, 'battery'); d.rails.forEach((rl) => add(rl.hw, 1, `${rl.v} V rail`));
+    add(d.battery, (d.batterySeries || 1) * (d.batteryParallel || 1), 'battery'); d.rails.forEach((rl) => add(rl.hw, 1, `${rl.v} V rail`));
     const lines = [...qty].map(([id, n]) => {
       const rec = ids[id], p = productsFor(catalog, id)[0] || null;
       return { hwId: id, category: rec ? rec.category : '?', name: rec ? rec.name : id, qty: n, role: role.get(id), product: p,
@@ -342,12 +343,13 @@
     fillSelect('lidar', byCategory(registry, 'lidar'), { none: 'ไม่มี', defaultFirst: true, suffix: (h) => `(${h.sensor?.range_m ?? '?'} m)` });
     fillSelect('camera', byCategory(registry, 'depth_camera'), { none: 'ไม่มี' });
     fillSelect('imu', byCategory(registry, 'imu'), { none: 'ไม่มี', defaultFirst: true });
-    const all = $('showAllParts')?.checked;
-    const onBus = (vfn) => (h) => all || vfn(h) == null || voltMatch(vfn(h), busV);
-    const orAll = (list, cat) => (list.length ? list : byCategory(registry, cat));
-    fillSelect('motor', orAll(byCategory(registry, 'motor').filter(onBus(volt)), 'motor'), { suffix: (h) => `(${volt(h) ?? '?'} V, ${h.motor?.rated_torque_nm ?? '?'} Nm)` });
-    fillSelect('driver', orAll(byCategory(registry, 'motor_driver').filter(onBus(volt)), 'motor_driver'), { suffix: (h) => `(${volt(h) ?? '?'} V)` });
-    fillSelect('battery', orAll(byCategory(registry, 'battery').filter(onBus((h) => h.battery?.nominal_v ?? volt(h))), 'battery'), { suffix: (h) => `(${h.battery?.nominal_v ?? '?'} V ${h.battery?.capacity_ah ?? '?'} Ah)` });
+    // Never lock a part to a voltage: list everything, matching voltage first, and say what the mismatch means.
+    const byMatch = (vfn) => (a, b) => voltMatch(vfn(b), busV) - voltMatch(vfn(a), busV);
+    const vnote = (v) => (v == null ? '' : voltMatch(v, busV) ? ' ✓' : ` — ${v} V, ไม่ตรง bus ${busV} V`);
+    const bnote = (h) => { const v = h.battery?.nominal_v ?? volt(h); if (v == null || voltMatch(v, busV)) return ' ✓'; const n = Math.round(busV / v); return n >= 2 && voltMatch(v * n, busV) ? ` — ต่ออนุกรม ${n} ก้อน = ${(v * n).toFixed(0)} V` : ` — ${v} V ต้องมี DC-DC`; };
+    fillSelect('motor', byCategory(registry, 'motor').sort(byMatch(volt)), { suffix: (h) => `(${volt(h) ?? '?'} V, ${h.motor?.rated_torque_nm ?? '?'} Nm)${vnote(volt(h))}` });
+    fillSelect('driver', byCategory(registry, 'motor_driver').sort(byMatch(volt)), { suffix: (h) => `(${volt(h) ?? '?'} V)${vnote(volt(h))}` });
+    fillSelect('battery', byCategory(registry, 'battery').sort(byMatch((h) => h.battery?.nominal_v ?? volt(h))), { suffix: (h) => `(${h.battery?.nominal_v ?? '?'} V ${h.battery?.capacity_ah ?? '?'} Ah)${bnote(h)}` });
     // pre-select parts that match the bus voltage
     const pick = (id, cat, vfn) => { if ($(id).dataset.user) return; const m = byCategory(registry, cat).find((h) => vfn(h) != null && voltMatch(vfn(h), busV)); if (m) $(id).value = m.id; };
     pick('motor', 'motor', volt); pick('driver', 'motor_driver', volt); pick('battery', 'battery', (h) => h.battery?.nominal_v ?? volt(h));
@@ -375,12 +377,16 @@
       battery: $('battery').value, robotMassManual: $('robotMassManual').checked, lidarCount, cameraCount, lidarLayout, cameraLayout, casterLayout,
     };
     const nDrive = drive === 'mecanum' ? 4 : 2;
-    const hwMass = devices.reduce((s, h) => s + (h.mass_kg || 0), 0) + (ids[d.motor]?.mass_kg || 0) * nDrive + (ids[d.battery]?.mass_kg || 0) + (ids[d.driver]?.mass_kg || 0) * d.driverCount;
+    const hwMass = devices.reduce((s, h) => s + (h.mass_kg || 0), 0) + (ids[d.motor]?.mass_kg || 0) * nDrive + (ids[d.battery]?.mass_kg || 0) * (ids[d.battery]?.battery?.nominal_v ? Math.max(1, Math.round(busV / ids[d.battery].battery.nominal_v)) : 1) + (ids[d.driver]?.mass_kg || 0) * d.driverCount;
     d.robotMass = d.robotMassManual ? num('robotMass') : estimateRobotMass(hwMass, d.length, d.width, d.height);
     d.totalMass = d.robotMass + d.payload;
     d.electronicsW = devices.reduce((s, h) => s + (h.electrical?.typical_w || 0), 0) || 30;
     d.rails = railsNeeded(registry, busV, devices.concat([ids[d.driver]].filter(Boolean)));
     d.devices = devices; d.nDrive = nDrive;
+    const bat = ids[d.battery], nominal = bat?.battery?.nominal_v ?? (bat ? volt(bat) : null);
+    d.batterySeries = nominal ? Math.max(1, Math.round(busV / nominal)) : 1;
+    d.batteryPackV = nominal ? nominal * d.batterySeries : busV;
+    d.batteryNominalV = nominal; d.batteryParallel = 1; // parallel set in render() once the required Ah is known
     d.lidarSpots = d.lidar ? sensorSpots((LIDAR_LAYOUTS[lidarLayout] || LIDAR_LAYOUTS.front1).spots, d.length, d.width, 0.1) : [];
     d.cameraSpots = d.camera ? sensorSpots(CAMERA_LAYOUTS[cameraLayout] || CAMERA_LAYOUTS.front1, d.length, d.width, 0.02) : [];
     d.casterSpots = drive === 'differential' ? (CASTER_LAYOUTS[casterLayout] || CASTER_LAYOUTS.front_rear).map(([fx, fy]) => ({ x: fx * (d.length / 2 - (d.length > 0.4 ? 0.1 : 0.06)), y: fy * (d.width / 2 - (d.length > 0.4 ? 0.1 : 0.06)) })) : [];
@@ -429,26 +435,34 @@
         <tr><td><b>ความจุแบตเตอรี่ที่ ${d.busV} V</b></td><td><b>${fmt(pw.capacityAh, 1)} Ah</b></td></tr>
         <tr><td>กระแสสูงสุดที่แบตต้องจ่ายได้</td><td>${fmt(pw.peakCurrentA, 1)} A</td></tr>
       </table>`;
+    const batCap = ids[d.battery]?.battery?.capacity_ah;
+    d.batteryParallel = batCap ? Math.min(4, Math.max(1, Math.ceil(pw.capacityAh / batCap))) : 1;
     const bats = recommendBatteries(registry, d.busV, pw);
     $('batteryRec').innerHTML = bats.map((b) => `
       <div class="rec ${b.fits ? 'fit' : ''}">
         <div><b>${esc(b.hw.name)}</b> <span class="muted">${b.hw.battery?.nominal_v ?? '?'} V · ${b.hw.battery?.capacity_ah ?? '?'} Ah · ${b.hw.battery?.max_discharge_a ?? '?'} A · ${b.hw.mass_kg} kg</span>
-          ${b.fits ? '<span class="tag ok">เหมาะ</span>' : '<span class="tag">แรงดัน/ความจุ/กระแสไม่พอ</span>'}</div>
+          ${b.fits ? '<span class="tag ok">เหมาะ</span>' : (() => { const v = b.hw.battery?.nominal_v ?? volt(b.hw); const n = v ? Math.round(d.busV / v) : 1; return n >= 2 && voltMatch(v * n, d.busV) ? `<span class="tag warn">ต่ออนุกรม ${n} ก้อน</span>` : '<span class="tag">แรงดัน/ความจุ/กระแสไม่พอ</span>'; })()}</div>
         <div>${shopLink(b.hw.id)} <button class="mini" data-pick="battery" data-id="${b.hw.id}">เลือก</button></div></div>`).join('');
 
     // --- compatibility (subset of the Python rules)
     const compute = ids[d.compute], issues = [];
     const usb3 = d.devices.filter((h) => (h.interfaces || []).includes('usb3')).length;
     if (compute?.compute && usb3 > compute.compute.usb3_ports) issues.push(`⚠️ อุปกรณ์ USB 3 ${usb3} ตัว แต่ ${esc(compute.name)} มี ${compute.compute.usb3_ports} พอร์ต — ใช้ hub หรือย้ายไป Ethernet`);
-    if (!voltMatch(volt(ids[d.driver]), d.busV)) issues.push(`🔴 มอเตอร์ไดรเวอร์ ${esc(ids[d.driver]?.name)} เป็น ${volt(ids[d.driver])} V ไม่ตรง bus ${d.busV} V`);
-    if (!voltMatch(volt(ids[d.motor]), d.busV)) issues.push(`🔴 มอเตอร์ ${esc(ids[d.motor]?.name)} เป็น ${volt(ids[d.motor])} V ไม่ตรง bus ${d.busV} V`);
+    if (!voltMatch(volt(ids[d.driver]), d.busV)) issues.push(`⚠️ ไดรเวอร์ ${esc(ids[d.driver]?.name)} เป็น ${volt(ids[d.driver])} V บน bus ${d.busV} V — ใช้ได้ถ้ามี DC-DC ${d.busV}→${volt(ids[d.driver])} V หรือเลือกไดรเวอร์ที่ตรงแรงดัน`);
+    if (!voltMatch(volt(ids[d.motor]), d.busV)) issues.push(`⚠️ มอเตอร์ ${esc(ids[d.motor]?.name)} เป็น ${volt(ids[d.motor])} V บน bus ${d.busV} V — ต้องมีไดรเวอร์ที่จ่าย ${volt(ids[d.motor])} V ให้มอเตอร์ (step-down) มิฉะนั้นมอเตอร์เสียหาย`);
+    if (d.batteryNominalV && !voltMatch(d.batteryNominalV, d.busV)) {
+      issues.push(voltMatch(d.batteryPackV, d.busV)
+        ? `✅ แบต ${d.batteryNominalV} V ต่ออนุกรม ${d.batterySeries} ก้อน = ${d.batteryPackV.toFixed(0)} V ตรง bus (BOM คิดให้ ${d.batterySeries * d.batteryParallel} ก้อน)`
+        : `⚠️ แบต ${d.batteryNominalV} V ×${d.batterySeries} = ${d.batteryPackV.toFixed(0)} V ไม่ตรง bus ${d.busV} V — ต้องมี DC-DC ระหว่างแบตกับ bus`);
+    }
+    if (d.batteryParallel > 1) issues.push(`ℹ️ ความจุแบต 1 ก้อนไม่พอ ${d.runtimeH} h — ต่อขนาน ${d.batteryParallel} ชุด (BOM คิดให้แล้ว)`);
     d.rails.forEach((rl) => issues.push(rl.hw ? `✅ ต้องมี rail ${rl.v} V → ใช้ ${esc(ids[rl.hw].name)}` : `🔴 ต้องมี rail ${rl.v} V แต่ไม่มี DC-DC ${d.busV}→${rl.v} V ใน registry`));
     if (!d.lidar) issues.push('🔴 SLAM/Nav ต้องมี 2D LiDAR');
     if (d.payload > 50 && !d.estop) issues.push('🔴 payload > 50 kg ต้องมี E-stop (R-SAFE-001)');
     if (d.minAisle && d.width + 2 * d.margin > d.minAisle) issues.push(`🔴 หุ่นกว้าง ${fmt(d.width + 2 * d.margin)} m แต่ช่องทางแคบสุด ${d.minAisle} m`);
     if (d.track / 2 + d.wheelWidth / 2 > d.width / 2 + 0.005) issues.push('⚠️ ล้อยื่นออกนอกตัวถัง (R-MECH-001)');
     $('compatOut').innerHTML = (issues.length ? issues : ['✅ ไม่พบปัญหาความเข้ากันได้ในชุดตรวจของหน้าเว็บ']).map((s) => `<div>${s}</div>`).join('') +
-      '<p class="muted">ชุดตรวจเต็ม 15 rules อยู่ใน <code>tesr-rb validate</code></p>';
+      '<p class="muted">ชุดตรวจเต็ม 16 rules อยู่ในขั้น 3 (สร้าง ROS 2 workspace)</p>';
 
     // --- nav sizing
     const nav = navSizing({ length: d.length, width: d.width, margin: d.margin, vMax: d.vMax, aMax: d.aMax, lidarRange: ids[d.lidar]?.sensor?.range_m });
@@ -479,7 +493,7 @@
       $('kpi').innerHTML = `
         <div><b>${fmt(d.totalMass, 0)} kg</b><span>มวลรวม (หุ่น ${fmt(d.robotMass, 0)} + payload ${fmt(d.payload, 0)})</span></div>
         <div><b>${fmt(dt.requiredMotorRatedTorque, 2)} N·m</b><span>มอเตอร์ ×${d.nDrive} ที่ ≥ ${fmt(dt.motorRpm, 0)} rpm (i = ${d.gearRatio})</span></div>
-        <div><b>${fmt(pw.capacityAh, 0)} Ah</b><span>แบตเตอรี่ ${d.busV} V สำหรับ ${d.runtimeH} h</span></div>
+        <div><b>${fmt(pw.capacityAh, 0)} Ah</b><span>ต้องการที่ ${d.busV} V / ${d.runtimeH} h${d.batterySeries > 1 || d.batteryParallel > 1 ? ` · แพ็ก ${d.batteryNominalV} V ×${d.batterySeries} อนุกรม${d.batteryParallel > 1 ? ` ×${d.batteryParallel} ขนาน` : ''}` : ''}</span></div>
         <div><b>${d.busV} V</b><span>ระบบไฟ${d.busV === sv ? ' (แนะนำ)' : ` · แนะนำ ${sv} V`} · สูงสุด ${fmt(dt.powerMechPeak, 0)} W / ${fmt(pw.peakCurrentA, 0)} A</span></div>
         <div><b>${d.lidarCount} LiDAR · ${d.cameraCount} กล้อง</b><span>costmap ${nav.localCostmap} m · inflation ${nav.inflationRadius} m</span></div>
         <div><b>${bom.total ? fmt(bom.total, 0) + ' ฿' : '—'}</b><span>ราคาอุปกรณ์${bom.total ? ` (มีราคา ${bom.lines.length - bom.missing.length - bom.unpriced.length}/${bom.lines.length})` : ' — รอทีมเติมราคา'}</span></div>`;
@@ -521,7 +535,7 @@
     await loadCatalog(ref);
     document.querySelectorAll('input, select').forEach((el) => el.addEventListener('input', (ev) => {
       if (['motor', 'driver', 'battery', 'busV'].includes(ev.target.id)) ev.target.dataset.user = '1';
-      if (ev.target.id === 'busV' || ev.target.id === 'showAllParts') populateSelects();
+      if (ev.target.id === 'busV') populateSelects();
       render();
     }));
     document.body.addEventListener('click', (ev) => {
