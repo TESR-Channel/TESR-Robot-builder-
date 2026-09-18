@@ -26,10 +26,10 @@
         <div class="hint"><b>คิดจากงานก่อน</b> — ของที่ต้องขน หนักเท่าไร วิ่งที่ไหน แล้วระบบจะเลือกล้อ มอเตอร์ แบต และเซนเซอร์ให้เอง ถ้ายังไม่แน่ใจ เลือกรูปแบบใกล้เคียงแล้วค่อยปรับ</div>
         <div class="grid">
           <label>รูปแบบหุ่นที่ใกล้เคียง <select id="preset">
-            <option value="amr_300">AMR โรงงาน 300 kg</option>
-            <option value="service_60">หุ่นบริการ 60 kg (โรงพยาบาล/สำนักงาน)</option>
-            <option value="edu_small">หุ่นเรียนขนาดเล็ก (IRON-X class)</option>
-            <option value="mecanum_demo">Mecanum 4 ล้อ 30 kg</option>
+            <option value="amr_300">AMR โรงงาน 300 kg · 48 V</option>
+            <option value="service_60">หุ่นบริการ 60 kg (โรงพยาบาล/สำนักงาน) · 24 V</option>
+            <option value="edu_small">หุ่นเรียนขนาดเล็ก (IRON-X class) · 12 V</option>
+            <option value="mecanum_demo">Mecanum 4 ล้อ 30 kg · 24 V</option>
           </select></label>
           <label>น้ำหนักของที่บรรทุก (kg) <input id="payload" type="number" step="1" min="0" value="300"></label>
           <label>ใช้งานที่ไหน <select id="envType"><option value="factory">โรงงาน</option><option value="warehouse">คลังสินค้า</option><option value="hospital">โรงพยาบาล</option><option value="office">สำนักงาน</option><option value="laboratory">ห้องแลป</option><option value="outdoor">กลางแจ้ง</option><option value="custom">อื่น ๆ</option></select></label>
@@ -71,8 +71,14 @@
         <div class="grid">
           <label>ความเร็วสูงสุด (m/s) <input id="vMax" type="number" step="0.1" min="0.1" max="5" value="1.0"></label>
           <label>ใช้งานต่อการชาร์จ (h) <input id="runtimeH" type="number" step="0.5" min="0.5" value="8"></label>
-          <label>แรงดันระบบ (V) <select id="busV"><option>12</option><option>24</option><option selected>48</option></select></label>
         </div>
+        <h3>แรงดันระบบไฟ <span class="muted">— ระบบแนะนำให้จากกำลังที่ต้องใช้ กดเลือกเองได้ อุปกรณ์ในขั้น 4 จะกรองตามนี้</span></h3>
+        <div class="volt" id="voltCards">
+          <button type="button" class="vcard" data-v="12"><b>12 V</b><span>หุ่นเล็ก / หุ่นเรียน · &lt; 150 W</span><small>DC/BLDC 60 W · Li-ion 12 V · ไดรเวอร์ serial</small></button>
+          <button type="button" class="vcard" data-v="24"><b>24 V</b><span>หุ่นบริการ / ทั่วไป · 150–700 W</span><small>BLDC 100–200 W · LiFePO4 24 V · TESR MD-200</small></button>
+          <button type="button" class="vcard" data-v="48"><b>48 V</b><span>AMR หนัก / โลจิสติกส์ · &gt; 700 W</span><small>BLDC 400 W · LiFePO4 48 V · TESR MD-400</small></button>
+        </div>
+        <select id="busV" hidden><option>12</option><option>24</option><option selected>48</option></select>
         <details>
           <summary>ตั้งค่าการเคลื่อนที่เพิ่มเติม</summary>
           <div class="grid">
