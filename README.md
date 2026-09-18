@@ -26,6 +26,7 @@ Form / NL requirement ─▶ robot.yaml ─▶ resolve (auto → numbers) ─▶
 | ✅ | Regenerate-safe writes: generated-file headers, hash manifest, `overrides/` deep-merge |
 | ✅ | CLI `tesr-rb` · tests (schema, calc, rules, xacro expansion, determinism) · CI with `colcon build` in `ros:jazzy` |
 | ✅ | **Web app** (`docs/index.html`, GitHub Pages) — requirement → drivetrain/power/Nav2 sizing → part recommendations with TESR Shop links → `robot.yaml` + BOM, no install needed |
+| ✅ | **Model Studio** (`docs/model.html`) — upload STL/URDF, view and edit in 3D online (Z-up, metres), ghost reference from step 1, export URDF / Xacro / model.json / PNG |
 | ✅ | **Product catalog** (`catalog/products.csv` or a shared Google Sheet) joined to the registry by `hardware_ref`; `tesr-rb bom` prices any definition |
 | ⏳ Phase 1 | ros2_control, sensor drivers, EKF, SLAM Toolbox, AMCL, Nav2 auto-sizing, Gazebo Harmonic, Docker; validate/generate in the browser (Pyodide) |
 
@@ -37,7 +38,7 @@ Open the GitHub Pages site (Settings → Pages → branch `main`, folder `/docs`
 python3 -m http.server -d docs 8080     # then http://localhost:8080
 ```
 
-Four steps, each with output you can use immediately: sizing numbers → recommended motors/batteries with
+Step 1 (Spec & Sizing) and Step 2 (Model Studio: STL/URDF upload, 3D edit, URDF export) run entirely in the browser — files never leave your machine. Four sizing steps, each with output you can use immediately: sizing numbers → recommended motors/batteries with
 🛒 TESR Shop links → compatibility + Nav2 sizing → `robot.yaml` (for `tesr-rb generate`) and a BOM CSV.
 Paste the team's Google Sheet link in the catalog box (or `index.html?catalog=<sheet id>`) to get live prices;
 see [`catalog/README.md`](catalog/README.md).
@@ -83,7 +84,7 @@ src/tesr_robot_builder/
   cli.py       tesr-rb
 registry/      hardware records, driver manifests, drive/nav profiles (data — becomes its own repo later)
 catalog/       products.csv — SKU, price, tesrshop link per hardware_ref (team-edited; see catalog/README.md)
-docs/          index.html + app.js (web app, GitHub Pages) · data/ · architecture-roadmap.md · adr/
+docs/          index.html + app.js (Spec & Sizing) · model.html + model.js + model-core.js (Model Studio) · theme.css · data/ · adr/
 examples/      ironx_gen2 · mecanum_demo · warehouse_amr_300
 tests/         unit + xacro expansion + determinism
 .github/       CI: pytest + colcon build of every example in ros:jazzy
