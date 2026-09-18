@@ -126,6 +126,11 @@
       .sort((a, b) => (STOCK_RANK[a.stock] ?? 2) - (STOCK_RANK[b.stock] ?? 2) || (a.price == null) - (b.price == null) || (a.price || 0) - (b.price || 0));
   }
 
+  const CATEGORY_LABELS = [['wheel', 'ล้อ'], ['motor', 'มอเตอร์'], ['motor_driver', 'Low-level control (มอเตอร์ไดรเวอร์)'], ['encoder', 'เอ็นโค้ดเดอร์'],
+    ['compute', 'คอมพิวเตอร์'], ['lidar', 'LiDAR'], ['depth_camera', 'กล้อง depth'], ['rgb_camera', 'กล้อง'], ['imu', 'IMU'],
+    ['battery', 'แบตเตอรี่'], ['power_supply', 'แหล่งจ่ายไฟ / DC-DC'], ['estop', 'ความปลอดภัย (E-stop)'], ['accessory', 'อุปกรณ์เสริม']];
+  const CATEGORY_ORDER = Object.fromEntries(CATEGORY_LABELS.map(([k], i) => [k, i]));
+  const CATEGORY_TH = Object.fromEntries(CATEGORY_LABELS);
   const byId = (registry) => Object.fromEntries(registry.hardware.map((h) => [h.id, h]));
   const byCategory = (registry, cat) => registry.hardware.filter((h) => h.category === cat);
   const volt = (h) => (h.electrical ? h.electrical.voltage_v : null);
@@ -147,6 +152,17 @@
   function recommendBatteries(registry, busV, pw) {
     return byCategory(registry, 'battery').map((h) => ({ hw: h, fits: batteryFits(h, busV, pw) }))
       .sort((a, b) => b.fits - a.fits || (a.hw.battery?.capacity_ah ?? 0) - (b.hw.battery?.capacity_ah ?? 0));
+  }
+  function wheelFor(registry, driveType, diameter) {
+    // registry wheel of the right type (mecanum / standard) closest to the requested diameter (±15 %) — mirrors catalog.wheel_for
+    const want = driveType === 'mecanum' ? 'mecanum' : 'standard';
+    let best = null, bestErr = null;
+    byCategory(registry, 'wheel').forEach((h) => {
+      const w = h.wheel || {}; if (w.type !== want || !w.diameter_m) return;
+      const err = Math.abs(w.diameter_m - diameter) / diameter;
+      if (err <= 0.15 && (bestErr == null || err < bestErr)) { best = h; bestErr = err; }
+    });
+    return best;
   }
   function railsNeeded(registry, busV, devices) {
     // devices: registry records; returns [{v, hw|null}] for each voltage other than the bus
@@ -211,13 +227,15 @@
     const ids = byId(registry), qty = new Map(), role = new Map();
     const add = (id, n, what) => { if (!id) return; qty.set(id, (qty.get(id) || 0) + n); if (!role.has(id)) role.set(id, what); };
     add(d.compute, 1, 'compute'); add(d.motor, d.drive === 'mecanum' ? 4 : 2, 'motor'); add(d.driver, d.driverCount, 'motor driver');
+    const wheel = wheelFor(registry, d.drive, d.wheelDiameter);
+    if (wheel) { const per = Number(wheel.wheel?.per_set || 1); add(wheel.id, Math.max(1, Math.ceil((d.drive === 'mecanum' ? 4 : 2) / per)), 'wheel'); }
     add(d.lidar, 1, 'LiDAR'); add(d.imu, 1, 'IMU'); add(d.camera, 1, 'camera'); if (d.estop) add('generic_estop', 1, 'E-stop');
     add(d.battery, 1, 'battery'); d.rails.forEach((rl) => add(rl.hw, 1, `${rl.v} V rail`));
     const lines = [...qty].map(([id, n]) => {
       const rec = ids[id], p = productsFor(catalog, id)[0] || null;
       return { hwId: id, category: rec ? rec.category : '?', name: rec ? rec.name : id, qty: n, role: role.get(id), product: p,
         unitPrice: p ? p.price : null, lineTotal: p && p.price != null ? p.price * n : null };
-    }).sort((a, b) => a.category.localeCompare(b.category) || a.hwId.localeCompare(b.hwId));
+    }).sort((a, b) => ((CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99)) || a.hwId.localeCompare(b.hwId));
     const total = lines.reduce((s, l) => s + (l.lineTotal || 0), 0);
     return { lines, total, missing: lines.filter((l) => !l.product).map((l) => l.hwId), unpriced: lines.filter((l) => l.product && l.unitPrice == null).map((l) => l.hwId) };
   }
@@ -231,7 +249,7 @@
   }
 
   const api = { sizeDrivetrain, sizeBattery, navSizing, estimateRobotMass, tipping, parseCsv, parseCatalog, catalogUrl, sheetCsvUrl,
-    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, ROLLING_RESISTANCE };
+    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, ROLLING_RESISTANCE, CATEGORY_TH };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR = api;
@@ -292,9 +310,12 @@
     fillSelect('lidar', byCategory(registry, 'lidar'), { none: 'ไม่มี', defaultFirst: true, suffix: (h) => `(${h.sensor?.range_m ?? '?'} m)` });
     fillSelect('camera', byCategory(registry, 'depth_camera'), { none: 'ไม่มี' });
     fillSelect('imu', byCategory(registry, 'imu'), { none: 'ไม่มี', defaultFirst: true });
-    fillSelect('motor', byCategory(registry, 'motor'), { suffix: (h) => `(${volt(h) ?? '?'} V, ${h.motor?.rated_torque_nm ?? '?'} Nm)` });
-    fillSelect('driver', byCategory(registry, 'motor_driver'), { suffix: (h) => `(${volt(h) ?? '?'} V)` });
-    fillSelect('battery', byCategory(registry, 'battery'), { suffix: (h) => `(${h.battery?.nominal_v ?? '?'} V ${h.battery?.capacity_ah ?? '?'} Ah)` });
+    const all = $('showAllParts')?.checked;
+    const onBus = (vfn) => (h) => all || vfn(h) == null || voltMatch(vfn(h), busV);
+    const orAll = (list, cat) => (list.length ? list : byCategory(registry, cat));
+    fillSelect('motor', orAll(byCategory(registry, 'motor').filter(onBus(volt)), 'motor'), { suffix: (h) => `(${volt(h) ?? '?'} V, ${h.motor?.rated_torque_nm ?? '?'} Nm)` });
+    fillSelect('driver', orAll(byCategory(registry, 'motor_driver').filter(onBus(volt)), 'motor_driver'), { suffix: (h) => `(${volt(h) ?? '?'} V)` });
+    fillSelect('battery', orAll(byCategory(registry, 'battery').filter(onBus((h) => h.battery?.nominal_v ?? volt(h))), 'battery'), { suffix: (h) => `(${h.battery?.nominal_v ?? '?'} V ${h.battery?.capacity_ah ?? '?'} Ah)` });
     // pre-select parts that match the bus voltage
     const pick = (id, cat, vfn) => { if ($(id).dataset.user) return; const m = byCategory(registry, cat).find((h) => vfn(h) != null && voltMatch(vfn(h), busV)); if (m) $(id).value = m.id; };
     pick('motor', 'motor', volt); pick('driver', 'motor_driver', volt); pick('battery', 'battery', (h) => h.battery?.nominal_v ?? volt(h));
@@ -403,9 +424,14 @@
     $('yamlOut').value = yaml;
     $('cmdOut').textContent = `tesr-rb validate ${d.name}.robot.yaml\ntesr-rb generate ${d.name}.robot.yaml -o ${d.name}_ws\ntesr-rb bom ${d.name}.robot.yaml -o ${d.name}_bom.csv`;
     const bom = billOfMaterials(d, registry, catalog);
-    $('bomOut').innerHTML = `<table class="bom"><thead><tr><th>#</th><th>รายการ</th><th>หมวด</th><th>ราคา/หน่วย</th><th>รวม</th><th>สั่งซื้อ</th></tr></thead><tbody>` +
-      bom.lines.map((l) => `<tr><td>${l.qty}</td><td>${esc(l.name)}<br><span class="muted">${esc(l.role)} · ${esc(l.hwId)}</span></td><td>${esc(l.category)}</td><td>${thb(l.unitPrice)}</td><td>${thb(l.lineTotal)}</td><td>${shopLink(l.hwId, 'ซื้อ')}</td></tr>`).join('') +
-      `</tbody><tfoot><tr><td colspan="4">รวม (เฉพาะรายการที่มีราคา)</td><td colspan="2"><b>${fmt(bom.total, 0)} ฿</b></td></tr></tfoot></table>` +
+    let lastCat = null;
+    $('bomOut').innerHTML = `<table class="bom"><thead><tr><th>จำนวน</th><th>รายการ</th><th>ราคา/หน่วย</th><th>รวม</th><th>สั่งซื้อ</th></tr></thead><tbody>` +
+      bom.lines.map((l) => {
+        const head = l.category !== lastCat ? `<tr class="cat"><td colspan="5">${esc(CATEGORY_TH[l.category] || l.category)}</td></tr>` : '';
+        lastCat = l.category;
+        return head + `<tr><td>${l.qty}</td><td>${esc(l.name)}<br><span class="muted">${esc(l.role)} · ${esc(l.hwId)}</span></td><td>${thb(l.unitPrice)}</td><td>${thb(l.lineTotal)}</td><td>${shopLink(l.hwId, 'ซื้อ')}</td></tr>`;
+      }).join('') +
+      `</tbody><tfoot><tr><td colspan="3">รวม (เฉพาะรายการที่มีราคา)</td><td colspan="2"><b>${fmt(bom.total, 0)} ฿</b></td></tr></tfoot></table>` +
       (bom.missing.length ? `<p class="muted">รายการที่ต้องเพิ่มใน Google Sheet (hardware_ref): <code>${bom.missing.join(', ')}</code></p>` : '') +
       (bom.unpriced.length ? `<p class="muted">มีในแคตตาล็อกแต่ยังไม่มีราคา: <code>${bom.unpriced.join(', ')}</code></p>` : '');
     if ($('kpi')) {
@@ -454,7 +480,7 @@
     await loadCatalog(ref);
     document.querySelectorAll('input, select').forEach((el) => el.addEventListener('input', (ev) => {
       if (['motor', 'driver', 'battery'].includes(ev.target.id)) ev.target.dataset.user = '1';
-      if (ev.target.id === 'busV') populateSelects();
+      if (ev.target.id === 'busV' || ev.target.id === 'showAllParts') populateSelects();
       render();
     }));
     document.body.addEventListener('click', (ev) => {
