@@ -15,6 +15,12 @@ if (mode === 'calc') {
   process.stdout.write(T.buildDefinition(JSON.parse(arg)));
 } else if (mode === 'csv') {
   process.stdout.write(JSON.stringify(T.parseCatalog(arg)));
+} else if (mode === 'model') {
+  const M = require(path.join(__dirname, '..', 'docs', 'model-core.js'));
+  const a = JSON.parse(arg);
+  const s = M.emptyState(a.name, a.prefix);
+  a.meshes.forEach((m) => { const x = M.addMesh(s, m); Object.assign(x, m.set || {}); });
+  process.stdout.write(JSON.stringify({ urdf: M.exportUrdf(s), xacro: M.exportXacro(s), json: M.exportJson(s), roundtrip: M.importJson(M.exportJson(s)).meshes.length, prims: M.designToPrimitives(a.design || null) }));
 } else {
   process.exit(2);
 }

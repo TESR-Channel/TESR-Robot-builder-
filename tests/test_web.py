@@ -74,3 +74,21 @@ def test_js_csv_parser_handles_quotes_and_bom():
     rows = json.loads(_node("csv", csv_text))
     assert rows[0]["hardware_ref"] == "slamtec_p3" and rows[0]["price"] == 12900 and rows[0]["name"] == "Slamtec P3, 40 m"
     assert rows[0]["spec"] == 'range 40 m; "360" FOV' and rows[0]["shop_url"].startswith("https://")
+
+
+def test_model_studio_exports_are_valid_urdf():
+    import xml.etree.ElementTree as ET
+    args = {"name": "amr", "prefix": "tesr_robot",
+            "meshes": [{"name": "chassis", "file": "chassis.stl", "bboxSizeRaw": [1000, 700, 450], "triangles": 10, "set": {"position": [0.1, 0, 0.2], "rpy": [0, 0, 1.5708]}},
+                       {"name": "bracket", "file": "bracket.stl", "bboxSizeRaw": [0.05, 0.02, 0.01], "triangles": 4}],
+            "design": {"wheelDiameter": 0.16, "groundClearance": 0.05, "height": 0.45, "length": 1.0, "width": 0.7, "track": 0.6, "wheelWidth": 0.05, "drive": "mecanum", "wheelbase": 0.4, "lidar": "x", "camera": None}}
+    out = json.loads(_node("model", json.dumps(args)))
+    urdf = ET.fromstring(out["urdf"])
+    meshes = urdf.findall(".//visual/geometry/mesh")
+    assert len(meshes) == 2 and meshes[0].get("scale") == "0.001 0.001 0.001" and meshes[1].get("scale") == "1 1 1"  # mm auto-detected
+    assert urdf.find(".//visual/origin").get("rpy") == "0 0 1.5708"
+    xacro_root = ET.fromstring(out["xacro"])
+    assert len(xacro_root.findall(".//joint")) == 2 and "$(find tesr_robot_description)" in out["xacro"]
+    assert out["roundtrip"] == 2
+    names = [p["name"] for p in out["prims"]]
+    assert names == ["chassis", "wheel_0", "wheel_1", "wheel_2", "wheel_3", "lidar"]
