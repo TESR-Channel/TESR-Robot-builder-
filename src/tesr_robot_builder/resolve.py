@@ -151,7 +151,7 @@ def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
     _require_hw(reg, d.drive.motor.driver, "drive.motor.driver")
     battery = _require_hw(reg, d.power.battery.hw, "power.battery.hw")
     _require_hw(reg, d.target.compute, "target.compute")
-    hw_mass += motor.mass_kg * d.drive.motor.count + battery.mass_kg
+    hw_mass += motor.mass_kg * d.drive.motor.count + battery.mass_kg * d.power.battery.series * d.power.battery.parallel
 
     # -------------------------------------------------------------------- mass
     robot_mass = (

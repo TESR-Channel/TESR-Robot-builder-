@@ -29,6 +29,17 @@ COLUMNS = [
 ]
 STOCK_STATUSES = {"in_stock", "preorder", "out_of_stock", "discontinued", ""}
 
+# Presentation order + Thai labels for catalog / BOM grouping (used by the CLI, the checklist and the web app)
+CATEGORY_LABELS = [
+    ("wheel", "ล้อ"), ("motor", "มอเตอร์"), ("motor_driver", "Low-level control (มอเตอร์ไดรเวอร์)"), ("encoder", "เอ็นโค้ดเดอร์"),
+    ("compute", "คอมพิวเตอร์"), ("lidar", "LiDAR"), ("depth_camera", "กล้อง depth"), ("rgb_camera", "กล้อง"), ("imu", "IMU"),
+    ("battery", "แบตเตอรี่"), ("power_supply", "แหล่งจ่ายไฟ / DC-DC"), ("estop", "ความปลอดภัย (E-stop)"), ("safety_lidar", "Safety LiDAR"),
+    ("gnss", "GNSS"), ("ultrasonic", "อัลตราโซนิก"), ("bumper", "บัมเปอร์"), ("comm", "สื่อสาร"), ("digital_io", "Digital I/O"),
+    ("arm", "แขนกล"), ("lift", "ลิฟต์"), ("gearbox", "เกียร์บ็อกซ์"), ("accessory", "อุปกรณ์เสริม"),
+]
+CATEGORY_ORDER = {k: i for i, (k, _) in enumerate(CATEGORY_LABELS)}
+CATEGORY_TH = dict(CATEGORY_LABELS)
+
 
 @dataclass
 class Product:
@@ -190,11 +201,15 @@ def bill_of_materials(resolved: ResolvedRobot, registry, catalog: Catalog | None
 
     add(d.target.compute, 1, "compute")
     add(d.drive.motor.hw, d.drive.motor.count, "motor")
+    wheel = wheel_for(registry, d.drive.type, d.drive.wheels.diameter_m)
+    if wheel is not None:
+        per_set = int((wheel.model_dump().get("wheel") or {}).get("per_set") or 1)
+        add(wheel.id, max(1, -(-d.drive.motor.count // per_set)), "wheel")
     for h in d.hardware:
         add(h.hw, 1, h.id)
     if d.drive.motor.driver not in qty:
         add(d.drive.motor.driver, 1, "motor driver")
-    add(d.power.battery.hw, 1, "battery")
+    add(d.power.battery.hw, d.power.battery.series * d.power.battery.parallel, "battery")
     for r in d.power.rails:
         if r.hw:
             add(r.hw, 1, f"{r.v:g} V rail")
@@ -206,7 +221,21 @@ def bill_of_materials(resolved: ResolvedRobot, registry, catalog: Catalog | None
             hw_id=hw_id, category=rec.category if rec else "?", name=rec.name if rec else hw_id, qty=n,
             product=products[0] if products else None, role=role[hw_id],
         ))
-    return sorted(lines, key=lambda l: (l.category, l.hw_id))
+    return sorted(lines, key=lambda l: (CATEGORY_ORDER.get(l.category, 99), l.hw_id))
+
+
+def wheel_for(registry, drive_type: str, diameter_m: float):
+    """Registry wheel of the right type (mecanum / standard) closest to the requested diameter (±15 %)."""
+    want = "mecanum" if drive_type == "mecanum" else "standard"
+    best, best_err = None, None
+    for rec in registry.by_category("wheel"):
+        w = rec.model_dump().get("wheel") or {}
+        if w.get("type") != want or not w.get("diameter_m"):
+            continue
+        err = abs(w["diameter_m"] - diameter_m) / diameter_m
+        if err <= 0.15 and (best_err is None or err < best_err):
+            best, best_err = rec, err
+    return best
 
 
 def bom_csv(lines: list[BomLine]) -> str:
@@ -225,3 +254,39 @@ def bom_csv(lines: list[BomLine]) -> str:
     missing = sum(1 for l in lines if l.product is None)
     w.writerow(["TOTAL", "", f"{missing} part(s) without catalog entry", "", "", "", "", f"{total:.2f}", "", ""])
     return buf.getvalue()
+
+
+def todo_markdown(catalog: "Catalog", registry) -> str:
+    """Checklist for the sales/back-office team, grouped by category: every part that still lacks a price or a shop link."""
+    groups: dict[str, list] = {}
+    total = 0
+    for rec in sorted(registry.hardware.values(), key=lambda r: (CATEGORY_ORDER.get(r.category, 99), r.id)):
+        prods = catalog.for_hardware(rec.id)
+        p = prods[0] if prods else None
+        missing = []
+        if p is None:
+            missing.append("แถวในชีต")
+        else:
+            if not p.sku: missing.append("sku")
+            if p.price_thb is None: missing.append("price_thb")
+            if not p.shop_url: missing.append("shop_url")
+            if not p.stock_status: missing.append("stock_status")
+        if missing:
+            total += 1
+            groups.setdefault(rec.category, []).append((rec.id, rec.name, (p.spec_summary if p else ""), ", ".join(missing)))
+    lines = [
+        "# รายการสินค้าที่ทีมหลังบ้านต้องเติมข้อมูล (auto-generated: `tesr-rb catalog-todo`)",
+        "",
+        "เติมในชีต **TESR Robot Builder — Product Catalog** (นำเข้าจาก `catalog/products.csv`) คอลัมน์ `sku`, `price_thb` (ตัวเลข), `shop_url` (ลิงก์ tesrshop.com), `stock_status` (`in_stock`/`preorder`/`out_of_stock`)",
+        "แถวหนึ่ง = สินค้าหนึ่งรายการ ใช้ `hardware_ref` ตามตารางนี้ (ห้ามเปลี่ยน) — เว็บและ BOM จะขึ้นราคาและปุ่มสั่งซื้อทันทีที่บันทึก",
+        "",
+        f"ยังขาดข้อมูล {total} จาก {len(registry.hardware)} รายการ",
+    ]
+    n = 0
+    for cat, items in groups.items():
+        lines += ["", f"## {CATEGORY_TH.get(cat, cat)} (`{cat}`)", "", "| # | hardware_ref | ชื่อสินค้า | สเปกโดยย่อ | ที่ยังขาด |", "|---|---|---|---|---|"]
+        for hw, name, spec, miss in items:
+            n += 1
+            lines.append(f"| {n} | `{hw}` | {name} | {spec} | {miss} |")
+    lines += ["", "หมายเหตุ: สินค้าที่ยังไม่มีใน `registry/hardware/` (สเปกวิศวกรรม) ให้แจ้งทีมวิศวกรรมเพิ่มไฟล์ YAML ก่อน แล้วค่อยเติมราคาที่นี่", ""]
+    return "\n".join(lines)
