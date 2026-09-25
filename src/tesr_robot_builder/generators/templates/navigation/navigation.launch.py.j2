@@ -1,0 +1,64 @@
+# {{ header }}
+"""SLAM or map-based localisation + Nav2 for {{ d.meta.name }}.
+
+    ros2 launch {{ pkg }} navigation.launch.py use_sim_time:=true            # build a map while navigating (slam_toolbox)
+    ros2 launch {{ pkg }} navigation.launch.py slam:=false map:=/path/map.yaml  # localise on a saved map (AMCL)
+
+Save the map:  ros2 run nav2_map_server map_saver_cli -f ~/{{ d.meta.name }}_map
+"""
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.conditions import IfCondition, UnlessCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+NAV_NODES = ['controller_server', 'smoother_server', 'planner_server', 'behavior_server',
+             'velocity_smoother', 'bt_navigator', 'waypoint_follower']
+
+
+def generate_launch_description():
+    share = get_package_share_directory('{{ pkg }}')
+    params = LaunchConfiguration('params_file')
+    sim_time = LaunchConfiguration('use_sim_time')
+    slam = LaunchConfiguration('slam')
+    common = [params, {'use_sim_time': sim_time}]
+    # Nav2 chain: controller/behaviors → cmd_vel_nav → velocity_smoother → /cmd_vel (TwistStamped) → robot base
+    nav = [
+        Node(package='nav2_controller', executable='controller_server', output='screen', parameters=common,
+             remappings=[('cmd_vel', 'cmd_vel_nav')]),
+        Node(package='nav2_smoother', executable='smoother_server', output='screen', parameters=common),
+        Node(package='nav2_planner', executable='planner_server', output='screen', parameters=common),
+        Node(package='nav2_behaviors', executable='behavior_server', output='screen', parameters=common,
+             remappings=[('cmd_vel', 'cmd_vel_nav')]),
+        Node(package='nav2_velocity_smoother', executable='velocity_smoother', output='screen', parameters=common,
+             remappings=[('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', '/cmd_vel')]),
+        Node(package='nav2_bt_navigator', executable='bt_navigator', output='screen', parameters=common),
+        Node(package='nav2_waypoint_follower', executable='waypoint_follower', output='screen', parameters=common),
+        Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_navigation', output='screen',
+             parameters=[{'use_sim_time': sim_time, 'autostart': True, 'node_names': NAV_NODES}]),
+    ]
+    slam_toolbox = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('slam_toolbox'), 'launch', 'online_async_launch.py')),
+        launch_arguments={'slam_params_file': os.path.join(share, 'config', 'slam_toolbox.yaml'), 'use_sim_time': sim_time}.items(),
+        condition=IfCondition(slam),
+    )
+    localization = GroupAction(condition=UnlessCondition(slam), actions=[
+        Node(package='nav2_map_server', executable='map_server', output='screen', parameters=[params, {'use_sim_time': sim_time, 'yaml_filename': LaunchConfiguration('map')}]),
+        Node(package='nav2_amcl', executable='amcl', output='screen', parameters=common),
+        Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_localization', output='screen',
+             parameters=[{'use_sim_time': sim_time, 'autostart': True, 'node_names': ['map_server', 'amcl']}]),
+    ])
+    rviz = Node(package='rviz2', executable='rviz2', output='screen', condition=IfCondition(LaunchConfiguration('rviz')),
+                arguments=['-d', os.path.join(share, 'rviz', 'navigation.rviz')], parameters=[{'use_sim_time': sim_time}])
+    return LaunchDescription([
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument('slam', default_value='true', description='true: map while driving; false: AMCL on map:=...'),
+        DeclareLaunchArgument('map', default_value=''),
+        DeclareLaunchArgument('rviz', default_value='true'),
+        DeclareLaunchArgument('params_file', default_value=os.path.join(share, 'config', 'nav2_params.yaml')),
+        slam_toolbox, localization, *nav, rviz,
+    ])

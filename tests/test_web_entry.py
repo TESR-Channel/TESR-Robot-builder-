@@ -13,7 +13,7 @@ def test_build_json_generates_workspace():
     assert out["ok"] and out["stage"] == "generated" and not out["errors"]
     assert "src/tesr_robot_description/urdf/robot.urdf.xacro" in out["files"] and "robot.lock.yaml" in out["files"]
     assert out["files"]["warehouse_amr_300.robot.yaml"] == text and out["files"]["src/tesr_robot_description/meshes/body.stl"] == "solid x"
-    assert out["summary"]["packages"] == ["tesr_robot_bringup", "tesr_robot_description"]
+    assert out["summary"]["packages"] == ["tesr_robot_bringup", "tesr_robot_control", "tesr_robot_description", "tesr_robot_gazebo", "tesr_robot_navigation"]
     assert any(r["severity"] == "PASS" for r in out["report"]) and out["summary"]["controller"].startswith("diff_drive")
 
 
