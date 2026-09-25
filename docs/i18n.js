@@ -188,7 +188,7 @@
     'ดูใน RViz + slider หมุนล้อ': 'view in RViz + wheel sliders', 'โมเดล + inertial + Gazebo sensors/plugins': 'model + inertial + Gazebo sensors/plugins',
     'หมายเหตุ: ล้อ mecanum ในการจำลองใช้ปลั๊กอิน kinematic (ไม่จำลองลูกกลิ้งจริง)': 'Note: mecanum wheels use a kinematic plugin in simulation (rollers are not simulated)',
     'ตรวจ 16 กฎ → 5 packages พร้อมจำลอง ทำแผนที่ และนำทางเองใน Gazebo': '16 rules → 5 packages that simulate, map and navigate on their own in Gazebo',
-    'ในการจำลอง': 'in simulation', 'เลี้ยวแบบรถยนต์)': 'car-like steering)', 'ตัว · แบต': 'units · battery', 'ตัว แต่': 'units but', 'กำลังโหลดตัวอย่าง…': 'Loading example…', 'พื้นที่': 'area',
+    'ในการจำลอง': 'in simulation', 'เลี้ยวแบบรถยนต์)': 'car-like steering)', 'ตัว · แบต': 'units · battery', 'ตัว แต่': 'units but', 'กำลังโหลดตัวอย่าง…': 'Loading example…', 'พื้นที่': 'area', 'เริ่มใหม่': 'Restart', 'เล่น': 'Play',
   };
   const RE_TH = /[\u0E00-\u0E7F]/;
   const RULES = [
@@ -215,9 +215,8 @@
     if (!RE_TH.test(text)) return text;
     const lead = text.match(/^\s*/)[0], trail = text.match(/\s*$/)[0], core = text.trim();
     if (exact.has(core)) return lead + exact.get(core) + trail;
-    let out = core;
+    let out = core.replace(RE, (m) => ` ${P.get(m)} `); // whole phrases first, so numbers inside them do not split them
     for (const [re, to] of RULES) out = out.replace(re, to);
-    out = out.replace(RE, (m) => ` ${P.get(m)} `);
     out = out.replace(RE_SHORT, (m) => S.get(m));
     out = out.replace(/\s{2,}/g, ' ').replace(/\s+([,.):;%!?])/g, '$1').replace(/\(\s+/g, '(').trim();
     return lead + out + trail;
