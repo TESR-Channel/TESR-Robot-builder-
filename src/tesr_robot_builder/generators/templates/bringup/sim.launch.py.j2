@@ -1,0 +1,31 @@
+# {{ header }}
+"""One command: {{ d.meta.name }} in Gazebo Harmonic + slam_toolbox + Nav2 + RViz.
+
+    ros2 launch {{ pkg }} sim.launch.py
+
+In RViz click "2D Goal Pose" — the robot plans, drives and maps the TESR arena at the same time.
+Drive by hand instead:  ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
+"""
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+
+
+def generate_launch_description():
+    sim = os.path.join(get_package_share_directory('{{ r.package("gazebo") }}'), 'launch', 'sim.launch.py')
+    navigation = os.path.join(get_package_share_directory('{{ r.package("navigation") }}'), 'launch', 'navigation.launch.py')
+    return LaunchDescription([
+        DeclareLaunchArgument('rviz', default_value='true'),
+        DeclareLaunchArgument('slam', default_value='true'),
+        DeclareLaunchArgument('map', default_value=''),
+        IncludeLaunchDescription(PythonLaunchDescriptionSource(sim)),
+        # give Gazebo a few seconds to spawn the robot and start the controllers before Nav2 asks for TF
+        TimerAction(period=6.0, actions=[IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(navigation),
+            launch_arguments={'use_sim_time': 'true', 'slam': LaunchConfiguration('slam'),
+                              'map': LaunchConfiguration('map'), 'rviz': LaunchConfiguration('rviz')}.items())]),
+    ])

@@ -1,0 +1,63 @@
+# {{ header }}
+"""Gazebo Harmonic simulation of {{ d.meta.name }}.
+
+    ros2 launch {{ pkg }} sim.launch.py                 # robot in the TESR arena
+    ros2 launch {{ r.package("bringup") }} sim.launch.py      # + SLAM + Nav2 + RViz (recommended)
+
+Drive: {{ 'gz_ros2_control + ' + p.controller_type if p.sim_drive == 'ros2_control' else "Gazebo MecanumDrive (kinematic)" }} · command topic /cmd_vel (TwistStamped)
+"""
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import AppendEnvironmentVariable, DeclareLaunchArgument, IncludeLaunchDescription{% if p.sim_drive == 'ros2_control' %}, RegisterEventHandler{% endif %}
+
+{% if p.sim_drive == 'ros2_control' %}
+from launch.event_handlers import OnProcessExit
+{% endif %}
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command, LaunchConfiguration
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+
+
+def generate_launch_description():
+    description = get_package_share_directory('{{ r.package("description") }}')
+    share = get_package_share_directory('{{ pkg }}')
+    world = LaunchConfiguration('world')
+    robot_description = ParameterValue(
+        Command(['xacro ', os.path.join(description, 'urdf', 'robot.urdf.xacro'), ' hardware:=sim']), value_type=str)
+
+    gz_sim = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
+        launch_arguments={'gz_args': ['-r -v 1 ', world], 'on_exit_shutdown': 'true'}.items(),
+    )
+    spawn = Node(
+        package='ros_gz_sim', executable='create', output='screen',
+        arguments=['-topic', 'robot_description', '-name', '{{ d.meta.name }}',
+                   '-x', LaunchConfiguration('x'), '-y', LaunchConfiguration('y'), '-z', '0.05', '-Y', LaunchConfiguration('yaw')],
+    )
+    actions = [
+        DeclareLaunchArgument('world', default_value=os.path.join(share, 'worlds', 'tesr_arena.sdf')),
+        DeclareLaunchArgument('x', default_value='-4.5'),
+        DeclareLaunchArgument('y', default_value='0.0'),
+        DeclareLaunchArgument('yaw', default_value='0.0'),
+        AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', os.path.dirname(description)),
+        gz_sim,
+        Node(package='robot_state_publisher', executable='robot_state_publisher', output='screen',
+             parameters=[{'robot_description': robot_description, 'use_sim_time': True}]),
+        spawn,
+        Node(package='ros_gz_bridge', executable='parameter_bridge', output='screen',
+             parameters=[{'config_file': os.path.join(share, 'config', 'bridge.yaml'), 'use_sim_time': True}]),
+    ]
+{% if p.sim_drive == 'ros2_control' %}
+    jsb = Node(package='controller_manager', executable='spawner', output='screen',
+               arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'])
+    drive = Node(package='controller_manager', executable='spawner', output='screen',
+                 arguments=['drive_controller', '--controller-manager', '/controller_manager'])
+    actions += [
+        RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=[jsb])),
+        RegisterEventHandler(OnProcessExit(target_action=jsb, on_exit=[drive])),
+    ]
+{% endif %}
+    return LaunchDescription(actions)
