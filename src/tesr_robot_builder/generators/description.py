@@ -20,6 +20,7 @@ class DescriptionGenerator:
             ctx.render(t + "wheels.xacro.j2", f"{base}/urdf/wheels.xacro", pkg=pkg),
             ctx.render(t + "sensors.xacro.j2", f"{base}/urdf/sensors.xacro", pkg=pkg),
             ctx.render(t + "gazebo.xacro.j2", f"{base}/urdf/gazebo.xacro", pkg=pkg),
+            ctx.render(t + "ros2_control.xacro.j2", f"{base}/urdf/ros2_control.xacro", pkg=pkg),
             ctx.render(t + "display.launch.py.j2", f"{base}/launch/display.launch.py", pkg=pkg),
             ctx.render(t + "robot.rviz.j2", f"{base}/rviz/robot.rviz", pkg=pkg),
             GeneratedFile(f"{base}/meshes/.gitkeep", ""),

@@ -24,7 +24,10 @@ from ..rules import builtin as _builtin  # noqa: F401  (registers rules)
 from ..rules.engine import Report, RuleContext, run_rules
 from ..schema.definition import RobotDefinition, definition_digest, load_definition
 from . import bringup as _bringup  # noqa: F401
+from . import control as _control  # noqa: F401
 from . import description as _description  # noqa: F401
+from . import navigation as _navigation  # noqa: F401
+from . import simulation as _simulation  # noqa: F401
 from .base import GenContext, GeneratedFile, all_generators
 
 MANIFEST = ".tesr/manifest.json"

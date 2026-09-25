@@ -20,6 +20,7 @@ class BringupGenerator:
             ctx.render(t + "package.xml.j2", f"{base}/package.xml", pkg=pkg),
             ctx.render(t + "CMakeLists.txt.j2", f"{base}/CMakeLists.txt", pkg=pkg),
             ctx.render(t + "robot.launch.py.j2", f"{base}/launch/robot.launch.py", pkg=pkg),
+            ctx.render(t + "sim.launch.py.j2", f"{base}/launch/sim.launch.py", pkg=pkg),
             GeneratedFile(f"{base}/config/capabilities.json", json.dumps(capabilities, indent=2, sort_keys=True) + "\n"),
             ctx.render(t + "README.md.j2", f"{base}/README.md", pkg=pkg),
         ]

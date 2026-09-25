@@ -44,6 +44,7 @@ class GenContext:
         self.env.filters["f4"] = lambda x: f"{float(x):.4f}"
         self.env.filters["sci"] = lambda x: f"{float(x):.6g}"
         self.env.filters["vec"] = lambda v: " ".join(f"{float(x):.4f}" for x in v)
+        self.env.filters["pylist"] = lambda v: "[" + ", ".join(repr(x) for x in v) + "]"
 
     @property
     def header(self) -> str:
@@ -53,9 +54,15 @@ class GenContext:
             f"(registry {r.versions['registry']}) — do not edit; put changes in overrides/ and regenerate"
         )
 
+    def pkg(self, suffix: str) -> str:
+        return self.resolved.package(suffix)
+
     def render(self, template: str, path: str, executable: bool = False, **extra) -> GeneratedFile:
         tpl = self.env.get_template(template)
-        content = tpl.render(r=self.resolved, d=self.resolved.definition, header=self.header, **extra)
+        from .plan import build_plan  # local import: plan depends on resolve only
+        if not hasattr(self, "_plan"):
+            self._plan = build_plan(self.resolved)
+        content = tpl.render(r=self.resolved, d=self.resolved.definition, p=self._plan, header=self.header, **extra)
         return GeneratedFile(path=path, content=content, executable=executable)
 
 
