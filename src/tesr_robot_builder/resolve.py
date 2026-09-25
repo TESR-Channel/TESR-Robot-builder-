@@ -96,6 +96,7 @@ class ResolvedRobot(BaseModel):
     costmap: Costmap
     footprint: list[list[float]]
     lidar_range: float | None
+    drive_hw_plugin: str | None = None  # ros2_control SystemInterface of the real motor driver (registry driver manifest)
     capabilities: dict[str, Any]
     versions: dict[str, str]
 
@@ -149,6 +150,7 @@ def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
 
     motor = _require_hw(reg, d.drive.motor.hw, "drive.motor.hw")
     _require_hw(reg, d.drive.motor.driver, "drive.motor.driver")
+    drive_drv = reg.driver(d.drive.motor.driver, distro)
     battery = _require_hw(reg, d.power.battery.hw, "power.battery.hw")
     _require_hw(reg, d.target.compute, "target.compute")
     hw_mass += motor.mass_kg * d.drive.motor.count + battery.mass_kg * d.power.battery.series * d.power.battery.parallel
@@ -254,6 +256,7 @@ def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
         costmap=costmap,
         footprint=g.footprint_polygon(dims.length, dims.width, margin),
         lidar_range=lidar_range,
+        drive_hw_plugin=(drive_drv.ros2_control_plugin if drive_drv else None),
         capabilities=capabilities,
         versions={
             "generator": __version__,
