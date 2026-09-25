@@ -41,7 +41,7 @@ jobs:
     name: colcon build (ros:jazzy-ros-base)
     runs-on: ubuntu-latest
     container: ros:jazzy-ros-base
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - name: Install TESR Robot Builder
@@ -86,15 +86,26 @@ jobs:
             popd
             echo "::endgroup::"
           done
-      - name: xacro + check_urdf on every generated model
+      - name: xacro (mock / sim / real) + check_urdf + launch files load
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
           source /opt/ros/jazzy/setup.bash
           for ws in build/ws_*; do
             source "$ws/install/setup.bash"
             for x in "$ws"/src/*_description/urdf/robot.urdf.xacro; do
-              xacro "$x" > /tmp/robot.urdf
-              check_urdf /tmp/robot.urdf
+              for hw in mock sim real; do
+                echo "::group::$x hardware:=$hw"
+                xacro "$x" hardware:=$hw > /tmp/robot.urdf
+                check_urdf /tmp/robot.urdf
+                echo "::endgroup::"
+              done
+            done
+            for pkg in $(ls "$ws/src"); do
+              for lf in "$ws/src/$pkg"/launch/*.launch.py; do
+                [ -f "$lf" ] || continue
+                echo "--- ros2 launch $pkg $(basename "$lf") --show-args"
+                ros2 launch "$pkg" "$(basename "$lf")" --show-args > /dev/null
+              done
             done
           done
