@@ -2,8 +2,7 @@
 <!-- {{ header }} -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <!-- gz-sim ({{ d.sim.engine }}) hooks. Phase 1 adds gz_ros2_control, sensor plugins and the
-       {{ r.controller }} system from the '{{ d.drive.type }}' drive profile. -->
+  <!-- Friction: driven wheels grip, casters slide. -->
 {% for w in r.wheels %}
   <gazebo reference="{{ w.name }}">
     <mu1>1.0</mu1>
@@ -12,8 +11,84 @@
 {% endfor %}
 {% for c in r.casters %}
   <gazebo reference="{{ c.name }}">
-    <mu1>0.01</mu1>
-    <mu2>0.01</mu2>
+    <mu1>0.0</mu1>
+    <mu2>0.0</mu2>
   </gazebo>
 {% endfor %}
+
+  <!-- Everything below is only used with hardware:=sim (Gazebo Harmonic). -->
+  <xacro:if value="${hardware == 'sim'}">
+{% for s in p.lidars %}
+    <!-- {{ s.id }}: {{ s.fov_deg|int }}°{{ ' (mounted in a corner / edge: chassis blocks the rest)' if s.embedded else '' }}, {{ s.range_max }} m -->
+    <gazebo reference="{{ s.frame }}">
+      <sensor name="{{ s.id }}" type="gpu_lidar">
+        <gz_frame_id>{{ s.frame }}</gz_frame_id>
+        <topic>{{ s.gz_topic }}</topic>
+        <update_rate>{{ s.rate }}</update_rate>
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <ray>
+          <scan><horizontal><samples>{{ s.samples }}</samples><resolution>1</resolution><min_angle>{{ s.min_angle }}</min_angle><max_angle>{{ s.max_angle }}</max_angle></horizontal></scan>
+          <range><min>{{ s.range_min }}</min><max>{{ s.range_max }}</max><resolution>0.01</resolution></range>
+          <noise><type>gaussian</type><mean>0.0</mean><stddev>0.01</stddev></noise>
+        </ray>
+      </sensor>
+    </gazebo>
+{% endfor %}
+{% for s in p.cameras %}
+    <gazebo reference="{{ s.frame }}">
+      <sensor name="{{ s.id }}" type="rgbd_camera">
+        <gz_frame_id>{{ s.frame }}_optical</gz_frame_id>
+        <topic>{{ s.gz_topic }}</topic>
+        <update_rate>{{ [s.rate, 15]|min }}</update_rate>
+        <always_on>true</always_on>
+        <camera>
+          <horizontal_fov>{{ (s.fov_deg * 3.14159265 / 180)|f4 }}</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>{{ s.range_min }}</near><far>{{ s.range_max }}</far></clip>
+        </camera>
+      </sensor>
+    </gazebo>
+{% endfor %}
+{% for s in p.imus %}
+    <gazebo reference="{{ s.frame }}">
+      <sensor name="{{ s.id }}" type="imu">
+        <gz_frame_id>{{ s.frame }}</gz_frame_id>
+        <topic>{{ s.gz_topic }}</topic>
+        <update_rate>{{ s.rate }}</update_rate>
+        <always_on>true</always_on>
+      </sensor>
+    </gazebo>
+{% endfor %}
+    <gazebo>
+{% if p.sim_drive == 'ros2_control' %}
+      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>$(find {{ r.package("control") }})/config/controllers.yaml</parameters>
+        <ros>
+          <remapping>/drive_controller/cmd_vel:=/cmd_vel</remapping>
+          <remapping>/drive_controller/odom:=/odom</remapping>
+        </ros>
+      </plugin>
+{% else %}
+      <plugin filename="gz-sim-mecanum-drive-system" name="gz::sim::systems::MecanumDrive">
+        <front_left_joint>{{ p.wheel_joints.front_left }}</front_left_joint>
+        <front_right_joint>{{ p.wheel_joints.front_right }}</front_right_joint>
+        <back_left_joint>{{ p.wheel_joints.rear_left }}</back_left_joint>
+        <back_right_joint>{{ p.wheel_joints.rear_right }}</back_right_joint>
+        <wheel_separation>{{ p.wheel_separation|f4 }}</wheel_separation>
+        <wheelbase>{{ p.wheelbase|f4 }}</wheelbase>
+        <wheel_radius>{{ p.wheel_radius|f4 }}</wheel_radius>
+        <topic>cmd_vel</topic>
+        <odom_topic>odom</odom_topic>
+        <tf_topic>tf</tf_topic>
+        <frame_id>odom</frame_id>
+        <child_frame_id>base_footprint</child_frame_id>
+        <odom_publish_frequency>30</odom_publish_frequency>
+      </plugin>
+      <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+        <topic>joint_states</topic>
+      </plugin>
+{% endif %}
+    </gazebo>
+  </xacro:if>
 </robot>

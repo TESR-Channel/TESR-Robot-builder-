@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!-- {{ header }} -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ros2_control: one velocity-commanded joint per driven wheel ({{ p.controller_type }}).
+{% if p.sim_drive == 'gz_mecanum' %}
+       In simulation the mecanum base is driven by Gazebo's MecanumDrive system instead (gazebo.xacro). -->
+  <xacro:unless value="${hardware == 'sim'}">
+{% else %}
+  -->
+{% endif %}
+  <ros2_control name="{{ d.meta.name }}_system" type="system">
+    <hardware>
+      <xacro:if value="${hardware == 'sim'}">
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </xacro:if>
+      <xacro:if value="${hardware == 'mock'}">
+        <plugin>mock_components/GenericSystem</plugin>
+        <param name="calculate_dynamics">true</param>
+      </xacro:if>
+      <xacro:if value="${hardware == 'real'}">
+        <plugin>{{ p.real_plugin or 'mock_components/GenericSystem' }}</plugin>
+      </xacro:if>
+    </hardware>
+{% for key, joint in p.wheel_joints.items() %}
+    <joint name="{{ joint }}">
+      <command_interface name="velocity">
+        <param name="min">{{ (-p.v_max / p.wheel_radius * 1.5)|f4 }}</param>
+        <param name="max">{{ (p.v_max / p.wheel_radius * 1.5)|f4 }}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+{% endfor %}
+  </ros2_control>
+{% if p.sim_drive == 'gz_mecanum' %}
+  </xacro:unless>
+{% endif %}
+</robot>

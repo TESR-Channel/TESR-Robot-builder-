@@ -2,6 +2,10 @@
 <!-- {{ header }} -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="{{ d.meta.name }}">
 
+  <!-- hardware:=mock (default, no robot needed) | sim (Gazebo Harmonic) | real ({{ p.real_plugin or "no ros2_control driver in registry yet" }}) -->
+  <xacro:arg name="hardware" default="mock"/>
+  <xacro:property name="hardware" value="$(arg hardware)"/>
+
   <!-- Resolved geometry — every value below is traceable to robot.lock.yaml -->
   <xacro:property name="wheel_radius"     value="{{ r.wheel_radius|f4 }}"/>
   <xacro:property name="wheel_width"      value="{{ d.drive.wheels.width_m|f4 }}"/>
@@ -18,5 +22,6 @@
   <xacro:include filename="chassis.xacro"/>
   <xacro:include filename="wheels.xacro"/>
   <xacro:include filename="sensors.xacro"/>
+  <xacro:include filename="ros2_control.xacro"/>
   <xacro:include filename="gazebo.xacro"/>
 </robot>

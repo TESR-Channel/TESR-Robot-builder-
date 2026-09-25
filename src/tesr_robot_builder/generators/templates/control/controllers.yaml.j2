@@ -1,0 +1,53 @@
+# {{ header }}
+# ros2_control for {{ d.meta.name }}: joint_state_broadcaster + {{ p.controller_type }}.
+# The drive controller's command topic is remapped to /cmd_vel (geometry_msgs/TwistStamped) and odom to /odom.
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    drive_controller:
+      type: {{ p.controller_type }}
+
+drive_controller:
+  ros__parameters:
+{% if p.drive == 'differential' %}
+    left_wheel_names: ["{{ p.wheel_joints.left }}"]
+    right_wheel_names: ["{{ p.wheel_joints.right }}"]
+    wheel_separation: {{ p.wheel_separation|f4 }}
+    wheel_radius: {{ p.wheel_radius|f4 }}
+    wheels_per_side: 1
+    publish_rate: 50.0
+    odom_frame_id: odom
+    base_frame_id: base_footprint
+    enable_odom_tf: true
+    open_loop: false
+    cmd_vel_timeout: 0.5
+    pose_covariance_diagonal: [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.01]
+    linear.x.has_velocity_limits: true
+    linear.x.max_velocity: {{ p.v_max }}
+    linear.x.min_velocity: -{{ p.v_max }}
+    linear.x.has_acceleration_limits: true
+    linear.x.max_acceleration: {{ p.a_max }}
+    angular.z.has_velocity_limits: true
+    angular.z.max_velocity: {{ p.w_max }}
+    angular.z.min_velocity: -{{ p.w_max }}
+    angular.z.has_acceleration_limits: true
+    angular.z.max_acceleration: {{ p.alpha_max }}
+{% else %}
+    reference_timeout: 0.5
+    front_left_wheel_command_joint_name: "{{ p.wheel_joints.front_left }}"
+    front_right_wheel_command_joint_name: "{{ p.wheel_joints.front_right }}"
+    rear_right_wheel_command_joint_name: "{{ p.wheel_joints.rear_right }}"
+    rear_left_wheel_command_joint_name: "{{ p.wheel_joints.rear_left }}"
+    kinematics:
+      base_frame_offset: {x: 0.0, y: 0.0, theta: 0.0}
+      wheels_radius: {{ p.wheel_radius|f4 }}
+      sum_of_robot_center_projection_on_X_Y_axis: {{ (p.wheelbase / 2 + p.wheel_separation / 2)|f4 }}
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    enable_odom_tf: true
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+{% endif %}
