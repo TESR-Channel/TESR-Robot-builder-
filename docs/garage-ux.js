@@ -66,6 +66,9 @@ function injectUI() {
   #uxGuide .row { display:flex; gap:8px; justify-content:center; margin-top:16px; flex-wrap:wrap; } #uxGuide .row button { font-size:15px; padding:10px 18px; border-radius:10px; }
   @media (max-width:760px) { #uxGuide .steps { grid-template-columns:1fr 1fr; } #uxBar .ux-step { min-width:46%; } #uxBar .t { display:none; } }
   @media (max-width:1150px) { main.garage { height:auto; } main.garage .stage { order:-1; height:62vh; } }
+  /* the mission menu/HUD are hidden with the [hidden] attribute, but their own display:grid/flex rules beat the browser default —
+     without this the menu stayed on screen after pressing Play and covered the game */
+  [hidden] { display:none !important; }
   /* missions: on-screen controls (no keyboard on phones/tablets) */
   .gm-btns { position:absolute; left:8px; top:8px; display:flex; gap:6px; pointer-events:auto; z-index:5; }
   .gm-btns button { background:rgba(8,8,12,.88); border:1px solid rgba(201,168,76,.55); color:#f3e6bf; font-size:13px; padding:8px 12px; border-radius:10px; }
