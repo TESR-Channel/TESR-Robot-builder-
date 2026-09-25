@@ -6,7 +6,7 @@
 <title>TESR Robot Builder — Definition & Generate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./theme.css">
+<link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
 <style>
   main { display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); gap:12px; padding:12px; }
   @media (max-width:980px) { main { grid-template-columns:1fr; } }
@@ -24,12 +24,13 @@
   .kpi div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
   .kpi b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:16px; }
   .kpi span { color:var(--muted); font-size:11.5px; }
+  header.tesr nav .navsep { color:var(--muted); font-size:11.5px; margin:0 6px 0 4px; opacity:.7; }
 </style>
 </head>
 <body>
 <header class="tesr">
   <h1>TESR <span>Robot Builder</span></h1>
-  <nav><a href="./index.html">1 · Spec &amp; Sizing</a><a href="./model.html">2 · Model Studio</a><a class="active" href="./build.html">3 · Definition &amp; Generate</a></nav>
+  <nav><a href="./index.html">1 · 🛠 Garage 3D</a><a href="./summary.html">2 · 📋 สรุปสเปก &amp; ใบเสนอราคา</a><a class="active" href="./build.html">3 · ⚙️ สร้าง ROS 2 workspace</a><span class="navsep">เครื่องมือ:</span><a href="./form.html">โหมดฟอร์ม</a><a href="./model.html">เปิด URDF/STL</a></nav>
   <div class="status" id="status">โหลด engine…</div>
 </header>
 <main>
@@ -40,7 +41,7 @@
       <div class="bar"><i id="engineBar"></i></div>
     </div>
     <div class="actions">
-      <button class="ghost mini" id="fromProject" title="YAML ที่ร่างจากขั้น 1">จากขั้น 1</button>
+      <button class="ghost mini" id="fromProject" title="robot.yaml ของหุ่นในโปรเจกต์ (Garage / โหมดฟอร์ม)">จากโปรเจกต์ (Garage)</button>
       <button class="ghost mini" data-example="warehouse_amr_300">ตัวอย่าง AMR 300 kg</button>
       <button class="ghost mini" data-example="mecanum_demo">ตัวอย่าง Mecanum</button>
       <button class="ghost mini" data-example="ironx_gen2">ตัวอย่าง IRON-X</button>
@@ -49,12 +50,12 @@
     </div>
     <textarea id="yaml" spellcheck="false" placeholder="# วาง robot.yaml ที่นี่"></textarea>
     <div class="actions">
-      <button id="validate" disabled>ตรวจสอบ (15 rules)</button>
+      <button id="validate" disabled>ตรวจสอบ (16 rules)</button>
       <button class="gold" id="generate" disabled>สร้าง ROS 2 workspace</button>
       <button class="ghost mini" id="saveYaml">ดาวน์โหลด .robot.yaml</button>
     </div>
     <h3>ไฟล์เพิ่มเติมที่จะใส่ใน workspace</h3>
-    <div class="drop" id="drop">ลาก STL ที่จัดวางไว้ใน Model Studio มาวาง → ไปที่ <code>&lt;prefix&gt;_description/meshes/</code></div>
+    <div class="drop" id="drop">ลาก STL ของโครง/ชิ้นส่วนมาวาง → ไปที่ <code>&lt;prefix&gt;_description/meshes/</code></div>
     <input id="extraInput" type="file" multiple accept=".stl,.dae,.STL,.DAE" style="display:none">
     <p class="muted" id="extraNote">—</p>
   </div>
@@ -62,7 +63,7 @@
   <div class="panel">
     <h2>ผลตรวจ &amp; workspace <small>ทุกอย่างรันในเบราว์เซอร์ ไม่มีเซิร์ฟเวอร์</small></h2>
     <div id="summary"></div>
-    <div id="report"><p class="muted">กด "ตรวจสอบ" เพื่อรัน schema + 15 engineering rules</p></div>
+    <div id="report"><p class="muted">กด "ตรวจสอบ" เพื่อรัน schema + 16 engineering rules</p></div>
     <div id="workspace" style="display:none">
       <div class="actions"><button class="gold" id="downloadZip">ดาวน์โหลด workspace (.zip)</button><span class="muted" id="zipNote"></span></div>
       <div class="files" id="files"></div>
