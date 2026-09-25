@@ -3,28 +3,94 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TESR Robot Builder — Definition & Generate</title>
+<title>TESR Robot Builder — Mission Control · สร้าง ROS 2 workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
 <style>
-  main { display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); gap:12px; padding:12px; }
-  @media (max-width:980px) { main { grid-template-columns:1fr; } }
-  textarea#yaml { width:100%; min-height:520px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:12.5px; line-height:1.45; }
-  .engine { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .bar { flex:1; min-width:160px; height:6px; background:#1c1c22; border-radius:3px; overflow:hidden; }
-  .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg, var(--crimson-2), var(--gold)); transition:width .3s; }
-  .finding { padding:5px 8px; border-left:3px solid var(--line); margin:4px 0; font-size:13px; }
-  .finding.ERROR { border-color:var(--err); } .finding.WARN { border-color:var(--warn); } .finding.PASS { border-color:var(--ok); color:var(--muted); }
-  .files { max-height:320px; overflow:auto; font-size:12.5px; }
-  .files div { padding:3px 6px; cursor:pointer; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .files div:hover, .files div.sel { background:rgba(201,168,76,.12); color:var(--gold); }
-  pre#preview { max-height:340px; }
-  .kpi { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin:8px 0; }
-  .kpi div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
-  .kpi b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:16px; }
-  .kpi span { color:var(--muted); font-size:11.5px; }
   header.tesr nav .navsep { color:var(--muted); font-size:11.5px; margin:0 6px 0 4px; opacity:.7; }
+  body { background:#05050a; }
+  body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:-1;
+    background-image:linear-gradient(rgba(201,168,76,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(201,168,76,.05) 1px, transparent 1px);
+    background-size:44px 44px; mask-image:radial-gradient(ellipse at 50% 30%, #000 30%, transparent 80%); animation:gridmove 30s linear infinite; }
+  @keyframes gridmove { to { background-position:44px 44px, 44px 44px; } }
+  .mc { max-width:1320px; margin:0 auto; padding:16px 16px 60px; display:grid; gap:14px; }
+  .sci { position:relative; padding:16px 18px; border:1px solid rgba(201,168,76,.22); background:linear-gradient(180deg, rgba(20,20,26,.94), rgba(9,9,13,.94));
+    clip-path:polygon(0 14px, 14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); }
+  .sci h2 { font-family:'Chakra Petch'; font-size:13px; letter-spacing:1.8px; text-transform:uppercase; color:var(--gold); margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .sci h2::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, rgba(201,168,76,.5), transparent); }
+  .sci h2 small { color:var(--muted); font-family:'IBM Plex Sans Thai'; letter-spacing:0; text-transform:none; font-size:12px; }
+  /* hero */
+  .hero { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; overflow:hidden; }
+  .hero::before { content:''; position:absolute; right:-80px; top:-120px; width:420px; height:420px; border-radius:50%;
+    background:radial-gradient(circle, rgba(179,23,27,.28), transparent 65%); pointer-events:none; }
+  .hero .k { font-family:'Chakra Petch'; letter-spacing:4px; color:var(--gold); font-size:11px; }
+  .hero h1 { font-family:'Chakra Petch'; font-size:30px; margin:2px 0 4px; letter-spacing:.5px; }
+  .hero h1 span { color:var(--gold); text-shadow:0 0 18px rgba(201,168,76,.6); }
+  .hero .sub { color:var(--muted); }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .chips span { font-size:11.5px; border:1px solid rgba(201,168,76,.35); color:var(--gold-2); border-radius:14px; padding:2px 10px; background:rgba(201,168,76,.06); }
+  .go { font-family:'Chakra Petch'; font-size:18px; letter-spacing:1px; padding:16px 28px; border-radius:12px; border:none; color:#1a1300; cursor:pointer;
+    background:linear-gradient(180deg, #ffe08a, var(--gold)); box-shadow:0 0 0 1px rgba(255,255,255,.2) inset, 0 10px 40px rgba(201,168,76,.35); position:relative; overflow:hidden; }
+  .go::after { content:''; position:absolute; inset:0; background:linear-gradient(110deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); transform:translateX(-100%); animation:shine 3s ease-in-out infinite; }
+  @keyframes shine { 60%, 100% { transform:translateX(100%); } }
+  .go:disabled { filter:grayscale(1) brightness(.6); cursor:wait; } .go:disabled::after { display:none; }
+  .go small { display:block; font-family:'IBM Plex Sans Thai'; font-size:11.5px; letter-spacing:0; opacity:.75; }
+  /* pipeline */
+  .pipe { display:grid; grid-template-columns:repeat(5, 1fr); gap:0; position:relative; }
+  .stage { text-align:center; position:relative; padding:6px 4px; }
+  .stage .node { width:58px; height:58px; margin:0 auto 8px; border-radius:50%; display:grid; place-items:center; font-size:24px; position:relative; z-index:1;
+    background:#0d0d12; border:2px solid #2a2a31; transition:.4s; }
+  .stage b { display:block; font-family:'Chakra Petch'; font-size:13px; letter-spacing:.5px; } .stage span { font-size:11.5px; color:var(--muted); }
+  .stage::before { content:''; position:absolute; top:35px; left:-50%; width:100%; height:2px; background:#23232a; z-index:0; }
+  .stage:first-child::before { display:none; }
+  .stage.run .node { border-color:var(--crimson-2); box-shadow:0 0 0 6px rgba(179,23,27,.15), 0 0 24px rgba(179,23,27,.6); animation:pulse 1.1s ease-in-out infinite; }
+  .stage.ok .node { border-color:var(--gold); background:radial-gradient(circle at 35% 30%, #3a3018, #120f06); box-shadow:0 0 22px rgba(201,168,76,.55); }
+  .stage.ok::before, .stage.run::before { background:linear-gradient(90deg, var(--gold), var(--crimson-2)); box-shadow:0 0 10px rgba(201,168,76,.6); }
+  .stage.bad .node { border-color:var(--err); box-shadow:0 0 22px rgba(192,57,43,.6); }
+  @keyframes pulse { 50% { transform:scale(1.07); } }
+  .bar { height:4px; background:#1a1a20; border-radius:2px; overflow:hidden; margin-top:12px; } .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg, var(--crimson-2), var(--gold)); transition:width .3s; }
+  .engine-text { font-size:12px; color:var(--muted); margin-top:6px; text-align:center; }
+  /* grids */
+  .g3 { display:grid; grid-template-columns:1.05fr 1.15fr 1.1fr; gap:14px; align-items:start; }
+  @media (max-width:1100px) { .g3 { grid-template-columns:1fr; } .hero { grid-template-columns:1fr; } }
+  .score { display:flex; gap:14px; align-items:center; margin-bottom:10px; }
+  .ring { --p:0; width:88px; height:88px; border-radius:50%; display:grid; place-items:center; flex:none;
+    background:conic-gradient(var(--gold) calc(var(--p) * 1%), #1d1d24 0); position:relative; }
+  .ring::after { content:''; position:absolute; inset:7px; border-radius:50%; background:#0b0b10; }
+  .ring b { position:relative; z-index:1; font-family:'Chakra Petch'; font-size:20px; color:var(--gold); }
+  .cats { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .cat { border:1px solid var(--line); border-radius:8px; padding:6px 8px; background:#0d0d11; font-size:12px; display:flex; justify-content:space-between; align-items:center; }
+  .cat i { font-style:normal; font-family:'Chakra Petch'; } .cat.w { border-color:rgba(201,139,30,.6); } .cat.e { border-color:var(--err); }
+  .finding { padding:5px 8px; border-left:3px solid var(--line); margin:4px 0; font-size:12.5px; background:#0c0c10; }
+  .finding.ERROR { border-color:var(--err); } .finding.WARN { border-color:var(--warn); } .finding.PASS { border-color:var(--ok); color:var(--muted); }
+  details.more summary { cursor:pointer; color:var(--gold-2); font-size:12.5px; margin-top:8px; }
+  .pkgs { display:grid; gap:8px; }
+  .pkg { display:grid; grid-template-columns:46px 1fr auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#0d0d11; opacity:.35; transform:translateY(6px); transition:.5s; }
+  .pkg.on { opacity:1; transform:none; border-color:rgba(201,168,76,.4); }
+  .pkg .ico { width:46px; height:46px; border-radius:10px; display:grid; place-items:center; font-size:22px; background:radial-gradient(circle at 30% 25%, #2d2b22, #0e0e12); border:1px solid rgba(201,168,76,.3); }
+  .pkg b { font-family:'Chakra Petch'; font-size:13.5px; } .pkg div div { font-size:11.8px; color:var(--muted); } .pkg code { font-size:11.5px; }
+  .pkg .n { font-family:'Chakra Petch'; color:var(--gold); font-size:12px; text-align:right; }
+  .cmd { border:1px solid #23232b; border-radius:10px; background:#08080b; margin:8px 0; overflow:hidden; }
+  .cmd .t { display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:linear-gradient(90deg, rgba(139,0,0,.35), transparent); font-size:12.5px; }
+  .cmd .t b { font-family:'Chakra Petch'; letter-spacing:.4px; } .cmd.hl { border-color:rgba(201,168,76,.55); box-shadow:0 0 24px rgba(201,168,76,.12); }
+  .cmd .t button { padding:2px 10px; font-size:11.5px; background:#1c1c22; }
+  .cmd pre { margin:0; border:none; border-radius:0; background:transparent; color:#d7e3c8; font-size:12px; white-space:pre-wrap; word-break:break-all; }
+  .cmd pre::before { content:'$ '; color:var(--gold); }
+  .dl { width:100%; font-family:'Chakra Petch'; font-size:16px; padding:14px; border-radius:10px; margin-top:6px; }
+  .explorer { display:grid; grid-template-columns:320px 1fr; gap:10px; } @media (max-width:900px) { .explorer { grid-template-columns:1fr; } }
+  .files { max-height:420px; overflow:auto; font-size:12.5px; border:1px solid var(--line); border-radius:8px; padding:6px; background:#0b0b0f; }
+  .files .dir { color:var(--gold-2); font-family:'Chakra Petch'; font-size:12px; margin:6px 0 2px; }
+  .files div.f { padding:2px 8px 2px 16px; cursor:pointer; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#cfcac0; }
+  .files div.f:hover, .files div.f.sel { background:rgba(201,168,76,.12); color:var(--gold); }
+  pre#preview { max-height:420px; margin:0; font-size:12px; }
+  textarea#yaml { width:100%; min-height:380px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:12.5px; line-height:1.45; }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; margin-top:10px; }
+  .kpi div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:8px 10px; } .kpi b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:15px; } .kpi span { color:var(--muted); font-size:11.5px; }
+  .empty { color:var(--muted); font-size:12.5px; padding:10px 0; }
+  #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(80px); background:linear-gradient(90deg, #8B0000, #b3171b); padding:10px 20px; border-radius:24px; transition:.35s; z-index:20; box-shadow:0 10px 40px rgba(179,23,27,.5); }
+  #toast.on { transform:translateX(-50%); }
+  #burst { position:fixed; inset:0; pointer-events:none; z-index:15; }
 </style>
 </head>
 <body>
@@ -33,46 +99,80 @@
   <nav><a href="./index.html">1 · 🛠 Garage 3D</a><a href="./summary.html">2 · 📋 สรุปสเปก &amp; ใบเสนอราคา</a><a class="active" href="./build.html">3 · ⚙️ สร้าง ROS 2 workspace</a><span class="navsep">เครื่องมือ:</span><a href="./form.html">โหมดฟอร์ม</a><a href="./model.html">เปิด URDF/STL</a></nav>
   <div class="status" id="status">โหลด engine…</div>
 </header>
-<main>
-  <div class="panel">
-    <h2>Robot Definition <small>robot.yaml — แหล่งความจริงเดียวของหุ่น</small></h2>
-    <div class="engine">
-      <span class="muted" id="engineText">กำลังเตรียม engine ในเบราว์เซอร์ (Python ผ่าน Pyodide, ครั้งแรก ~20–40 s)</span>
-      <div class="bar"><i id="engineBar"></i></div>
+<canvas id="burst"></canvas>
+<main class="mc">
+  <section class="sci hero">
+    <div>
+      <div class="k">MISSION CONTROL · STEP 3</div>
+      <h1>สร้าง <span id="heroName">ROS 2 workspace</span></h1>
+      <div class="sub" id="heroSub">หุ่นจาก Garage → ตรวจ 16 กฎวิศวกรรม → ได้ 5 packages พร้อมจำลอง ทำแผนที่ และนำทางเองใน Gazebo</div>
+      <div class="chips"><span>ROS 2 Jazzy</span><span>Gazebo Harmonic</span><span>ros2_control</span><span>Nav2 · MPPI</span><span>slam_toolbox</span><span>RViz2</span></div>
     </div>
-    <div class="actions">
-      <button class="ghost mini" id="fromProject" title="robot.yaml ของหุ่นในโปรเจกต์ (Garage / โหมดฟอร์ม)">จากโปรเจกต์ (Garage)</button>
-      <button class="ghost mini" data-example="warehouse_amr_300">ตัวอย่าง AMR 300 kg</button>
-      <button class="ghost mini" data-example="mecanum_demo">ตัวอย่าง Mecanum</button>
-      <button class="ghost mini" data-example="ironx_gen2">ตัวอย่าง IRON-X</button>
-      <button class="ghost mini" id="loadYaml">เปิดไฟล์ .robot.yaml</button>
-      <input id="yamlInput" type="file" accept=".yaml,.yml" style="display:none">
+    <button class="go" id="generate" disabled>🚀 สร้าง WORKSPACE<small>ตรวจ + สร้าง + เตรียมคำสั่งรัน</small></button>
+  </section>
+
+  <section class="sci">
+    <div class="pipe" id="pipe">
+      <div class="stage" data-s="engine"><div class="node">🐍</div><b>ENGINE</b><span>Python ในเบราว์เซอร์</span></div>
+      <div class="stage" data-s="schema"><div class="node">📐</div><b>SCHEMA</b><span>robot.yaml ถูกโครงสร้าง</span></div>
+      <div class="stage" data-s="rules"><div class="node">🛡️</div><b>16 RULES</b><span>ไฟฟ้า · กลไก · TF · Nav · ปลอดภัย</span></div>
+      <div class="stage" data-s="gen"><div class="node">🧬</div><b>GENERATE</b><span>5 ROS 2 packages</span></div>
+      <div class="stage" data-s="ready"><div class="node">🏁</div><b>READY</b><span>จำลอง · แผนที่ · นำทาง</span></div>
     </div>
-    <textarea id="yaml" spellcheck="false" placeholder="# วาง robot.yaml ที่นี่"></textarea>
-    <div class="actions">
-      <button id="validate" disabled>ตรวจสอบ (16 rules)</button>
-      <button class="gold" id="generate" disabled>สร้าง ROS 2 workspace</button>
-      <button class="ghost mini" id="saveYaml">ดาวน์โหลด .robot.yaml</button>
-    </div>
-    <h3>ไฟล์เพิ่มเติมที่จะใส่ใน workspace</h3>
-    <div class="drop" id="drop">ลาก STL ของโครง/ชิ้นส่วนมาวาง → ไปที่ <code>&lt;prefix&gt;_description/meshes/</code></div>
-    <input id="extraInput" type="file" multiple accept=".stl,.dae,.STL,.DAE" style="display:none">
-    <p class="muted" id="extraNote">—</p>
+    <div class="bar"><i id="engineBar"></i></div>
+    <div class="engine-text" id="engineText">กำลังเตรียม engine (Pyodide · ครั้งแรก ~20–40 วินาที)</div>
+    <div class="kpi" id="summary"></div>
+  </section>
+
+  <div class="g3">
+    <section class="sci">
+      <h2>ผลตรวจ <small>16 engineering rules</small></h2>
+      <div id="report"><p class="empty">กด 🚀 เพื่อตรวจ — ระบบใช้ engine เดียวกับ CLI และ CI</p></div>
+    </section>
+    <section class="sci">
+      <h2>Packages <small>สร้างจาก robot.yaml ของคุณ</small></h2>
+      <div class="pkgs" id="pkgs">
+        <div class="pkg" data-p="description"><div class="ico">🤖</div><div><b>description</b><div>URDF/Xacro · hardware:=mock | sim | real · ros2_control</div></div><div class="n">—</div></div>
+        <div class="pkg" data-p="control"><div class="ico">🎛️</div><div><b>control</b><div>controllers.yaml · diff / mecanum controller</div></div><div class="n">—</div></div>
+        <div class="pkg" data-p="gazebo"><div class="ico">🌍</div><div><b>gazebo</b><div>TESR arena · sensors · ros_gz bridge</div></div><div class="n">—</div></div>
+        <div class="pkg" data-p="navigation"><div class="ico">🧭</div><div><b>navigation</b><div>Nav2 MPPI + Smac · slam_toolbox · RViz</div></div><div class="n">—</div></div>
+        <div class="pkg" data-p="bringup"><div class="ico">🚀</div><div><b>bringup</b><div>sim.launch.py · robot.launch.py</div></div><div class="n">—</div></div>
+      </div>
+      <button class="gold dl" id="downloadZip" disabled>⬇ ดาวน์โหลด workspace (.zip)</button>
+      <p class="empty" id="zipNote"></p>
+    </section>
+    <section class="sci">
+      <h2>Launch pad <small>คัดลอกไปวางใน terminal</small></h2>
+      <div id="launch"><p class="empty">สร้าง workspace ก่อน แล้วคำสั่งรันของหุ่นคุณจะขึ้นที่นี่</p></div>
+    </section>
   </div>
 
-  <div class="panel">
-    <h2>ผลตรวจ &amp; workspace <small>ทุกอย่างรันในเบราว์เซอร์ ไม่มีเซิร์ฟเวอร์</small></h2>
-    <div id="summary"></div>
-    <div id="report"><p class="muted">กด "ตรวจสอบ" เพื่อรัน schema + 16 engineering rules</p></div>
-    <div id="workspace" style="display:none">
-      <div class="actions"><button class="gold" id="downloadZip">ดาวน์โหลด workspace (.zip)</button><span class="muted" id="zipNote"></span></div>
-      <div class="files" id="files"></div>
-      <pre id="preview" class="muted">คลิกไฟล์เพื่อดูเนื้อหา</pre>
-      <h3>ถัดไป — build/simulate บนเครื่องที่มี Docker (ไม่ต้องติดตั้ง ROS)</h3>
-      <pre id="nextCmd"></pre>
-    </div>
-  </div>
+  <section class="sci" id="explorerBox" style="display:none">
+    <h2>ไฟล์ใน workspace <small>คลิกเพื่อดูเนื้อหา</small></h2>
+    <div class="explorer"><div class="files" id="files"></div><pre id="preview" class="muted">เลือกไฟล์ทางซ้าย</pre></div>
+  </section>
+
+  <section class="sci">
+    <details id="adv">
+      <summary style="cursor:pointer;font-family:'Chakra Petch';letter-spacing:1px;color:var(--gold)">⚙️ ขั้นสูง — แก้ robot.yaml เอง · ตัวอย่าง · ใส่ไฟล์ mesh</summary>
+      <div class="actions" style="margin-top:10px">
+        <button class="ghost mini" id="fromProject">จากโปรเจกต์ (Garage)</button>
+        <button class="ghost mini" data-example="warehouse_amr_300">ตัวอย่าง AMR 300 kg</button>
+        <button class="ghost mini" data-example="mecanum_demo">ตัวอย่าง Mecanum</button>
+        <button class="ghost mini" data-example="ironx_gen2">ตัวอย่าง IRON-X</button>
+        <button class="ghost mini" id="loadYaml">เปิดไฟล์ .robot.yaml</button>
+        <button class="ghost mini" id="saveYaml">ดาวน์โหลด .robot.yaml</button>
+        <button class="mini" id="validate" disabled>ตรวจอย่างเดียว</button>
+        <input id="yamlInput" type="file" accept=".yaml,.yml" style="display:none">
+      </div>
+      <textarea id="yaml" spellcheck="false" placeholder="# วาง robot.yaml ที่นี่"></textarea>
+      <div class="drop" id="drop" style="margin-top:10px">ลาก STL/DAE ของโครงหรือชิ้นส่วนมาวาง → ใส่ใน <code>&lt;prefix&gt;_description/meshes/</code></div>
+      <input id="extraInput" type="file" multiple accept=".stl,.dae,.STL,.DAE" style="display:none">
+      <p class="muted" id="extraNote">—</p>
+    </details>
+  </section>
 </main>
+<div id="toast"></div>
 <footer class="tesr">TESR Co., Ltd. · engine เดียวกับ CLI/CI รันใน Pyodide · ไม่มีข้อมูลออกจากเบราว์เซอร์</footer>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="./model-core.js"></script>
