@@ -108,3 +108,114 @@ a.shop.ghost:hover { background:#26262b; color:var(--text); }
 .vcard.sel { border-color:var(--gold); background:#1a1712; }
 .vcard.rec::after { content:'แนะนำ'; position:absolute; top:8px; right:8px; font-size:10.5px; color:#1a1300; background:var(--gold); border-radius:8px; padding:1px 7px; }
 .vcard:hover { filter:none; border-color:var(--gold-2); }
+
+/* ======================================================================
+   Responsive layer — phone (< 768), tablet (768–1149), laptop (1150–1279), desktop (≥ 1280)
+   Shared by every page (all pages load theme.css). Page-specific selectors only match on their page.
+   ====================================================================== */
+html { -webkit-text-size-adjust:100%; }
+img, canvas, svg, video { max-width:100%; }
+header.tesr { padding-left:max(20px, env(safe-area-inset-left)); padding-right:max(20px, env(safe-area-inset-right)); }
+
+/* ---------- Garage 3D (index.html): full-height app shell that never depends on header height */
+body.garage-body { display:flex; flex-direction:column; height:100vh; height:100dvh; }
+body.garage-body > header.tesr, body.garage-body > #uxBar { flex:none; }
+body.garage-body main.garage { flex:1 1 auto; min-height:0; height:auto; }
+@media (min-width:1150px) and (max-width:1279px) {
+  body.garage-body main.garage { grid-template-columns:300px minmax(0, 1fr) 290px; }
+}
+@media (max-width:1149px) {
+  body.garage-body { height:auto; min-height:100dvh; overflow:auto; }
+  body.garage-body main.garage { grid-template-columns:1fr 1fr; grid-template-areas:"stage stage" "bay hud"; align-items:start; }
+  body.garage-body main.garage .stage { grid-area:stage; height:62vh; height:62dvh; min-height:380px; order:0; }
+  body.garage-body main.garage #bay { grid-area:bay; } body.garage-body main.garage #hud { grid-area:hud; }
+  body.garage-body .sci { max-height:none; }
+}
+@media (max-width:767px) {
+  body.garage-body main.garage { grid-template-columns:1fr; grid-template-areas:"stage" "bay" "hud"; padding:6px; gap:8px; }
+  body.garage-body main.garage .stage { height:56vh; height:56dvh; min-height:320px; border-radius:10px; }
+  .stage-tools { left:6px; right:6px; transform:none; bottom:8px; max-width:none; flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:5px; padding-bottom:max(5px, env(safe-area-inset-bottom)); }
+  .stage-tools::-webkit-scrollbar { display:none; }
+  .stage-tools button { flex:none; font-size:12px; padding:7px 10px; }
+  .stage-top { left:8px; right:8px; top:8px; }
+  .callsign { padding:4px 8px; } .callsign input { font-size:15px; width:150px; } .callsign .sub { font-size:10.5px; max-width:52vw; }
+  .rank { width:58px; height:66px; font-size:30px; }
+  .banner { top:82px; white-space:normal; width:92%; text-align:center; font-size:12px; }
+  .tabs { grid-template-columns:repeat(4, 1fr); } .tabs button { font-size:10.5px; padding:5px 1px; }
+  .bp { grid-template-columns:1fr 1fr; }
+  .exports { grid-template-columns:1fr 1fr; }
+  .insp .grid4 { grid-template-columns:1fr 1fr; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+  body.garage-body main.garage .stage { height:86vh; height:86dvh; min-height:260px; }
+}
+
+/* ---------- 4-step bar (garage-ux.js) */
+@media (max-width:1149px) { #uxBar .ux-step { min-width:calc(50% - 8px); } }
+@media (max-width:767px) {
+  #uxBar { gap:6px; padding:6px 6px 0; }
+  #uxBar .ux-step { min-width:calc(50% - 6px); padding:6px 7px; gap:6px; }
+  #uxBar .ux-step.help { min-width:0; flex:0 0 auto; }
+  #uxBar .t { display:none; } #uxBar .n { width:22px; height:22px; font-size:12px; }
+  #uxBar button { font-size:12px; padding:7px 9px; }
+  #uxHint { top:78px; font-size:12.5px; }
+}
+
+/* ---------- header on phones: compact, nav scrolls sideways */
+@media (max-width:767px) {
+  header.tesr { padding:8px 12px; gap:6px 10px; align-items:center; }
+  header.tesr h1 { font-size:15px; gap:7px; } header.tesr h1::before { width:28px; height:28px; }
+  header.tesr nav { order:3; flex:1 0 100%; display:flex; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  header.tesr nav::-webkit-scrollbar { display:none; }
+  header.tesr nav a { font-size:12.5px; margin-right:12px; flex:none; }
+  header.tesr .status { display:none; }
+  header.tesr .lang-switch { margin-left:auto; }
+}
+
+/* ---------- missions (garage-game.js) */
+@media (max-width:767px) {
+  .gm-top { top:6px; padding:6px 12px; gap:8px; max-width:calc(100% - 12px); }
+  .gm-top .t { font-size:17px; min-width:48px; } .gm-top b { font-size:12px; }
+  .gm-mini { top:auto; bottom:64px; right:6px; padding:4px; } .gm-mini canvas { width:132px; height:88px; }
+  .gm-gauges { width:150px; left:6px; bottom:64px; padding:6px 8px; } .gm-gauges .row { font-size:10.5px; }
+  .gm-gauges .row:last-child { display:none; }
+  .gm-joy { left:auto; right:14px; bottom:170px; width:110px; height:110px; } .gm-joy i { left:35px; top:35px; }
+  .gm-center { font-size:64px; }
+  .gm-card { padding:14px; } .gm-card h2 { font-size:18px; }
+  .gm-ms { grid-template-columns:1fr 1fr; } .gm-m .ic { font-size:28px; }
+  .gm-res .kv { grid-template-columns:1fr 1fr; } .gm-res .big { font-size:40px; }
+}
+
+/* ---------- quotation (summary.html) */
+@media (max-width:767px) {
+  .bar-actions { justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .bar-actions::-webkit-scrollbar { display:none; } .bar-actions button { flex:none; }
+  .sheet { margin:8px 6px 40px; padding:18px 14px; font-size:13px; }
+  .doc-head { flex-direction:column; } .doc-meta { text-align:left; }
+  .sheet table.t { display:block; overflow-x:auto; white-space:nowrap; }
+  .sign { grid-template-columns:1fr; gap:26px; }
+}
+@media (min-width:768px) and (max-width:1023px) { .sheet { margin:12px; padding:26px 24px; } }
+
+/* ---------- Mission Control (build.html) */
+@media (max-width:767px) {
+  .mc { padding:8px 8px 40px; gap:10px; }
+  .sci { padding:12px; }
+  .hero h1 { font-size:22px; } .go { width:100%; font-size:16px; padding:14px; }
+  .pipe .stage .node { width:42px; height:42px; font-size:18px; } .pipe .stage::before { top:27px; }
+  .pipe .stage b { font-size:10.5px; } .pipe .stage span { display:none; }
+  .cats { grid-template-columns:1fr; }
+  .pkg { grid-template-columns:38px 1fr; } .pkg .ico { width:38px; height:38px; font-size:18px; } .pkg .n { grid-column:2; text-align:left; }
+  .cmd pre { font-size:11.5px; }
+  .explorer { grid-template-columns:1fr; } .files { max-height:220px; }
+}
+@media (min-width:768px) and (max-width:1100px) { .g3 { grid-template-columns:1fr 1fr; } .g3 > section:last-child { grid-column:1 / -1; } }
+
+/* ---------- form mode / model tools */
+@media (max-width:767px) {
+  .wrap, main.wrap { padding:8px; }
+  .panel { padding:12px; }
+  .grid { grid-template-columns:1fr !important; }
+  .navrow button { flex:1; }
+}
