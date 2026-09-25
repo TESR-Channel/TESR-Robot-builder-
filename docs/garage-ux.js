@@ -65,7 +65,19 @@ function injectUI() {
   #uxGuide .s .i { font-size:34px; } #uxGuide .s b { display:block; font-family:'Chakra Petch'; margin:6px 0 4px; } #uxGuide .s span { font-size:12px; color:var(--muted); }
   #uxGuide .row { display:flex; gap:8px; justify-content:center; margin-top:16px; flex-wrap:wrap; } #uxGuide .row button { font-size:15px; padding:10px 18px; border-radius:10px; }
   @media (max-width:760px) { #uxGuide .steps { grid-template-columns:1fr 1fr; } #uxBar .ux-step { min-width:46%; } #uxBar .t { display:none; } }
-  @media (max-width:1150px) { main.garage { height:auto; } main.garage .stage { order:-1; height:62vh; } }`;
+  @media (max-width:1150px) { main.garage { height:auto; } main.garage .stage { order:-1; height:62vh; } }
+  /* missions: on-screen controls (no keyboard on phones/tablets) */
+  .gm-btns { position:absolute; left:8px; top:8px; display:flex; gap:6px; pointer-events:auto; z-index:5; }
+  .gm-btns button { background:rgba(8,8,12,.88); border:1px solid rgba(201,168,76,.55); color:#f3e6bf; font-size:13px; padding:8px 12px; border-radius:10px; }
+  .gm-play { display:inline-block; margin-top:8px; padding:6px 16px; border-radius:16px; background:linear-gradient(180deg,#ff4a4a,#8B0000); color:#fff; font-size:13.5px; box-shadow:0 0 14px rgba(179,23,27,.55); }
+  body.gm-playing #tools, body.gm-playing .stage-top, body.gm-playing #uxHint { display:none; }
+  /* phones & tablets: the mission view takes the whole screen */
+  @media (max-width:1149px) {
+    body.garage-body.gm-full { overflow:hidden; }
+    body.garage-body.gm-full main.garage .stage { position:fixed !important; inset:0 !important; height:100vh !important; height:100dvh !important; min-height:0 !important;
+      z-index:1000; border-radius:0; border:none; }
+    .gm-btns { top:auto; bottom:calc(58px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); }
+  }`;
   document.head.appendChild(css);
 
   const bar = document.createElement('div'); bar.id = 'uxBar';
@@ -108,9 +120,35 @@ function openGuide() {
   });
 }
 
+// ---- missions on touch screens: exit / restart / camera buttons, full-screen view, a clear ▶ Play on each open mission
+function key(k) { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })); } // garage-game.js listens on window
+function decorateMenu() {
+  document.querySelectorAll('#gmModal .gm-m:not(.lock):not([data-ux-play])').forEach((el) => {
+    el.dataset.uxPlay = '1';
+    const s = document.createElement('span'); s.className = 'gm-play'; s.innerHTML = '▶ <b>เล่น</b>'; el.appendChild(s);
+  });
+}
+function gameUi() {
+  const hud = $('gmHud'), modal = $('gmModal');
+  if (!hud || !modal) { setTimeout(gameUi, 300); return; }
+  const b = document.createElement('div'); b.className = 'gm-btns';
+  b.innerHTML = '<button data-k="Escape">✕ <span>ออก</span></button><button data-k="r">↻ <span>เริ่มใหม่</span></button><button data-k="c">🎥 <span>กล้อง</span></button>';
+  hud.appendChild(b);
+  b.addEventListener('click', (e) => { const x = e.target.closest('[data-k]'); if (x) key(x.dataset.k); });
+  const sync = () => {
+    const playing = !hud.hidden, open = !modal.hidden;
+    document.body.classList.toggle('gm-full', playing || open);
+    document.body.classList.toggle('gm-playing', playing);
+    if (open) decorateMenu();
+  };
+  new MutationObserver(sync).observe(hud, { attributes: true, attributeFilter: ['hidden'] });
+  new MutationObserver(sync).observe(modal, { attributes: true, attributeFilter: ['hidden'], childList: true });
+  sync();
+}
+
 (function boot() {
   if (!window.__garage || !window.__garage.dv || !$('tabs')) { setTimeout(boot, 200); return; }
-  injectUI();
+  injectUI(); gameUi();
   let seen = false; try { seen = localStorage.getItem(SEEN) === '1'; } catch (_) { /* ignore */ }
   if (!seen) openGuide();
 })();
