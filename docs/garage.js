@@ -88,15 +88,16 @@ function applyQuality() {
 
 // ---- showroom platform
 const stageFx = new THREE.Group(); scene.add(stageFx);
+const stageStatic = new THREE.Group(); scene.add(stageStatic); // showroom disc/grid/rings — hidden in mission mode
 (function buildStage() {
   const disc = new THREE.Mesh(new THREE.CircleGeometry(3.2, 96), new THREE.MeshStandardMaterial({ color: 0x0b0b10, metalness: 0.7, roughness: 0.42 }));
-  disc.receiveShadow = true; scene.add(disc);
+  disc.receiveShadow = true; stageStatic.add(disc);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x060609, roughness: 0.95 }));
   floor.position.z = -0.003; floor.receiveShadow = true; scene.add(floor);
   const grid = new THREE.GridHelper(6.2, 31, 0x6a1414, 0x1b1b23); grid.rotation.x = Math.PI / 2; grid.position.z = 0.0015;
-  grid.material.transparent = true; grid.material.opacity = 0.32; scene.add(grid);
+  grid.material.transparent = true; grid.material.opacity = 0.32; stageStatic.add(grid);
   const ring = (r, w, col, op) => { const m = new THREE.Mesh(new THREE.RingGeometry(r - w, r, 160), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, toneMapped: false })); m.position.z = 0.002; return m; };
-  scene.add(ring(3.2, 0.018, 0xe9c86a, 0.95));
+  stageStatic.add(ring(3.2, 0.018, 0xe9c86a, 0.95));
   stageFx.add(ring(2.2, 0.01, 0xc9a84c, 0.45), ring(1.35, 0.008, 0xb3171b, 0.6));
   const ticks = []; for (let k = 0; k < 120; k++) { const a = k / 120 * TAU, r1 = 3.12, r2 = k % 10 === 0 ? 2.9 : 3.03; ticks.push(Math.cos(a) * r1, Math.sin(a) * r1, 0.003, Math.cos(a) * r2, Math.sin(a) * r2, 0.003); }
   const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(ticks, 3));
@@ -370,6 +371,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
   if (hit) { const pl = placement(hit); ghost.position.fromArray(pl.pos); ghost.rotation.z = pl.yaw; ghost.userData.pl = pl; }
 });
 renderer.domElement.addEventListener('pointerup', (e) => {
+  if (window.__gameActive) return;
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5 || tc.dragging) return;
   pointerRay(e);
   if (mount) {
@@ -405,7 +407,7 @@ function deleteSel() {
 // ================================================================== test drive
 const keys = new Set();
 window.addEventListener('keydown', (e) => {
-  if (e.target.matches('input, textarea, select')) return;
+  if (e.target.matches('input, textarea, select') || window.__gameActive) return;
   const k = e.key.toLowerCase();
   if (flags.drive && 'wasdqe'.includes(k)) { keys.add(k); e.preventDefault(); return; }
   if (k === 'escape') { if (mount) cancelMount(); else if (flags.drive) toggleTool('drive'); else select(null); }
@@ -414,6 +416,15 @@ window.addEventListener('keydown', (e) => {
   if (k === 'g' && selectedUid) tc.setMode('translate');
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+function spinWheels(v, w, vy, dt) {
+  const dr = state.drive, r = dr.wheelDiameter / 2;
+  wheelsFx.forEach(({ spin, w: wh }) => {
+    const side = wh.y > 0 ? 1 : -1;
+    let om = (v - side * w * Math.abs(wh.y)) / r;
+    if (dr.type === 'mecanum') om += (wh.key === 'front_left' || wh.key === 'rear_right' ? -1 : 1) * vy / r;
+    spin.rotation.y += om * dt;
+  });
+}
 function stepDrive(dt) {
   const m = state.mission, dr = state.drive, r = dr.wheelDiameter / 2;
   const v = m.vMax * ((keys.has('w') ? 1 : 0) - (keys.has('s') ? 1 : 0));
@@ -425,12 +436,7 @@ function stepDrive(dt) {
   driveRoot.rotation.z += w * dt;
   const d = Math.hypot(driveRoot.position.x, driveRoot.position.y);
   if (d > 2.6) driveRoot.position.multiplyScalar(2.6 / d);
-  wheelsFx.forEach(({ spin, w: wh }) => {
-    const side = wh.y > 0 ? 1 : -1;
-    let om = (v - side * w * Math.abs(wh.y)) / r;
-    if (dr.type === 'mecanum') om += (wh.key === 'front_left' || wh.key === 'rear_right' ? -1 : 1) * vy / r;
-    spin.rotation.y += om * dt;
-  });
+  spinWheels(v, w, vy, dt);
   controls.target.lerp(new THREE.Vector3(driveRoot.position.x, driveRoot.position.y, 0.25), 0.08);
 }
 
@@ -442,8 +448,9 @@ const clock = new THREE.Clock();
   sweeps.forEach((s) => { s.mesh.rotation.z = s.fov >= TAU - 1e-3 ? (t * 2.4 + s.phase) % TAU : -s.fov / 2 + ((t * 2.4 + s.phase) % s.fov); });
   stageFx.rotation.z += dt * 0.06;
   if (flags.drive) stepDrive(dt);
+  const gameCam = window.__gameTick ? window.__gameTick(dt, t) : false; // mission mode owns the camera while playing
   if (selBox) selBox.update();
-  controls.update();
+  if (!gameCam) controls.update();
   composer.render();
   requestAnimationFrame(loop);
 })();
@@ -574,7 +581,7 @@ function renderTab() {
       + '<h2>ชิ้นส่วนจากไฟล์</h2>' + seg('uploadPart', [['stl', '⬆️ อัปโหลด STL']], '')
       + '<h2>ติดตั้งอยู่</h2>' + ((s.parts || []).length ? s.parts.map((p, i) => `<div class="installed ${selectedUid === p.uid ? 'sel' : ''}" data-act="sel" data-v="${p.uid}"><span class="sw" style="width:14px;height:14px;background:${esc(p.color)}"></span><span class="nm">part_${i + 1} · ${p.kind === 'mesh' ? esc(p.file) : p.kind} · ${fmt(p.mass, 2)} kg</span><button data-act="del" data-v="${p.uid}">ถอด</button></div>`).join('') : '<p class="note">ยังไม่มี</p>');
   } else {
-    h += `<h2>วิธีเล่น</h2><p class="note">1) เลือก <b>พิมพ์เขียว</b> ในแท็บภารกิจ แล้วปรับน้ำหนัก ความเร็ว ชั่วโมงใช้งาน<br>2) แต่ง <b>โครง</b> และ <b>ล้อ</b> — หรืออัปโหลด STL ของคุณเอง<br>3) <b>เซนเซอร์</b>: กดติดตั้งแล้วคลิกบนตัวถัง · หลังคา = 360° · มุม/ขอบ = 270° หันออก<br>4) ดู <b>RANK</b> และแถบสเตตัสด้านขวา แก้ตามแจ้งเตือนจนได้ S/A<br>5) 🎮 ทดลองขับ: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (mecanum <kbd>Q</kbd>/<kbd>E</kbd> สไลด์)<br>6) ส่งออก: 🚀 ขั้น 3 (ros2_control/Nav2) หรือ 📦 package เปิดใน <b>RViz</b>/<b>Gazebo Harmonic</b> ได้ทันที</p>
+    h += `<h2>วิธีเล่น</h2><p class="note">1) เลือก <b>พิมพ์เขียว</b> ในแท็บภารกิจ แล้วปรับน้ำหนัก ความเร็ว ชั่วโมงใช้งาน<br>2) แต่ง <b>โครง</b> และ <b>ล้อ</b> — หรืออัปโหลด STL ของคุณเอง<br>3) <b>เซนเซอร์</b>: กดติดตั้งแล้วคลิกบนตัวถัง · หลังคา = 360° · มุม/ขอบ = 270° หันออก<br>4) ดู <b>RANK</b> และแถบสเตตัสด้านขวา แก้ตามแจ้งเตือนจนได้ S/A<br>5) 🎮 ทดลองขับ: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (mecanum <kbd>Q</kbd>/<kbd>E</kbd> สไลด์)<br>6) <b>🏁 ภารกิจ</b>: เล่น 5 ด่านในโกดังเดียวกับ Gazebo — ทำแผนที่ด้วย LiDAR ส่งของ ลอดช่องแคบ วัดแบต เก็บดาว/XP/เหรียญ<br>7) ส่งออก: 📋 ขั้น 2 ใบเสนอราคา · 🚀 ขั้น 3 workspace (ros2_control/Nav2/Gazebo)</p>
       <h2>ปุ่มลัด</h2><p class="note"><kbd>R</kbd> หมุน 45° · <kbd>Shift</kbd>+<kbd>R</kbd> หมุนกลับ · <kbd>Del</kbd> ถอด · <kbd>Esc</kbd> ยกเลิก · ลากซ้าย = หมุนมุมกล้อง · ลากขวา = เลื่อน · ล้อเมาส์ = ซูม</p>
       <h2>ข้อมูลอุปกรณ์</h2><p class="note">สเปกมาจาก <code>data/registry.json</code> · ราคา/ลิงก์ TESR Shop จากไฟล์ CSV หรือ Google Sheet ของทีม (ตั้งค่าในหน้า 1) — เพิ่มสินค้าในชีตแล้วขึ้นในโรงรถทันที</p>`;
   }
@@ -777,6 +784,13 @@ $('saveInput').onchange = async (e) => {
     selectedUid = null; $('robotName').value = state.name; changed(false); renderTab(); fitView();
     status(`โหลดเซฟ ${f.name} แล้ว`);
   } catch (err) { status(`โหลดไม่สำเร็จ: ${err.message}`); }
+};
+
+// ================================================================== mission-mode handle (garage-game.js)
+window.__garage = {
+  THREE, scene, camera, controls, renderer, driveRoot, robotRoot, stageStatic, stageFx, tc, flags, keys,
+  get state() { return state; }, get dv() { return dv; }, get registry() { return registry; }, get ids() { return ids; },
+  buildRobot, fitView, banner, status, select, spinWheels, toggleTool,
 };
 
 // ================================================================== boot
