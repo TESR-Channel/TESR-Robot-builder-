@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESR Robot Builder — โหมดฟอร์ม (กรอกสเปกเร็ว)</title>
+<style>header.tesr nav .navsep { color:var(--muted); font-size:11.5px; margin:0 6px 0 4px; opacity:.7; }</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
+</head>
+<body>
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav><a href="./index.html">1 · 🛠 Garage 3D</a><a href="./summary.html">2 · 📋 สรุปสเปก &amp; ใบเสนอราคา</a><a href="./build.html">3 · ⚙️ สร้าง ROS 2 workspace</a><span class="navsep">เครื่องมือ:</span><a class="active" href="./form.html">โหมดฟอร์ม</a><a href="./model.html">เปิด URDF/STL</a></nav>
+  <div class="status" id="registryStatus">กำลังโหลด…</div>
+</header>
+<main class="wrap">
+  <div class="wizard">
+    <div class="panel">
+      <div class="stepbar" id="stepbar"><span></span><span></span><span></span><span></span></div>
+      <svg class="guide" id="guide" viewBox="0 0 380 230" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+      <div class="legend"><span><i style="background:#8c8c92"></i>ล้อ</span><span><i style="background:#d0342c"></i>LiDAR</span><span><i style="background:#3a7bd5"></i>กล้อง</span><span><i style="background:#2e8b57"></i>แบตเตอรี่</span><span><i style="background:#C9A84C"></i>คอมพิวเตอร์</span><span><i style="background:#8b5cf6"></i>ไดรเวอร์</span><span><i style="background:transparent;border:1px dashed #C9A84C"></i>ของที่บรรทุก</span></div>
+
+      <section class="step now" id="s1">
+        <h2>1 · หุ่นตัวนี้ทำงานอะไร</h2>
+        <div class="hint"><b>คิดจากงานก่อน</b> — ของที่ต้องขน หนักเท่าไร วิ่งที่ไหน แล้วระบบจะเลือกล้อ มอเตอร์ แบต และเซนเซอร์ให้เอง ถ้ายังไม่แน่ใจ เลือกรูปแบบใกล้เคียงแล้วค่อยปรับ</div>
+        <div class="grid">
+          <label>รูปแบบหุ่นที่ใกล้เคียง <select id="preset">
+            <option value="amr_300">AMR โรงงาน 300 kg · 48 V</option>
+            <option value="service_60">หุ่นบริการ 60 kg (โรงพยาบาล/สำนักงาน) · 24 V</option>
+            <option value="edu_small">หุ่นเรียนขนาดเล็ก (IRON-X class) · 12 V</option>
+            <option value="mecanum_demo">Mecanum 4 ล้อ 30 kg · 24 V</option>
+          </select></label>
+          <label>น้ำหนักของที่บรรทุก (kg) <input id="payload" type="number" step="1" min="0" value="300"></label>
+          <label>ใช้งานที่ไหน <select id="envType"><option value="factory">โรงงาน</option><option value="warehouse">คลังสินค้า</option><option value="hospital">โรงพยาบาล</option><option value="office">สำนักงาน</option><option value="laboratory">ห้องแลป</option><option value="outdoor">กลางแจ้ง</option><option value="custom">อื่น ๆ</option></select></label>
+          <label>พื้นเป็นแบบไหน <select id="floor"><option value="concrete">คอนกรีต</option><option value="epoxy">อีพ็อกซี</option><option value="tile">กระเบื้อง</option><option value="carpet">พรม</option><option value="asphalt">ยางมะตอย</option><option value="gravel">กรวด</option><option value="mixed">ผสม</option></select></label>
+          <label>ชื่อหุ่น (a–z, 0–9, _) <input id="name" value="warehouse_amr_300"></label>
+        </div>
+      </section>
+
+      <section class="step" id="s2">
+        <h2>2 · ตัวถังใหญ่แค่ไหน</h2>
+        <div class="hint"><b>วัดจากขอบนอก</b> ยาว × กว้าง × สูง ของตัวหุ่น (ไม่รวมของที่บรรทุก) ระบบใช้ตัวเลขนี้คำนวณเสถียรภาพ, ช่องทางที่ผ่านได้ และค่า Nav2 ให้อัตโนมัติ</div>
+        <div class="grid">
+          <label>ยาว L (m) <input id="length" type="number" step="0.01" min="0.1" value="1.0"></label>
+          <label>กว้าง W (m) <input id="width" type="number" step="0.01" min="0.1" value="0.7"></label>
+          <label>สูง H (m) <input id="height" type="number" step="0.01" min="0.05" value="0.45"></label>
+          <label>ล้อประคอง (เฉพาะ differential) <select id="casterLayout"><option value="front_rear">2 ล้อ หน้า + หลัง</option><option value="corners4">4 ล้อ ทุกมุม</option><option value="rear1">1 ล้อ หลัง</option><option value="front1">1 ล้อ หน้า</option></select></label>
+          <label>ระบบขับ <select id="drive"><option value="differential">2 ล้อขับ + ล้อประคอง (differential)</option><option value="mecanum">4 ล้อ mecanum (เคลื่อนที่ทุกทิศ)</option><option value="four_wheel" disabled>4 ล้อขับ skid-steer (เร็ว ๆ นี้)</option><option value="ackermann" disabled>บังคับเลี้ยวแบบรถยนต์ Ackermann (เร็ว ๆ นี้)</option></select></label>
+        </div>
+        <details>
+          <summary>ตั้งค่าล้อและตัวถังเพิ่มเติม (ถ้ารู้)</summary>
+          <div class="grid">
+            <label>ระยะใต้ท้อง (m) <input id="groundClearance" type="number" step="0.005" min="0" value="0.05"></label>
+            <label>เส้นผ่านศูนย์กลางล้อ (m) <input id="wheelDiameter" type="number" step="0.005" min="0.02" value="0.16"></label>
+            <label>หน้ากว้างล้อ (m) <input id="wheelWidth" type="number" step="0.005" min="0.01" value="0.05"></label>
+            <label>ระยะห่างล้อซ้าย-ขวา (m) <input id="track" type="number" step="0.01" min="0.05" value="0.60"></label>
+            <label id="wheelbaseRow" style="display:none">wheelbase หน้า-หลัง (m) <input id="wheelbase" type="number" step="0.01" min="0.05" value="0.40"></label>
+            <label>อัตราทดเกียร์ i <input id="gearRatio" type="number" step="1" min="1" value="20"></label>
+            <label>ช่องทางแคบสุดที่ต้องผ่าน (m) <input id="minAisle" type="number" step="0.05" min="0" value="1.2"></label>
+            <label>CoG ของที่บรรทุกเหนือตัวถัง (m) <input id="cogOffsetZ" type="number" step="0.05" value="0.25"></label>
+            <label class="check"><input id="robotMassManual" type="checkbox"> กำหนดมวลหุ่นเอง</label>
+            <label>มวลหุ่นเปล่า (kg) <input id="robotMass" type="number" step="0.5" min="1" value="50" disabled></label>
+          </div>
+        </details>
+      </section>
+
+      <section class="step" id="s3">
+        <h2>3 · วิ่งเร็วแค่ไหน นานแค่ไหน</h2>
+        <div class="hint"><b>ความเร็วกำหนดมอเตอร์ เวลากำหนดแบต</b> — หุ่นในอาคารส่วนใหญ่ 0.5–1.0 m/s; แรงดันระบบ 12 V สำหรับหุ่นเล็ก, 24 V ทั่วไป, 48 V สำหรับหุ่นหนัก</div>
+        <div class="grid">
+          <label>ความเร็วสูงสุด (m/s) <input id="vMax" type="number" step="0.1" min="0.1" max="5" value="1.0"></label>
+          <label>ใช้งานต่อการชาร์จ (h) <input id="runtimeH" type="number" step="0.5" min="0.5" value="8"></label>
+        </div>
+        <h3>แรงดันระบบไฟ <span class="muted">— ระบบแนะนำให้จากกำลังที่ต้องใช้ กดเลือกเองได้ อุปกรณ์ในขั้น 4 จะกรองตามนี้</span></h3>
+        <div class="volt" id="voltCards">
+          <button type="button" class="vcard" data-v="12"><b>12 V</b><span>หุ่นเล็ก / หุ่นเรียน · &lt; 150 W</span><small>DC/BLDC 60 W · Li-ion 12 V · ไดรเวอร์ serial</small></button>
+          <button type="button" class="vcard" data-v="24"><b>24 V</b><span>หุ่นบริการ / ทั่วไป · 150–700 W</span><small>BLDC 100–200 W · LiFePO4 24 V · TESR MD-200</small></button>
+          <button type="button" class="vcard" data-v="48"><b>48 V</b><span>AMR หนัก / โลจิสติกส์ · &gt; 700 W</span><small>BLDC 400 W · LiFePO4 48 V · TESR MD-400</small></button>
+        </div>
+        <select id="busV" hidden><option>12</option><option>24</option><option selected>48</option></select>
+        <details>
+          <summary>ตั้งค่าการเคลื่อนที่เพิ่มเติม</summary>
+          <div class="grid">
+            <label>อัตราเร่งสูงสุด a_max (m/s²) <input id="aMax" type="number" step="0.1" min="0.1" max="5" value="0.5"></label>
+            <label>หมุนเร็วสุด w_max (rad/s) <input id="wMax" type="number" step="0.1" min="0.1" max="6.28" value="1.0"></label>
+            <label>ความชันสูงสุด (°) <input id="slopeDeg" type="number" step="0.5" min="0" max="30" value="5"></label>
+            <label>safety margin สำหรับ Nav (m) <input id="margin" type="number" step="0.01" min="0" value="0.05"></label>
+          </div>
+        </details>
+      </section>
+
+      <section class="step" id="s4">
+        <h2>4 · อุปกรณ์</h2>
+        <div class="hint"><b>เลือกให้แล้วจากผลคำนวณ แต่ไม่ล็อก</b> — ทุกช่องเปลี่ยนได้ เช่นมีแบต 12 V อยู่แล้วก็ใช้ได้ ระบบจะบอกว่าต้องต่ออนุกรมกี่ก้อนหรือต้องมี DC-DC และคิด BOM ให้ ถ้าหุ่นต้องเดินเอง (SLAM/Nav) ต้องมี LiDAR อย่างน้อย 1 ตัว</div>
+        <div class="grid">
+          <label>ล้อ + มอเตอร์ <select id="motor"></select></label>
+          <label>Low-level control (ไดรเวอร์) <select id="driver"></select></label>
+          <label>แบตเตอรี่ <select id="battery"></select></label>
+          <label>คอมพิวเตอร์ <select id="compute"></select></label>
+          <label>LiDAR <select id="lidar"></select></label>
+          <label>จำนวน / ตำแหน่ง LiDAR <select id="lidarLayout"><option value="front1">1 ตัว หน้า</option><option value="diag2">2 ตัว เฉียง (หน้าซ้าย + หลังขวา) — แบบ KURO-X / Beary-X</option><option value="fr2">2 ตัว หน้า + หลัง</option><option value="rear3">3 ตัว หน้า + มุมหลัง 2</option><option value="corner4">4 ตัว ทุกมุม</option></select></label>
+          <label>กล้อง depth <select id="camera"></select></label>
+          <label>จำนวนกล้อง <select id="cameraLayout"><option value="front1">1 ตัว หน้า</option><option value="fr2">2 ตัว หน้า + หลัง</option></select></label>
+          <label>IMU <select id="imu"></select></label>
+          <label class="check"><input id="estop" type="checkbox" checked> มี E-stop</label>
+          <label>จำนวนไดรเวอร์ <input id="driverCount" type="number" step="1" min="1" max="4" value="1"></label>
+        </div>
+        <details>
+          <summary>ดูตัวเลือกมอเตอร์และแบตทั้งหมด พร้อมเหตุผล</summary>
+          <div class="two"><div><h3>มอเตอร์</h3><div id="motorRec"></div></div><div><h3>แบตเตอรี่</h3><div id="batteryRec"></div></div></div>
+        </details>
+        <details>
+          <summary>ตั้งค่าโครงการ / แคตตาล็อกราคา</summary>
+          <div class="grid">
+            <label>package prefix <input id="prefix" value="tesr_robot"></label>
+            <label>คำอธิบาย <input id="description" value="300 kg AMR สำหรับโลจิสติกส์ในโรงงาน"></label>
+            <label>ประเภทงาน <select id="application"><option value="amr">AMR</option><option value="agv">AGV</option><option value="service">Service</option><option value="delivery">Delivery</option><option value="inspection">Inspection</option><option value="research">Research / Education</option><option value="mobile_manipulator">Mobile manipulator</option><option value="outdoor">Outdoor</option><option value="custom">Custom</option></select></label>
+          </div>
+          <div class="catalog" style="margin-top:8px">
+            <input id="catalogRef" placeholder="ลิงก์ Google Sheet ราคาของทีม (ว่าง = data/products.csv)">
+            <button class="mini" id="loadCatalog">โหลด</button>
+          </div>
+          <p class="muted" id="catalogStatus">—</p>
+        </details>
+      </section>
+
+      <div class="navrow">
+        <button class="ghost" id="prevStep">← ย้อนกลับ</button>
+        <span class="muted" id="stepText"></span>
+        <button class="gold" id="nextStep">ถัดไป →</button>
+      </div>
+    </div>
+
+    <div class="panel sticky">
+      <h2>หุ่นของคุณ <small>อัปเดตทันทีที่แก้ค่า</small></h2>
+      <div class="kpi" id="kpi"></div>
+      <div id="compatOut"></div>
+      <details>
+        <summary>รายละเอียดการคำนวณ</summary>
+        <h3>ระบบขับ</h3><div id="drivetrainOut"></div>
+        <h3>พลังงาน</h3><div id="powerOut"></div>
+        <h3>Nav2</h3><div id="navOut"></div>
+      </details>
+    </div>
+  </div>
+
+  <div class="panel" id="bomPanel">
+    <h2>รายการสั่งซื้อ <small>แยกตามหมวด · ราคาและปุ่มซื้อจาก TESR Shop</small></h2>
+    <div id="bomOut"></div>
+    <div class="actions"><button class="mini ghost" id="downloadBom">ดาวน์โหลด BOM (CSV)</button></div>
+  </div>
+
+  <div class="panel">
+    <h2>ไปต่อ <small>หุ่นจากฟอร์มนี้กลายเป็นโปรเจกต์เดียวกับ Garage</small></h2>
+    <div class="steps">
+      <a href="#" id="toModel"><b>🛠 เปิดใน Garage 3D →</b><small>ดูหุ่นนี้เป็น 3D แต่งต่อ ย้ายเซนเซอร์ ทดลองขับ</small></a>
+      <a href="#" id="toSummary"><b>📋 สรุปสเปก &amp; ใบเสนอราคา →</b><small>เอกสารพร้อมพิมพ์ / PDF ส่งลูกค้า</small></a>
+      <a href="#" id="toBuild"><b>⚙️ สร้าง ROS 2 workspace →</b><small>ตรวจ 16 rules แล้วดาวน์โหลด zip</small></a>
+    </div>
+    <details>
+      <summary>robot.yaml ของหุ่นนี้</summary>
+      <div class="actions"><button class="mini" id="downloadYaml">ดาวน์โหลด .robot.yaml</button><button class="mini ghost" id="copyYaml">คัดลอก YAML</button><button class="mini ghost" id="downloadDesign">ดาวน์โหลดผลคำนวณ (JSON)</button></div>
+      <textarea id="yamlOut" class="yaml" readonly></textarea>
+      <pre id="cmdOut" class="muted"></pre>
+    </details>
+  </div>
+</main>
+<footer class="tesr">TESR Co., Ltd. · Thai Embedded System and Robotics · ทุกอย่างรันในเบราว์เซอร์ ไม่มีข้อมูลออกจากเครื่องคุณ</footer>
+<script src="./app.js"></script>
+<script src="./garage-core.js"></script>
+<script>
+// Form mode → the one shared project: convert the form design into a Garage state (tesr_rb_garage), then open a page.
+(function () {
+  function toGarage(d) {
+    const G = window.TESR_GARAGE, reg = window.__tesrRegistry;
+    const state = {
+      version: 1, blueprint: null, name: d.name, prefix: d.prefix, description: d.description || d.name,
+      mission: { application: d.application, envType: d.envType, floor: d.floor, payload: d.payload, vMax: d.vMax, aMax: d.aMax, wMax: d.wMax,
+        runtimeH: d.runtimeH, slopeDeg: d.slopeDeg, minAisle: d.minAisle || 0, cogOffsetZ: d.cogOffsetZ },
+      chassis: { shape: 'box', length: d.length, width: d.width, height: d.height, clearance: d.groundClearance, color: 'gunmetal', shell: null },
+      drive: { type: d.drive, wheelDiameter: d.wheelDiameter, wheelWidth: d.wheelWidth, track: d.track, wheelbase: d.wheelbase, gearRatio: d.gearRatio,
+        casterLayout: d.casterLayout || 'front_rear', driverCount: d.driverCount, motor: d.motor, driver: d.driver },
+      power: { busV: d.busV, battery: d.battery }, compute: d.compute, sensors: [], parts: [], estop: !!d.estop,
+      user: { motor: true, driver: true, battery: true, busV: true },
+    };
+    if (d.lidar) state.sensors.push(...G.placeLayout('lidar', d.lidar, d.lidarLayout || 'front1', state, reg));
+    if (d.camera) state.sensors.push(...G.placeLayout('depth_camera', d.camera, d.cameraLayout || 'front1', state, reg));
+    if (d.imu) state.sensors.push(...G.placeLayout('imu', d.imu, null, state, reg));
+    return state;
+  }
+  function go(page) {
+    return (ev) => {
+      ev.preventDefault(); ev.stopImmediatePropagation();
+      const t = window.__tesr; if (!t) return;
+      const reg = window.__tesrRegistry; if (!reg) return;
+      const state = toGarage(t.d), dv = window.TESR_GARAGE.derive(state, reg, []);
+      localStorage.setItem('tesr_rb_garage', JSON.stringify(state));
+      localStorage.removeItem('tesr_rb_garage_shot');
+      const project = JSON.parse(localStorage.getItem('tesr_rb_project') || '{}');
+      Object.assign(project, { yaml: window.TESR_GARAGE.toYaml(state, reg, dv), design: { name: state.name, prefix: state.prefix }, garage: state, saved_at: new Date().toISOString() });
+      localStorage.setItem('tesr_rb_project', JSON.stringify(project));
+      location.href = page;
+    };
+  }
+  fetch('./data/registry.json', { cache: 'no-store' }).then((r) => r.json()).then((reg) => { window.__tesrRegistry = reg; });
+  // capture-phase listeners run before app.js's own onclick handlers
+  document.getElementById('toModel').addEventListener('click', go('./index.html'), true);
+  document.getElementById('toSummary').addEventListener('click', go('./summary.html'), true);
+  document.getElementById('toBuild').addEventListener('click', go('./build.html'), true);
+})();
+</script>
+<script>
+(function () {
+  const steps = ['s1', 's2', 's3', 's4'];
+  const focus = { s1: ['payload'], s2: ['chassis', 'dim'], s3: ['wheel', 'battery'], s4: ['lidar', 'camera', 'compute', 'driver'] };
+  let i = 0;
+  const $ = (id) => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); if (text != null) e.textContent = text; return e; };
+
+  // Top-down illustration of the robot being designed: wheels by drive type, sensor count and placement, dimensions.
+  function drawGuide(d) {
+    const svg = $('guide'); if (!svg || !d) return;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const hl = focus[steps[i]];
+    const L = d.length, W = d.width, sc = Math.min(200 / L, 110 / W), cx = 185, cy = 108, l = L * sc, w = W * sc;
+    const g = (part, color) => { const grp = el('g', { class: `part ${part}${hl.includes(part) ? ' hl' : ''}`, style: `--c:${color}` }); svg.appendChild(grp); return grp; };
+    const label = (x, y, t, anchor = 'middle', part) => svg.appendChild(el('text', { x, y, class: `label${part && hl.includes(part) ? ' hl' : ''}`, 'text-anchor': anchor }, t));
+    // front arrow
+    svg.appendChild(el('path', { d: `M${cx + l / 2 + 14} ${cy} l 14 0 m -5 -5 l 5 5 l -5 5`, stroke: '#9a978f', fill: 'none', 'stroke-width': 1.5 }));
+    label(cx + l / 2 + 21, cy - 9, 'หน้า', 'middle');
+    // chassis
+    const ch = g('chassis', '#4a4a52');
+    ch.appendChild(el('rect', { x: cx - l / 2, y: cy - w / 2, width: l, height: w, rx: 8, fill: '#1c1c22', stroke: 'var(--c)', 'stroke-width': 2 }));
+    // wheels
+    const wh = g('wheel', '#8c8c92'), r = Math.max(7, d.wheelDiameter * sc / 2), wt = Math.max(5, d.wheelWidth * sc);
+    const track = Math.min(d.track * sc, w + wt), wb = Math.min((d.wheelbase || d.length * 0.6) * sc, l - 2 * r);
+    const wheel = (x, y, rot = 0, mec = false) => {
+      const grp = el('g', { transform: `translate(${x} ${y}) rotate(${rot})` });
+      grp.appendChild(el('rect', { x: -r, y: -wt / 2, width: 2 * r, height: wt, rx: 3, fill: '#2a2a30', stroke: 'var(--c)', 'stroke-width': 1.8 }));
+      if (mec) for (let k = -r + 4; k < r - 2; k += 5) grp.appendChild(el('line', { x1: k, y1: -wt / 2 + 1, x2: k + 4, y2: wt / 2 - 1, stroke: 'var(--c)', 'stroke-width': 1 }));
+      wh.appendChild(grp);
+    };
+    if (d.drive === 'differential') {
+      wheel(cx, cy - track / 2); wheel(cx, cy + track / 2);
+      (d.casterSpots || []).forEach((c) => wh.appendChild(el('circle', { cx: cx + c.x * sc, cy: cy - c.y * sc, r: 4.5, fill: '#2a2a30', stroke: 'var(--c)', 'stroke-width': 1.5 })));
+    } else {
+      const steer = d.drive === 'ackermann' ? 18 : 0, mec = d.drive === 'mecanum';
+      wheel(cx + wb / 2, cy - track / 2, steer, mec); wheel(cx + wb / 2, cy + track / 2, steer, mec); wheel(cx - wb / 2, cy - track / 2, 0, mec); wheel(cx - wb / 2, cy + track / 2, 0, mec);
+    }
+    // internals
+    const box = (part, color, x, y, bw, bh, t) => { const grp = g(part, color); grp.appendChild(el('rect', { x: x - bw / 2, y: y - bh / 2, width: bw, height: bh, rx: 4, fill: '#0d0d11', stroke: 'var(--c)', 'stroke-width': 1.8 })); grp.appendChild(el('text', { x, y: y + 3.5, class: 'label', 'text-anchor': 'middle', fill: color }, t)); };
+    const iw = Math.min(46, l * 0.26), ih = Math.min(22, w * 0.42);
+    box('battery', '#2e8b57', cx - l * 0.28, cy, iw, ih, 'แบต');
+    box('compute', '#C9A84C', cx, cy, iw, ih, 'คอมพ์');
+    box('driver', '#8b5cf6', cx + l * 0.28, cy, iw, ih, 'ไดรเวอร์');
+    // payload (dashed)
+    const pl = g('payload', '#C9A84C');
+    pl.appendChild(el('rect', { x: cx - l * 0.36, y: cy - w * 0.36, width: l * 0.72, height: w * 0.72, rx: 6, fill: 'rgba(201,168,76,.06)', stroke: 'var(--c)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }));
+    pl.appendChild(el('text', { x: cx, y: cy - w * 0.36 - 5, class: 'label', 'text-anchor': 'middle', fill: '#C9A84C' }, `ของที่บรรทุก ${d.payload} kg`));
+    // lidars
+    const li = g('lidar', '#d0342c');
+    (d.lidarSpots || []).forEach((p) => { const x = cx + p.x * sc, y = cy - p.y * sc, a = -p.yaw;
+      li.appendChild(el('circle', { cx: x, cy: y, r: 13, fill: 'none', stroke: 'var(--c)', 'stroke-width': 1, 'stroke-dasharray': '2 3' }));
+      li.appendChild(el('path', { d: `M${x} ${y} L${x + 16 * Math.cos(a - 1.3)} ${y + 16 * Math.sin(a - 1.3)} A16 16 0 0 1 ${x + 16 * Math.cos(a + 1.3)} ${y + 16 * Math.sin(a + 1.3)} Z`, fill: 'rgba(208,52,44,.18)', stroke: 'none' }));
+      li.appendChild(el('circle', { cx: x, cy: y, r: 6, fill: '#0d0d11', stroke: 'var(--c)', 'stroke-width': 2 })); });
+    // cameras (FOV wedges)
+    const cm = g('camera', '#3a7bd5');
+    (d.cameraSpots || []).forEach((p) => { const dir = p.x >= 0 ? 1 : -1, x = cx + p.x * sc, y = cy - p.y * sc;
+      cm.appendChild(el('rect', { x: x - (dir > 0 ? 8 : 0), y: y - 5, width: 8, height: 10, rx: 2, fill: '#0d0d11', stroke: 'var(--c)', 'stroke-width': 2 }));
+      cm.appendChild(el('path', { d: `M${x} ${y} l ${dir * 22} -12 l 0 24 z`, fill: 'rgba(58,123,213,.18)', stroke: 'var(--c)', 'stroke-width': 1 })); });
+    // dimensions
+    const dm = g('dim', '#9a978f');
+    const yL = cy + w / 2 + r + 16, xW = cx - l / 2 - 18;
+    dm.appendChild(el('path', { d: `M${cx - l / 2} ${yL} L${cx + l / 2} ${yL} M${xW} ${cy - w / 2} L${xW} ${cy + w / 2}`, stroke: 'var(--c)', 'stroke-width': 1.2 }));
+    dm.appendChild(el('text', { x: cx, y: yL + 11, class: `label${hl.includes('dim') ? ' hl' : ''}`, 'text-anchor': 'middle' }, `ยาว ${L} m`));
+    dm.appendChild(el('text', { x: xW - 4, y: cy + 3, class: `label${hl.includes('dim') ? ' hl' : ''}`, 'text-anchor': 'end' }, `กว้าง ${W} m`));
+    label(cx, 14, ({ differential: '2 ล้อขับ + ล้อประคอง', mecanum: 'Mecanum 4 ล้อ', four_wheel: '4 ล้อขับ skid-steer', ackermann: 'Ackermann' })[d.drive] || d.drive, 'middle', 'wheel');
+  }
+
+  function show(n) {
+    i = Math.max(0, Math.min(steps.length - 1, n));
+    steps.forEach((s, k) => $(s).classList.toggle('now', k === i));
+    [...$('stepbar').children].forEach((e, k) => { e.className = k < i ? 'done' : k === i ? 'now' : ''; });
+    $('prevStep').style.visibility = i === 0 ? 'hidden' : 'visible';
+    $('nextStep').textContent = i === steps.length - 1 ? 'ดูรายการสั่งซื้อ ↓' : 'ถัดไป →';
+    $('stepText').textContent = `ขั้น ${i + 1} / ${steps.length}`;
+    if (window.__tesr) drawGuide(window.__tesr.d);
+  }
+  $('prevStep').onclick = () => show(i - 1);
+  $('nextStep').onclick = () => { if (i === steps.length - 1) $('bomPanel').scrollIntoView({ behavior: 'smooth' }); else show(i + 1); };
+  new MutationObserver(() => { if (window.__tesr) drawGuide(window.__tesr.d); }).observe($('kpi'), { childList: true });
+  show(0);
+})();
+</script>
+</body>
+</html>
