@@ -1,7 +1,7 @@
 /* TESR Robot Builder — Garage 3D (docs/garage.js)
  * A game-style robot garage that builds a *real* robot: every change updates the Robot Definition, the URDF and the BOM.
  * World = ROS convention (x forward, z up, metres). robotRoot sits at axle height, so child positions are base_link coordinates.
- * Logic/exports live in garage-core.js (window.TESR_GARAGE); sizing formulas in app.js (window.TESR, loaded after DOMContentLoaded
+ * Page: docs/index.html (step 1). Logic/exports live in garage-core.js (window.TESR_GARAGE); sizing formulas in app.js (window.TESR, loaded after DOMContentLoaded
  * so its own page UI never starts here).
  */
 import * as THREE from 'three';
@@ -19,7 +19,7 @@ const G = window.TESR_GARAGE;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (x, d = 1) => (x == null || !isFinite(x) ? '—' : Number(x).toLocaleString('en-US', { maximumFractionDigits: d }));
-const TAU = Math.PI * 2, SNAP = 0.005, SAVE_KEY = 'tesr_rb_garage', PROJECT_KEY = 'tesr_rb_project';
+const TAU = Math.PI * 2, SNAP = 0.005, SAVE_KEY = 'tesr_rb_garage', PROJECT_KEY = 'tesr_rb_project', SHOT_KEY = 'tesr_rb_garage_shot', LITE_KEY = 'tesr_rb_lite';
 const snap = (v) => Math.round(v / SNAP) * SNAP;
 const CHASSIS_HEX = { gunmetal: 0x2a2d36, crimson: 0x7a0c0c, gold: 0x9a7a30, white: 0xdcd9d2, carbon: 0x15161a };
 const ICON = { lidar: '📡', depth_camera: '📷', rgb_camera: '📷', imu: '🧭', motor: '⚙️', motor_driver: '🎛️', battery: '🔋', compute: '🧠', wheel: '🛞', power_supply: '🔌', estop: '🛑' };
@@ -28,7 +28,8 @@ let registry = null, ids = {}, catalog = [], state = null, dv = null, T = null;
 const meshStore = new Map();   // file name → ArrayBuffer (uploaded STL)
 const geoCache = new Map();    // file name → BufferGeometry
 let tab = 'mission', selectedUid = null, mount = null;
-const flags = { scan: true, xray: false, payload: true, spin: false, drive: false };
+const flags = { scan: true, xray: false, payload: true, spin: false, drive: false, lite: false };
+try { const v = localStorage.getItem(LITE_KEY); flags.lite = v == null ? matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 : v === '1'; } catch (_) { /* private mode */ }
 
 const status = (m) => { $('gStatus').textContent = m; };
 const banner = (m) => { const b = $('banner'); b.hidden = !m; b.innerHTML = m || ''; };
@@ -71,10 +72,19 @@ const rimLight = new THREE.PointLight(0xb3171b, 18, 9); rimLight.position.set(-2
 const goldLight = new THREE.PointLight(0xc9a84c, 10, 8); goldLight.position.set(2.2, 2.6, 0.8); scene.add(goldLight);
 
 const composer = new EffectComposer(renderer);
+// Light mode (old laptops / phones): no bloom, no shadows, 1× pixel ratio
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.6, 0.45, 0.82);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+function applyQuality() {
+  bloom.enabled = !flags.lite;
+  renderer.shadowMap.enabled = !flags.lite;
+  renderer.setPixelRatio(flags.lite ? 1 : Math.min(devicePixelRatio, 2));
+  scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true; }); });
+  const b = document.querySelector('#tools button[data-tool="lite"]'); if (b) b.classList.toggle('on', flags.lite);
+  resize();
+}
 
 // ---- showroom platform
 const stageFx = new THREE.Group(); scene.add(stageFx);
@@ -701,6 +711,7 @@ function toggleTool(t) {
   if (t === 'xray') applyXray();
   if (t === 'spin') controls.autoRotate = flags.spin;
   if (t === 'payload') buildRobot();
+  if (t === 'lite') { try { localStorage.setItem(LITE_KEY, flags.lite ? '1' : '0'); } catch (_) { /* ignore */ } applyQuality(); }
   if (t === 'drive') {
     keys.clear(); cancelMount();
     if (flags.drive) { select(null); banner('🎮 ทดลองขับ: <kbd>W</kbd>/<kbd>S</kbd> เดินหน้า-ถอย · <kbd>A</kbd>/<kbd>D</kbd> เลี้ยว' + (state.drive.type === 'mecanum' ? ' · <kbd>Q</kbd>/<kbd>E</kbd> สไลด์' : '') + ` · สูงสุด ${state.mission.vMax} m/s · <kbd>Esc</kbd> ออก`); }
@@ -727,12 +738,21 @@ $('exYaml').onclick = () => download(`${state.name}.robot.yaml`, G.toYaml(state,
 $('exUrdf').onclick = () => download(`${state.name}.urdf`, G.toUrdf(state, registry, dv), 'application/xml');
 $('exBom').onclick = () => download(`${state.name}_bom.csv`, T.bomCsv(dv.bom), 'text/csv');
 $('exPng').onclick = () => toggleTool('shot');
-$('exBuild').onclick = () => {
+// One project for every page: the Garage state is the source; step 2 (summary) and step 3 (build) read from it.
+function saveProject(withShot) {
   const project = JSON.parse(localStorage.getItem(PROJECT_KEY) || '{}');
   Object.assign(project, { yaml: G.toYaml(state, registry, dv), design: { name: state.name, prefix: state.prefix }, garage: state, saved_at: new Date().toISOString() });
   localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
-  location.href = './build.html';
-};
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  if (withShot) {
+    const keepSel = selectedUid; tc.detach(); if (selBox) selBox.visible = false;
+    composer.render();
+    try { localStorage.setItem(SHOT_KEY, renderer.domElement.toDataURL('image/jpeg', 0.85)); } catch (_) { /* quota: summary shows no picture */ }
+    if (selBox) selBox.visible = true; if (keepSel) select(keepSel);
+  }
+}
+$('exBuild').onclick = () => { saveProject(true); location.href = './build.html'; };
+$('exSummary').onclick = () => { saveProject(true); location.href = './summary.html'; };
 $('exZip').onclick = async () => {
   if (!window.JSZip) { status('โหลด JSZip ไม่ได้ — ตรวจอินเทอร์เน็ต'); return; }
   const files = G.rosPackage(state, registry, dv), zip = new window.JSZip(), rootDir = zip.folder(`${state.name}_ws`), pkg = `${state.prefix}_description`;
@@ -780,7 +800,7 @@ function loadScript(src) { return new Promise((res, rej) => { const s = document
     state.parts = state.parts || []; state.user = state.user || {};
     $('robotName').value = state.name;
     dv = G.derive(state, registry, catalog);
-    renderTab(); refresh(); buildRobot(); fitView();
+    renderTab(); refresh(); buildRobot(); fitView(); applyQuality();
     $('loading').remove();
   } catch (err) {
     console.error(err);
