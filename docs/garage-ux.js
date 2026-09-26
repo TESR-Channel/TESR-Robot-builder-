@@ -96,6 +96,12 @@ function injectUI() {
 
   const h = document.createElement('div'); h.id = 'uxHint'; document.querySelector('.stage').appendChild(h);
 
+  // how to use the exported files (ROS 2 workspace, robot.yaml, URDF, BOM)
+  const nav = document.querySelector('header.tesr nav');
+  if (nav && !nav.querySelector('a[href="./guide.html"]')) nav.insertAdjacentHTML('beforeend', '<a href="./guide.html"><span class="i18n-th">📘 คู่มือใช้ไฟล์</span><span class="i18n-en">📘 File guide</span></a>');
+  const ex = document.querySelector('#hud .exports');
+  if (ex) ex.insertAdjacentHTML('beforeend', '<a class="wide" href="./guide.html" style="text-align:center;font-size:12.5px;color:var(--gold);padding:6px;border:1px dashed rgba(201,168,76,.5);border-radius:6px;text-decoration:none"><span class="i18n-th">📘 วิธีนำไฟล์ที่ส่งออกไปใช้ (ROS 2)</span><span class="i18n-en">📘 How to use the exported files (ROS 2)</span></a>');
+
   // follow the left tabs so the bar always shows where you are
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) mark(b.dataset.tab === 'mission' ? 1 : 2); });
   // after picking a blueprint, point at the next step
