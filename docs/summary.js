@@ -12,9 +12,9 @@
   const G = window.TESR_GARAGE;
   const QUOTE_KEY = 'tesr_rb_quote';
   const COMPANY = {
-    th: 'บริษัท ทีอีเอสอาร์ จำกัด', en: 'TESR Co., Ltd. · Thai Embedded System and Robotics',
+    th: 'บริษัท ทีอีเอสอาร์ จำกัด', en: 'TESR Co.,Ltd.',
     address: '112/296 หมู่บ้าน เพอร์เฟค มาสเตอร์พีซ หมู่ที่ 2 ตำบลไทรม้า อำเภอเมืองนนทบุรี จังหวัดนนทบุรี 11000',
-    addressEn: '112/296 Perfect Masterpiece Village, Moo 2, Sai Ma, Mueang Nonthaburi, Nonthaburi 11000, Thailand',
+    addressEn: '112/296 Perfect Masterpiece village moo.2, Sai Ma sub district, Mueang Nonthaburi district, Nonthaburi 11000',
     taxId: '0105560083185', web: 'tesrshop.com',
   };
   const isEn = () => (window.TESR_I18N && window.TESR_I18N.lang === 'en');
@@ -45,6 +45,63 @@
     saveQuote();
   }
   const saveQuote = () => { try { localStorage.setItem(QUOTE_KEY, JSON.stringify(quote)); } catch (_) { /* ignore */ } };
+
+  const L = (th, en) => (isEn() ? en : th);
+  const mm = (m) => Math.round(m * 1000);
+  // The chassis frame is not sold: the customer builds it. This turns the Garage design into a practical starting point —
+  // extrusion size, cut list, plates, wheel / caster / sensor mounting — to be checked by the customer's engineer.
+  function frameGuide() {
+    const s = state, c = s.chassis, dr = s.drive, m = s.mission;
+    const load = dv.totalMass;
+    const prof = load <= 40 ? { id: '2020', a: 0.02 } : load <= 150 ? { id: '3030', a: 0.03 } : { id: '4040', a: 0.04 };
+    const plateT = load <= 30 ? 3 : load <= 100 ? 5 : 6;
+    const wheelR = dr.wheelDiameter / 2, H = c.height, round = c.shape === 'round';
+    const rows = [];
+    if (round) {
+      rows.push([L('แผ่นฐาน (กลม)', 'Base plate (round)'), `Ø${mm(c.width)} mm · ${L('อะลูมิเนียม', 'aluminium')} ${plateT} mm`, 1]);
+      rows.push([L('แผ่นบน (กลม)', 'Top plate (round)'), `Ø${mm(c.width)} mm · ${L('อะลูมิเนียม', 'aluminium')} ${Math.max(3, plateT - 1)} mm`, 1]);
+      rows.push([L('เสาค้ำ (standoff)', 'Standoffs'), `${mm(H - 2 * plateT / 1000)} mm · M6`, load > 40 ? 6 : 4]);
+    } else {
+      const cross = mm(c.width - 2 * prof.a), post = mm(H - 2 * prof.a), nCross = c.length > 0.8 ? 6 : 4;
+      rows.push([L(`โปรไฟล์ ${prof.id} แนวยาว`, `${prof.id} extrusion, long rails`), `${mm(c.length)} mm`, 4]);
+      rows.push([L(`โปรไฟล์ ${prof.id} แนวขวาง`, `${prof.id} extrusion, cross rails`), `${cross} mm`, nCross]);
+      rows.push([L(`โปรไฟล์ ${prof.id} เสาตั้ง`, `${prof.id} extrusion, posts`), `${post} mm`, 4]);
+      rows.push([L('ฉากยึดมุม + น็อต T-nut', 'Corner brackets + T-nuts'), `${prof.id}`, (nCross + 4) * 2]);
+      rows.push([L('แผ่นบน (รับของ)', 'Top plate (payload deck)'), `${mm(c.length)} × ${mm(c.width)} mm · ${L('อะลูมิเนียม', 'aluminium')} ${plateT} mm`, 1]);
+      rows.push([L('แผ่นฐาน (วางแบต/บอร์ด)', 'Base plate (battery / electronics)'), `${mm(c.length - 2 * prof.a)} × ${cross} mm · ${L('อะลูมิเนียม', 'aluminium')} 3 mm`, 1]);
+      const total = (4 * c.length + nCross * (c.width - 2 * prof.a) + 4 * (H - 2 * prof.a));
+      rows.push([L('รวมความยาวโปรไฟล์', 'Total extrusion length'), `≈ ${fmt(total, 2)} m`, '—']);
+    }
+    const nDrive = dr.type === 'mecanum' ? 4 : 2;
+    const wheelPos = dr.type === 'mecanum'
+      ? `x = ±${mm(dr.wheelbase / 2)} mm, y = ±${mm(dr.track / 2)} mm`
+      : `x = 0, y = ±${mm(dr.track / 2)} mm`;
+    const mounts = [
+      [L('ล้อขับ', 'Drive wheels'), `${nDrive} × Ø${mm(dr.wheelDiameter)} mm · ${wheelPos} · ${L('แกนล้อสูงจากพื้น', 'axle height')} ${mm(wheelR)} mm`],
+      [L('ล้อประคอง', 'Casters'), dr.type === 'mecanum' ? L('ไม่ต้องใช้ (mecanum)', 'not needed (mecanum)') : `${CASTER[dr.casterLayout] || dr.casterLayout} · ${L('ต้องสูงเท่าแกนล้อขับ ปรับด้วยแหวนรอง/สปริง', 'must match the drive axle height — shim or spring-load')}`],
+      [L('ระยะใต้ท้อง', 'Ground clearance'), `${mm(c.clearance)} mm`],
+      [L('ความสูงตัวถัง / ทั้งคัน', 'Body height / overall'), `${mm(H)} mm / ${mm(c.clearance + H)} mm`],
+      [L('น้ำหนักที่โครงต้องรับ', 'Load the frame must carry'), `${fmt(load, 0)} kg (${L('หุ่น', 'robot')} ${fmt(dv.robotMass, 0)} + ${L('ของ', 'payload')} ${fmt(m.payload, 0)})`],
+      [L('จุดศูนย์ถ่วงที่คำนวณไว้', 'Centre of gravity (as designed)'), `${mm(dv.tip.hCog)} mm ${L('จากพื้น — วางแบตไว้ต่ำและกลางตัว เพื่อไม่ให้สูงกว่านี้', 'above ground — keep the battery low and centred so it stays at or below this')}`],
+    ];
+    const lidarZ = dv.sensors.filter((x) => x.category === 'lidar').map((x) => `${esc(x.id)} z=${mm(x.pos[2])} mm`).join(', ');
+    const tips = [
+      L('ระนาบสแกนของ LiDAR ต้องโล่ง 360° ในมุมที่ออกแบบไว้ — ห้ามมีเสาหรือขอบแผ่นบังระดับความสูงนี้', 'Keep the LiDAR scan plane clear over its designed field of view — no posts or plate edges at that height') + (lidarZ ? ` (${lidarZ})` : ''),
+      L('ยึดเซนเซอร์ตามตาราง "ตำแหน่งติดตั้งเซนเซอร์" (อ้างจาก base_link = กึ่งกลางแกนล้อขับ บนพื้น)', 'Mount the sensors per the "Sensor mounting positions" table (base_link = centre between the drive wheels, at ground level)'),
+      L('ติดปุ่ม E-stop ในตำแหน่งที่เอื้อมถึงได้จากทุกด้าน ตัดไฟมอเตอร์โดยตรง', 'Place the E-stop where it can be reached from any side; it must cut motor power directly'),
+      L('ใช้ไฟล์ URDF / mesh ใน package description (ขั้น 3) เป็นแบบอ้างอิงขนาด หรือส่งเข้าโปรแกรม CAD', 'Use the URDF / meshes in the description package (step 3) as the dimensional reference or import them into CAD'),
+      L('แนวทางนี้เป็นจุดเริ่มต้น — ให้วิศวกรตรวจความแข็งแรงก่อนผลิตจริง', 'This is a starting point — have an engineer check strength before building'),
+    ];
+    return `<h2>${L('แนวทางสร้างโครงรถ', 'Chassis frame build guide')} <span class="muted" style="text-transform:none;letter-spacing:0">(${L('ลูกค้าจัดทำเอง — ไม่รวมในใบเสนอราคา', 'built by the customer — not included in this quotation')})</span></h2>
+      <div class="grid2">
+        <div><h3>${L('รายการวัสดุ / ตัดชิ้นงาน', 'Material & cut list')}</h3>
+          <table class="t"><thead><tr><th>${L('ชิ้นงาน', 'Part')}</th><th>${L('ขนาด', 'Size')}</th><th class="num">${L('จำนวน', 'Qty')}</th></tr></thead>
+          <tbody>${rows.map(([a, b, q]) => `<tr><td>${a}</td><td>${b}</td><td class="num">${q}</td></tr>`).join('')}</tbody></table></div>
+        <div><h3>${L('ตำแหน่งติดตั้งหลัก', 'Key mounting positions')}</h3>${kvT(mounts)}</div>
+      </div>
+      <ul class="note" style="margin:8px 0 0 18px;padding:0">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
+  }
+  const kvT = (rows) => `<table class="kv">${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`;
 
   function totals() {
     const sub = dv.bom.lines.reduce((s, l) => s + (l.lineTotal || 0), 0);
@@ -79,7 +136,7 @@
           <b style="font-size:17px">${COMPANY.th}</b><span style="display:block;font-size:12px;color:#8B0000;font-family:'Chakra Petch'">${COMPANY.en}</span>
           <span style="display:block;font-size:11.5px;line-height:1.45;margin-top:3px">${COMPANY.address}</span>
           <span style="display:block;font-size:11px;line-height:1.4;color:#8a857a">${COMPANY.addressEn}</span>
-          <span style="display:block;font-size:11.5px;margin-top:2px">เลขประจำตัวผู้เสียภาษี (Tax ID) <b>${COMPANY.taxId}</b> · ${COMPANY.web}</span></div></div>
+          <span style="display:block;font-size:11.5px;margin-top:2px">${isEn() ? 'Tax ID' : 'เลขประจำตัวผู้เสียภาษี / Tax ID'}: <b>${COMPANY.taxId}</b> · ${COMPANY.web}</span></div></div>
         <div class="doc-meta"><h1>ใบสรุปสเปก &amp; ใบเสนอราคา</h1><div style="font-family:'Chakra Petch';font-size:12px;letter-spacing:1px;color:#8B0000;margin-bottom:6px">QUOTATION</div>
           <div>เลขที่ <b>${esc(quote.no)}</b></div>
           <div>วันที่ <b id="qDate">${longDate(quote.date)}</b></div>
@@ -132,6 +189,7 @@
         ${kv([['พลังงานที่ต้องการ', `${fmt(dv.pw.energyWh, 0)} Wh (${fmt(dv.pw.capacityAh, 1)} Ah @ ${s.power.busV} V)`], ['เสถียรภาพ (a_tip vs a_lat)', `${fmt(dv.tip.aTip, 2)} vs ${fmt(dv.tip.aLat, 2)} m/s² → ${dv.tip.ok ? 'ผ่าน' : 'เสี่ยงพลิก'}`],
           ['จุดศูนย์ถ่วง (สูงจากพื้น)', `${fmt(dv.tip.hCog, 2)} m`], ['ค่าที่ใช้', `C_rr ${dv.dt.cRr} · η 0.85 · duty 0.6 · DoD 0.8`]])}
       </div>
+      ${frameGuide()}
       ${warn.length ? `<h2>ข้อควรทราบ</h2>${warn.map((w) => `<div class="wi ${w.lvl}">${esc(w.txt)}</div>`).join('')}` : ''}
 
       <h2>ใบเสนอราคาอุปกรณ์</h2>
@@ -143,8 +201,9 @@
       <table class="t"><thead><tr><th class="num">#</th><th>รายการ</th><th>SKU / ลิงก์</th><th class="num">จำนวน</th><th class="num">ราคา/หน่วย (฿)</th><th class="num">รวม (฿)</th></tr></thead>
         <tbody>${bomRows}</tbody><tfoot id="tfoot"></tfoot></table>
       <p class="note" id="priceNote"></p>
+      <p class="note">${L('โครงรถ / ตัวถัง: ลูกค้าจัดทำเอง ไม่รวมในใบเสนอราคานี้ — ดู "แนวทางสร้างโครงรถ" ด้านบน', 'Chassis frame: built by the customer, not included in this quotation — see the "Chassis frame build guide" above')}</p>
       <p class="note">ราคาอุปกรณ์จาก TESR Shop ณ วันที่ออกเอกสาร · ยังไม่รวมค่าประกอบ ติดตั้ง ซอฟต์แวร์ และอบรม เว้นแต่ระบุในหมายเหตุ · สเปกคำนวณโดย TESR Robot Builder (ตรวจด้วยกฎวิศวกรรม 16 ข้อก่อนสร้าง ROS 2 workspace)</p>
-      <div class="sign"><div>ผู้เสนอราคา · TESR Co., Ltd.</div><div>ผู้อนุมัติ / ลูกค้า</div></div>
+      <div class="sign"><div>${isEn() ? 'Quoted by' : 'ผู้เสนอราคา'} · ${COMPANY.en}</div><div>ผู้อนุมัติ / ลูกค้า</div></div>
     </div>`;
     renderTotals();
   }
@@ -167,7 +226,7 @@
     saveQuote(); if (['discount', 'vat', 'validDays', 'date'].includes(k)) renderTotals();
   });
   // dates follow the TH / EN switch (Thai: Buddhist year)
-  document.addEventListener('click', (e) => { if (e.target.closest('.lang-switch button') && state) setTimeout(renderTotals, 0); });
+  document.addEventListener('click', (e) => { if (e.target.closest('.lang-switch button') && state && dv) setTimeout(render, 0); });
   $('aBack').onclick = () => { location.href = './index.html'; };
   $('aPrint').onclick = () => window.print();
   $('aBom').onclick = () => state && download(`${state.name}_bom.csv`, T.bomCsv(dv.bom), 'text/csv');
