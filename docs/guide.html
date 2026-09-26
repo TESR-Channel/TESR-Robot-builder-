@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESR Robot Builder — คู่มือนำไฟล์ไปใช้งาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
+<style>
+  header.tesr nav .navsep { color:var(--muted); font-size:11.5px; margin:0 6px 0 4px; opacity:.7; }
+  html[lang="en"] .th, html:not([lang="en"]) .en { display:none !important; }
+  .g { max-width:980px; margin:0 auto; padding:18px 16px 60px; }
+  .hero { padding:20px 22px; border:1px solid rgba(201,168,76,.3); border-radius:14px; background:linear-gradient(180deg,#16161c,#0b0b0f); }
+  .hero h1 { font-family:'Chakra Petch'; margin:0 0 6px; font-size:26px; } .hero h1 span { color:var(--gold); }
+  .hero p { color:var(--muted); margin:4px 0; }
+  .me { display:inline-flex; gap:8px; flex-wrap:wrap; margin-top:10px; } .me span { border:1px solid rgba(201,168,76,.4); border-radius:14px; padding:2px 10px; font-size:12.5px; color:var(--gold-2); }
+  .toc { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 4px; } .toc a { text-decoration:none; font-size:12.5px; color:var(--text); border:1px solid var(--line); border-radius:16px; padding:4px 11px; background:#101014; }
+  .toc a:hover { border-color:var(--gold); color:var(--gold); }
+  section.s { margin-top:18px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:#0f0f13; }
+  section.s h2 { font-family:'Chakra Petch'; color:var(--gold); font-size:17px; margin:0 0 8px; display:flex; gap:10px; align-items:center; }
+  section.s h2 .n { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:14px; color:#1a1300; background:linear-gradient(180deg,#ffe08a,#C9A84C); flex:none; }
+  section.s p, section.s li { font-size:14px; } section.s ul, section.s ol { margin:6px 0; padding-left:20px; }
+  .code { position:relative; margin:8px 0; }
+  .code pre { margin:0; background:#07070a; border:1px solid #23232b; border-radius:9px; padding:10px 12px; color:#d7e3c8; font-size:12.5px; white-space:pre-wrap; word-break:break-all; }
+  .code button { position:absolute; top:6px; right:6px; font-size:11.5px; padding:2px 10px; background:#1c1c22; }
+  table.f { width:100%; border-collapse:collapse; font-size:13.5px; } table.f th { text-align:left; color:var(--gold); padding:6px; border-bottom:1px solid var(--crimson); }
+  table.f td { padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top; } table.f td:first-child { white-space:nowrap; }
+  @media (max-width:700px) { table.f td:first-child { white-space:normal; } }
+  .tip { border-left:3px solid var(--gold); background:#131210; padding:8px 12px; border-radius:0 8px 8px 0; font-size:13.5px; margin:8px 0; }
+  .warn { border-left-color:var(--warn); }
+  .contact { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:8px; }
+  .contact a { display:block; text-decoration:none; color:var(--text); border:1px solid rgba(201,168,76,.4); border-radius:10px; padding:10px 12px; background:#121216; }
+  .contact a b { display:block; color:var(--gold); font-family:'Chakra Petch'; } .contact a:hover { border-color:var(--gold); }
+  @media (max-width:700px) { .contact { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav><a href="./index.html">1 · 🛠 Garage 3D</a><a href="./summary.html">2 · 📋 สรุปสเปก &amp; ใบเสนอราคา</a><a href="./build.html">3 · ⚙️ สร้าง ROS 2 workspace</a><a class="active" href="./guide.html"><span class="i18n-th">📘 คู่มือใช้ไฟล์</span><span class="i18n-en">📘 File guide</span></a></nav>
+</header>
+<main class="g">
+  <div class="hero">
+    <h1><span class="th">📘 คู่มือนำไฟล์ไปใช้งาน</span><span class="en">📘 Using the exported files</span></h1>
+    <p class="th">สำหรับผู้ที่มีพื้นฐาน ROS 2 (รู้จัก terminal, <code>colcon build</code>, <code>ros2 launch</code>) — ทำตามทีละขั้นจากบนลงล่าง คำสั่งด้านล่างใส่ชื่อหุ่นของคุณไว้แล้ว กด “คัดลอก” แล้ววางใน terminal ได้เลย</p>
+    <p class="en">For users with basic ROS 2 experience (terminal, <code>colcon build</code>, <code>ros2 launch</code>). Follow the steps top to bottom — the commands already contain your robot's name, just press “Copy” and paste them into a terminal.</p>
+    <div class="me"><span>🤖 <b id="meName">my_robot</b></span><span>prefix <b id="mePre">my_robot</b></span><span>ROS 2 Jazzy · Ubuntu 24.04</span></div>
+    <div class="toc">
+      <a href="#files"><span class="th">0 · ไฟล์ไหนใช้ทำอะไร</span><span class="en">0 · Which file is for what</span></a>
+      <a href="#prep"><span class="th">1 · เตรียมเครื่อง</span><span class="en">1 · Prepare the PC</span></a>
+      <a href="#build"><span class="th">2 · Build workspace</span><span class="en">2 · Build the workspace</span></a>
+      <a href="#sim"><span class="th">3 · จำลอง + นำทาง</span><span class="en">3 · Simulate + navigate</span></a>
+      <a href="#map"><span class="th">4 · บันทึกแผนที่</span><span class="en">4 · Save the map</span></a>
+      <a href="#real"><span class="th">5 · หุ่นจริง</span><span class="en">5 · Real robot</span></a>
+      <a href="#tune"><span class="th">6 · ปรับแต่ง</span><span class="en">6 · Tuning</span></a>
+      <a href="#fix"><span class="th">7 · แก้ปัญหา</span><span class="en">7 · Troubleshooting</span></a>
+      <a href="#contact"><span class="th">ติดต่อ TESR</span><span class="en">Contact TESR</span></a>
+    </div>
+  </div>
+
+  <section class="s" id="files">
+    <h2><span class="n">0</span><span class="th">ไฟล์ไหนใช้ทำอะไร</span><span class="en">Which file is for what</span></h2>
+    <table class="f">
+      <tr><th><span class="th">ไฟล์</span><span class="en">File</span></th><th><span class="th">ได้จาก</span><span class="en">From</span></th><th><span class="th">ใช้ทำอะไร</span><span class="en">Use it to</span></th></tr>
+      <tr><td><b><span class="vN">my_robot</span>_ws.zip</b> ⭐</td><td><span class="th">ขั้น 3 · สร้าง ROS 2 workspace</span><span class="en">Step 3 · Build ROS 2 workspace</span></td>
+        <td><span class="th"><b>ไฟล์หลัก</b> — workspace ครบ 5 packages (description, control, gazebo, navigation, bringup) ใช้จำลองใน Gazebo ทำแผนที่ นำทาง และรันกับหุ่นจริง → ทำตามขั้น 1–5 ในหน้านี้</span>
+        <span class="en"><b>The main file</b> — a complete workspace with 5 packages (description, control, gazebo, navigation, bringup) for Gazebo simulation, mapping, navigation and the real robot → follow steps 1–5 below</span></td></tr>
+      <tr><td><b><span class="vN">my_robot</span>.robot.yaml</b></td><td><span class="th">Garage / ขั้น 2 / ขั้น 3</span><span class="en">Garage / step 2 / step 3</span></td>
+        <td><span class="th">ไฟล์แบบหุ่น (แหล่งข้อมูลจริง) — เก็บไว้ แล้วเปิดใหม่ในขั้น 3 (⚙️ ขั้นสูง → เปิดไฟล์ .robot.yaml) เพื่อสร้าง workspace ใหม่เมื่อแก้แบบ</span>
+        <span class="en">The robot design (source of truth) — keep it; reopen it in step 3 (⚙️ Advanced → Open .robot.yaml) to regenerate the workspace after a change</span></td></tr>
+      <tr><td><b>URDF</b></td><td>Garage</td>
+        <td><span class="th">โมเดลหุ่นไฟล์เดียว — เปิดดูใน RViz หรือนำเข้าโปรแกรม CAD / simulator อื่น (ใน workspace มีแบบ xacro ที่สมบูรณ์กว่าอยู่แล้ว)</span>
+        <span class="en">Single-file robot model — view it in RViz or import into CAD / another simulator (the workspace already contains the fuller xacro version)</span></td></tr>
+      <tr><td><b>ROS 2 Jazzy package (.zip)</b></td><td>Garage</td>
+        <td><span class="th">แพ็กเกจ description อย่างเดียว สำหรับดูหุ่นเร็ว ๆ ใน RViz/Gazebo — ถ้าจะใช้งานจริงให้ใช้ <b>_ws.zip จากขั้น 3</b></span>
+        <span class="en">Description package only, for a quick look in RViz/Gazebo — for real work use the <b>_ws.zip from step 3</b></span></td></tr>
+      <tr><td><b>BOM (CSV)</b></td><td><span class="th">Garage / ขั้น 2</span><span class="en">Garage / step 2</span></td>
+        <td><span class="th">รายการอุปกรณ์ เปิดด้วย Excel / Google Sheets เพื่อสั่งซื้อ</span><span class="en">Parts list — open in Excel / Google Sheets for purchasing</span></td></tr>
+      <tr><td><b><span class="th">ใบเสนอราคา (PDF)</span><span class="en">Quotation (PDF)</span></b></td><td><span class="th">ขั้น 2 · 🖨 พิมพ์ / บันทึก PDF</span><span class="en">Step 2 · 🖨 Print / save PDF</span></td>
+        <td><span class="th">เลือกเครื่องพิมพ์ “Save as PDF” — ได้สเปก ราคา และแนวทางสร้างโครงรถ ส่งต่อให้ทีมจัดซื้อหรือลูกค้าได้</span>
+        <span class="en">Choose the “Save as PDF” printer — spec, prices and the frame build guide, ready for purchasing or your customer</span></td></tr>
+    </table>
+  </section>
+
+  <section class="s" id="prep">
+    <h2><span class="n">1</span><span class="th">เตรียมเครื่อง (ครั้งเดียว)</span><span class="en">Prepare the PC (once)</span></h2>
+    <p class="th">ต้องใช้ <b>Ubuntu 24.04 + ROS 2 Jazzy (desktop)</b> — ถ้าใช้ Windows ให้ติดตั้ง <b>WSL2 + Ubuntu 24.04</b> (เปิดหน้าต่าง Gazebo/RViz ได้เลย) หรือข้ามไปใช้ Docker ในข้อ 7</p>
+    <p class="en">You need <b>Ubuntu 24.04 + ROS 2 Jazzy (desktop)</b>. On Windows use <b>WSL2 + Ubuntu 24.04</b> (Gazebo/RViz windows work), or use Docker (see 7).</p>
+    <p class="th">ถ้ามี ROS 2 Jazzy อยู่แล้ว ติดตั้งเครื่องมือเพิ่มแค่นี้:</p><p class="en">If ROS 2 Jazzy is already installed, just add these tools:</p>
+    <div class="code"><pre>sudo apt update
+sudo apt install -y python3-colcon-common-extensions python3-rosdep unzip ros-jazzy-teleop-twist-keyboard
+sudo rosdep init   # "already initialized" is fine
+rosdep update</pre></div>
+    <div class="tip th">ยังไม่มี ROS 2? ติดตั้งตามคู่มือทางการ <a href="https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html" target="_blank" rel="noopener">docs.ros.org → Jazzy → Ubuntu (deb)</a> เลือกแบบ <code>ros-jazzy-desktop</code></div>
+    <div class="tip en">No ROS 2 yet? Follow the official guide <a href="https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html" target="_blank" rel="noopener">docs.ros.org → Jazzy → Ubuntu (deb)</a> and install <code>ros-jazzy-desktop</code>.</div>
+  </section>
+
+  <section class="s" id="build">
+    <h2><span class="n">2</span><span class="th">แตกไฟล์ + Build workspace</span><span class="en">Unzip + build the workspace</span></h2>
+    <p class="th">ดาวน์โหลด <b><span class="vN">my_robot</span>_ws.zip</b> จากขั้น 3 (ปกติอยู่ใน <code>~/Downloads</code>) แล้วรัน:</p>
+    <p class="en">Download <b><span class="vN">my_robot</span>_ws.zip</b> from step 3 (usually in <code>~/Downloads</code>), then run:</p>
+    <div class="code"><pre>cd ~ && unzip -o ~/Downloads/{N}_ws.zip
+cd ~/{N}_ws
+source /opt/ros/jazzy/setup.bash
+rosdep install --from-paths src -y --ignore-src
+colcon build --symlink-install
+source install/setup.bash</pre></div>
+    <p class="th">ตรวจว่าได้ครบ 5 packages:</p><p class="en">Check that all 5 packages are there:</p>
+    <div class="code"><pre>ros2 pkg list | grep {P}_</pre></div>
+    <div class="tip th">ทุก terminal ใหม่ต้อง <code>source</code> ก่อนใช้งาน — ใส่ไว้ใน <code>~/.bashrc</code> ครั้งเดียวจบ:<br><code>echo "source ~/{N}_ws/install/setup.bash" &gt;&gt; ~/.bashrc</code></div>
+    <div class="tip en">Every new terminal must be <code>source</code>d — add it to <code>~/.bashrc</code> once:<br><code>echo "source ~/{N}_ws/install/setup.bash" &gt;&gt; ~/.bashrc</code></div>
+  </section>
+
+  <section class="s" id="sim">
+    <h2><span class="n">3</span><span class="th">จำลอง + ทำแผนที่ + นำทาง (คำสั่งเดียว)</span><span class="en">Simulate + map + navigate (one command)</span></h2>
+    <div class="code"><pre>ros2 launch {P}_bringup sim.launch.py</pre></div>
+    <ol class="th"><li>Gazebo เปิดโกดัง TESR (โกดังเดียวกับในภารกิจของ Garage) และ RViz จะเห็นแผนที่ค่อย ๆ ขึ้น</li>
+      <li>ใน RViz กด <b>2D Goal Pose</b> แล้วคลิก-ลากบนแผนที่ → หุ่นวางเส้นทางและวิ่งไปเอง พร้อมทำแผนที่ไปด้วย</li>
+      <li>อยากขับเอง เปิดอีก terminal แล้วรัน:</li></ol>
+    <ol class="en"><li>Gazebo opens the TESR warehouse (the same one as the Garage missions) and RViz shows the map building up</li>
+      <li>In RViz press <b>2D Goal Pose</b> and click-drag on the map → the robot plans and drives there while mapping</li>
+      <li>To drive by hand, open another terminal and run:</li></ol>
+    <div class="code"><pre>ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true</pre></div>
+    <p class="th">ดูแค่ตัวหุ่นใน RViz (ไม่เปิด Gazebo):</p><p class="en">Just look at the robot model in RViz (no Gazebo):</p>
+    <div class="code"><pre>ros2 launch {P}_description display.launch.py</pre></div>
+  </section>
+
+  <section class="s" id="map">
+    <h2><span class="n">4</span><span class="th">บันทึกแผนที่ → นำทางด้วย AMCL</span><span class="en">Save the map → navigate with AMCL</span></h2>
+    <p class="th">ขับสำรวจจนแผนที่ครบ แล้ว (ในอีก terminal) บันทึกแผนที่:</p><p class="en">Explore until the map is complete, then (in another terminal) save it:</p>
+    <div class="code"><pre>ros2 run nav2_map_server map_saver_cli -f ~/{N}_map</pre></div>
+    <p class="th">ครั้งต่อไปใช้แผนที่เดิม (ไม่ทำแผนที่ใหม่) — ตั้งตำแหน่งเริ่มต้นด้วย <b>2D Pose Estimate</b> ใน RViz ก่อนสั่ง Goal:</p>
+    <p class="en">Next time reuse the saved map (no new mapping) — set the start pose with <b>2D Pose Estimate</b> in RViz before sending goals:</p>
+    <div class="code"><pre>ros2 launch {P}_bringup sim.launch.py slam:=false map:=$HOME/{N}_map.yaml</pre></div>
+  </section>
+
+  <section class="s" id="real">
+    <h2><span class="n">5</span><span class="th">ใช้กับหุ่นจริง</span><span class="en">Run the real robot</span></h2>
+    <ol class="th">
+      <li>ติดตั้ง workspace เดียวกันบนคอมพิวเตอร์ของหุ่น (ขั้น 1–2)</li>
+      <li>ให้สิทธิ์พอร์ต USB/Serial แล้ว <b>logout–login</b> หนึ่งครั้ง: <code>sudo usermod -aG dialout $USER</code></li>
+      <li>เปิด driver ของเซนเซอร์ (LiDAR/กล้อง ตามรุ่นใน BOM) แล้วตรวจว่ามีข้อมูลเข้า: <code>ros2 topic list</code> และ <code>ros2 topic hz /scan</code></li>
+      <li><b>ทดสอบแบบไม่มีมอเตอร์ก่อน</b> (mock) — ตรวจว่า controller ขึ้นครบ</li>
+      <li>ยกล้อให้ลอยจากพื้น แล้วเปิดโหมดจริง ทดสอบขับด้วย teleop ช้า ๆ</li>
+      <li>วางบนพื้น เปิดพร้อมการนำทาง</li></ol>
+    <ol class="en">
+      <li>Install the same workspace on the robot's computer (steps 1–2)</li>
+      <li>Allow USB/serial access and <b>log out/in</b> once: <code>sudo usermod -aG dialout $USER</code></li>
+      <li>Start the sensor drivers (LiDAR/camera models from the BOM) and check data arrives: <code>ros2 topic list</code>, <code>ros2 topic hz /scan</code></li>
+      <li><b>Test without motors first</b> (mock) — check the controllers come up</li>
+      <li>Lift the wheels off the ground, start real mode and drive slowly with teleop</li>
+      <li>Put it on the floor and start with navigation</li></ol>
+    <div class="code"><pre># 4 · mock (no hardware)
+ros2 launch {P}_bringup robot.launch.py hardware:=mock
+ros2 control list_controllers
+# 5 · real motors, wheels lifted
+ros2 launch {P}_bringup robot.launch.py hardware:=real
+# 6 · real robot + Nav2
+ros2 launch {P}_bringup robot.launch.py hardware:=real nav:=true</pre></div>
+    <div class="tip warn th">⚠️ ทดสอบครั้งแรกทุกครั้ง: ยกล้อลอย ความเร็วต่ำ และมีคนพร้อมกด <b>E-stop</b></div>
+    <div class="tip warn en">⚠️ Every first test: wheels lifted, low speed, and someone ready on the <b>E-stop</b>.</div>
+  </section>
+
+  <section class="s" id="tune">
+    <h2><span class="n">6</span><span class="th">ปรับแต่ง</span><span class="en">Tuning</span></h2>
+    <p class="th"><b>แนะนำ:</b> แก้แบบหุ่นใน Garage แล้วสร้าง workspace ใหม่ในขั้น 3 — ค่าทุกไฟล์จะคำนวณให้ตรงกันเอง ถ้าต้องจูนหน้างาน แก้ไฟล์เหล่านี้ได้เลย (build ด้วย <code>--symlink-install</code> แล้ว แก้แล้ว launch ใหม่ได้ทันที):</p>
+    <p class="en"><b>Recommended:</b> change the design in the Garage and regenerate in step 3 — every file stays consistent. For on-site tuning edit these files (built with <code>--symlink-install</code>, so just relaunch):</p>
+    <table class="f">
+      <tr><th><span class="th">อยากปรับ</span><span class="en">To change</span></th><th><span class="th">ไฟล์</span><span class="en">File</span></th></tr>
+      <tr><td><span class="th">ความเร็ว / ความเร่ง / ระยะห่างสิ่งกีดขวาง</span><span class="en">Speed / acceleration / obstacle distance</span></td><td><code>src/{P}_navigation/config/nav2_params.yaml</code> <span class="muted">(<code>vx_max</code>, <code>inflation_radius</code>)</span></td></tr>
+      <tr><td><span class="th">การทำแผนที่ (SLAM)</span><span class="en">Mapping (SLAM)</span></td><td><code>src/{P}_navigation/config/slam_toolbox.yaml</code></td></tr>
+      <tr><td><span class="th">controller ล้อ (ขนาดล้อ, ระยะล้อ, limit)</span><span class="en">Wheel controller (wheel size, track, limits)</span></td><td><code>src/{P}_control/config/controllers.yaml</code></td></tr>
+      <tr><td><span class="th">ตำแหน่งเซนเซอร์ / ขนาดตัวถัง</span><span class="en">Sensor positions / body size</span></td><td><code>src/{P}_description/urdf/*.xacro</code></td></tr>
+      <tr><td><span class="th">ใส่โมเดล 3D จริง (STL)</span><span class="en">Add the real 3D model (STL)</span></td><td><code>src/{P}_description/meshes/</code> <span class="muted"><span class="th">(หรืออัปโหลด STL ใน Garage → โครงจากไฟล์)</span><span class="en">(or upload the STL in the Garage → your own chassis file)</span></span></td></tr>
+    </table>
+    <div class="tip th">หลังแก้ xacro/URDF ให้ build ใหม่: <code>colcon build --symlink-install --packages-select {P}_description</code></div>
+    <div class="tip en">After editing xacro/URDF rebuild: <code>colcon build --symlink-install --packages-select {P}_description</code></div>
+  </section>
+
+  <section class="s" id="fix">
+    <h2><span class="n">7</span><span class="th">แก้ปัญหาที่เจอบ่อย</span><span class="en">Common problems</span></h2>
+    <table class="f">
+      <tr><th><span class="th">อาการ</span><span class="en">Symptom</span></th><th><span class="th">วิธีแก้</span><span class="en">Fix</span></th></tr>
+      <tr><td><code>Package '{P}_bringup' not found</code></td><td><span class="th">ยังไม่ได้ source — รัน <code>source ~/{N}_ws/install/setup.bash</code></span><span class="en">Not sourced — run <code>source ~/{N}_ws/install/setup.bash</code></span></td></tr>
+      <tr><td><span class="th">rosdep หาแพ็กเกจไม่เจอ</span><span class="en">rosdep cannot resolve a key</span></td><td><span class="th">รัน <code>sudo apt update && rosdep update</code> แล้วลองใหม่</span><span class="en">Run <code>sudo apt update && rosdep update</code> and retry</span></td></tr>
+      <tr><td><span class="th">Gazebo ดำ / กระตุก (VM, WSL)</span><span class="en">Gazebo black / laggy (VM, WSL)</span></td><td><code>export LIBGL_ALWAYS_SOFTWARE=1</code> <span class="th">แล้ว launch ใหม่</span><span class="en">then relaunch</span></td></tr>
+      <tr><td><span class="th">RViz ไม่มีแผนที่</span><span class="en">No map in RViz</span></td><td><span class="th">ตรวจ LiDAR: <code>ros2 topic echo /scan --once</code> · ตั้ง Fixed Frame เป็น <code>map</code></span><span class="en">Check the LiDAR: <code>ros2 topic echo /scan --once</code> · set Fixed Frame to <code>map</code></span></td></tr>
+      <tr><td><span class="th">หุ่นไม่ขยับ</span><span class="en">Robot does not move</span></td><td><code>ros2 control list_controllers</code> <span class="th">— ต้องเป็น <b>active</b> ทุกตัว · หุ่นจริง: ตรวจสาย/พอร์ตมอเตอร์ไดรเวอร์ และปุ่ม E-stop</span><span class="en">— all must be <b>active</b> · real robot: check the motor-driver cable/port and the E-stop</span></td></tr>
+    </table>
+    <p class="th">ไม่มี ROS ในเครื่อง? ใช้ Docker (Linux) — รันในโฟลเดอร์ <code>~/{N}_ws</code>:</p>
+    <p class="en">No ROS installed? Use Docker (Linux) — run inside <code>~/{N}_ws</code>:</p>
+    <div class="code"><pre>xhost +local:docker
+docker run -it --rm --net=host -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v "$PWD:/ws" -w /ws osrf/ros:jazzy-desktop-full bash -c "apt-get update -qq && rosdep update && rosdep install --from-paths src -y --ignore-src && colcon build --symlink-install && source install/setup.bash && ros2 launch {P}_bringup sim.launch.py"</pre></div>
+  </section>
+
+  <section class="s" id="contact">
+    <h2><span class="n">☎</span><span class="th">ติดต่อ TESR — สั่งซื้อ · ติดตั้ง · อบรม</span><span class="en">Contact TESR — orders · installation · training</span></h2>
+    <p class="th">ติดขั้นตอนไหน หรืออยากให้ทีม TESR ประกอบ ติดตั้ง และอบรมให้ ติดต่อได้เลย</p>
+    <p class="en">Stuck on a step, or want TESR to assemble, install and train your team? Get in touch.</p>
+    <div class="contact">
+      <a href="https://www.tesrshop.com/line" target="_blank" rel="noopener"><b>LINE</b>www.tesrshop.com/line</a>
+      <a href="mailto:tesrshop@gmail.com"><b>Email</b>tesrshop@gmail.com</a>
+      <a href="tel:0829837768"><b><span class="th">โทร</span><span class="en">Phone</span></b>082-983-7768</a>
+    </div>
+  </section>
+</main>
+<footer class="tesr">TESR Co.,Ltd. · 112/296 Perfect Masterpiece village moo.2, Sai Ma sub district, Mueang Nonthaburi district, Nonthaburi 11000</footer>
+<script>
+/* Personalise every command with the robot from the Garage, and add copy buttons. */
+(function () {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('tesr_rb_garage') || 'null'); } catch (_) { s = null; }
+  const N = (s && s.name) || 'my_robot', P = (s && s.prefix) || N;
+  document.getElementById('meName').textContent = N; document.getElementById('mePre').textContent = P;
+  document.querySelectorAll('.vN').forEach((el) => { el.textContent = N; });
+  const fill = (t) => t.replace(/\{N\}/g, N).replace(/\{P\}/g, P);
+  const walker = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT);
+  let n; while ((n = walker.nextNode())) if (/\{[NP]\}/.test(n.nodeValue)) n.nodeValue = fill(n.nodeValue);
+  document.querySelectorAll('.code').forEach((box) => {
+    const b = document.createElement('button'); b.textContent = 'คัดลอก'; box.appendChild(b);
+    b.onclick = async () => {
+      const text = box.querySelector('pre').textContent;
+      try { await navigator.clipboard.writeText(text); } catch (_) {
+        const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      }
+      b.textContent = 'คัดลอกแล้ว ✓'; setTimeout(() => { b.textContent = 'คัดลอก'; }, 1500);
+    };
+  });
+})();
+</script>
+<script src="./i18n.js"></script>
+</body>
+</html>
