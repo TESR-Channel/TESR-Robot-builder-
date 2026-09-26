@@ -246,7 +246,7 @@
     for (const a of ATTRS) {
       const v = el.getAttribute(a); if (v == null) continue;
       let o = origAttr.get(el); if (!o) { o = {}; origAttr.set(el, o); }
-      if (lang === 'en' && RE_TH.test(v)) { o[a] = v; el.setAttribute(a, tr(v)); }
+      if (lang === 'en' && RE_TH.test(v)) { const t = tr(v); if (t !== v) { o[a] = v; el.setAttribute(a, t); } } // only write when it changes, or the observer would loop forever
       else if (lang === 'th' && o[a] != null && v !== o[a]) { el.setAttribute(a, o[a]); delete o[a]; }
     }
   }
