@@ -16,6 +16,7 @@
     address: '112/296 หมู่บ้าน เพอร์เฟค มาสเตอร์พีซ หมู่ที่ 2 ตำบลไทรม้า อำเภอเมืองนนทบุรี จังหวัดนนทบุรี 11000',
     addressEn: '112/296 Perfect Masterpiece village moo.2, Sai Ma sub district, Mueang Nonthaburi district, Nonthaburi 11000',
     taxId: '0105560083185', web: 'tesrshop.com',
+    line: 'www.tesrshop.com/line', lineUrl: 'https://www.tesrshop.com/line', email: 'tesrshop@gmail.com', phone: '082-983-7768', tel: '0829837768',
   };
   const isEn = () => (window.TESR_I18N && window.TESR_I18N.lang === 'en');
   // "26 กันยายน 2569" (Thai, Buddhist year) or "26 September 2026" — dates are stored as YYYY-MM-DD
@@ -136,7 +137,8 @@
           <b style="font-size:17px">${COMPANY.th}</b><span style="display:block;font-size:12px;color:#8B0000;font-family:'Chakra Petch'">${COMPANY.en}</span>
           <span style="display:block;font-size:11.5px;line-height:1.45;margin-top:3px">${COMPANY.address}</span>
           <span style="display:block;font-size:11px;line-height:1.4;color:#8a857a">${COMPANY.addressEn}</span>
-          <span style="display:block;font-size:11.5px;margin-top:2px">${isEn() ? 'Tax ID' : 'เลขประจำตัวผู้เสียภาษี / Tax ID'}: <b>${COMPANY.taxId}</b> · ${COMPANY.web}</span></div></div>
+          <span style="display:block;font-size:11.5px;margin-top:2px">${isEn() ? 'Tax ID' : 'เลขประจำตัวผู้เสียภาษี / Tax ID'}: <b>${COMPANY.taxId}</b> · ${COMPANY.web}</span>
+          <span style="display:block;font-size:11.5px;margin-top:2px">LINE ${COMPANY.line} · ${COMPANY.email} · ${L('โทร', 'Tel')} ${COMPANY.phone}</span></div></div>
         <div class="doc-meta"><h1>ใบสรุปสเปก &amp; ใบเสนอราคา</h1><div style="font-family:'Chakra Petch';font-size:12px;letter-spacing:1px;color:#8B0000;margin-bottom:6px">QUOTATION</div>
           <div>เลขที่ <b>${esc(quote.no)}</b></div>
           <div>วันที่ <b id="qDate">${longDate(quote.date)}</b></div>
@@ -203,6 +205,14 @@
       <p class="note" id="priceNote"></p>
       <p class="note">${L('โครงรถ / ตัวถัง: ลูกค้าจัดทำเอง ไม่รวมในใบเสนอราคานี้ — ดู "แนวทางสร้างโครงรถ" ด้านบน', 'Chassis frame: built by the customer, not included in this quotation — see the "Chassis frame build guide" above')}</p>
       <p class="note">ราคาอุปกรณ์จาก TESR Shop ณ วันที่ออกเอกสาร · ยังไม่รวมค่าประกอบ ติดตั้ง ซอฟต์แวร์ และอบรม เว้นแต่ระบุในหมายเหตุ · สเปกคำนวณโดย TESR Robot Builder (ตรวจด้วยกฎวิศวกรรม 16 ข้อก่อนสร้าง ROS 2 workspace)</p>
+      <div style="margin-top:14px;padding:12px 14px;border:1.5px solid #C9A84C;border-radius:8px;background:#fffaf0;break-inside:avoid">
+        <b style="font-family:'Chakra Petch';color:#8B0000">${L('สนใจสั่งซื้อ · สอบถาม · นัดติดตั้งและอบรม ติดต่อ TESR', 'To order, ask questions or book installation & training — contact TESR')}</b>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:6px;font-size:13px">
+          <span>LINE: <a href="${COMPANY.lineUrl}" target="_blank" rel="noopener">${COMPANY.line}</a></span>
+          <span>Email: <a href="mailto:${COMPANY.email}">${COMPANY.email}</a></span>
+          <span>${L('โทร', 'Tel')}: <a href="tel:${COMPANY.tel}">${COMPANY.phone}</a></span></div>
+        <div class="note" style="margin-top:6px">${L('วิธีนำไฟล์ ROS 2 ไปใช้งานทีละขั้น', 'Step-by-step guide for the ROS 2 files')}: <a href="${esc(new URL('./guide.html', location.href).href)}" target="_blank" rel="noopener">${esc(new URL('./guide.html', location.href).href)}</a></div>
+      </div>
       <div class="sign"><div>${isEn() ? 'Quoted by' : 'ผู้เสนอราคา'} · ${COMPANY.en}</div><div>ผู้อนุมัติ / ลูกค้า</div></div>
     </div>`;
     renderTotals();
@@ -242,6 +252,8 @@
 
   // app.js registers its own page UI on DOMContentLoaded; loading it after 'load' keeps that UI from starting here
   window.addEventListener('load', async () => {
+    const nav = document.querySelector('header.tesr nav');
+    if (nav && !nav.querySelector('a[href="./guide.html"]')) nav.insertAdjacentHTML('beforeend', '<a href="./guide.html"><span class="i18n-th">📘 คู่มือใช้ไฟล์</span><span class="i18n-en">📘 File guide</span></a>');
     try {
       await loadScript('./app.js');
       T = window.TESR;
