@@ -11,6 +11,21 @@
   const baht = (x) => (x == null ? '—' : Number(x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const G = window.TESR_GARAGE;
   const QUOTE_KEY = 'tesr_rb_quote';
+  const COMPANY = {
+    th: 'บริษัท ทีอีเอสอาร์ จำกัด', en: 'TESR Co., Ltd. · Thai Embedded System and Robotics',
+    address: '112/296 หมู่บ้าน เพอร์เฟค มาสเตอร์พีซ หมู่ที่ 2 ตำบลไทรม้า อำเภอเมืองนนทบุรี จังหวัดนนทบุรี 11000',
+    addressEn: '112/296 Perfect Masterpiece Village, Moo 2, Sai Ma, Mueang Nonthaburi, Nonthaburi 11000, Thailand',
+    taxId: '0105560083185', web: 'tesrshop.com',
+  };
+  const isEn = () => (window.TESR_I18N && window.TESR_I18N.lang === 'en');
+  // "26 กันยายน 2569" (Thai, Buddhist year) or "26 September 2026" — dates are stored as YYYY-MM-DD
+  const longDate = (iso) => {
+    const d = new Date(`${iso}T00:00:00`); if (isNaN(d)) return iso || '—';
+    return d.toLocaleDateString(isEn() ? 'en-GB' : 'th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; // local date, not UTC
+  const addDays = (iso, n) => { const d = new Date(`${iso}T00:00:00`); d.setDate(d.getDate() + (Number(n) || 0)); return ymd(d); };
+  const today = () => ymd(new Date());
   const FLOOR = { concrete: 'คอนกรีต', epoxy: 'อีพ็อกซี', tile: 'กระเบื้อง', carpet: 'พรม', asphalt: 'ยางมะตอย', gravel: 'กรวด', mixed: 'ผสม' };
   const ENV = { factory: 'โรงงาน', warehouse: 'คลังสินค้า', hospital: 'โรงพยาบาล', office: 'สำนักงาน', laboratory: 'ห้องแลป', outdoor: 'กลางแจ้ง', custom: 'อื่น ๆ' };
   const CASTER = { front_rear: 'หน้า + หลัง', corners4: '4 มุม', rear1: 'หลัง 1 ล้อ', front1: 'หน้า 1 ล้อ' };
@@ -25,7 +40,7 @@
   }
   function loadQuote() {
     try { quote = JSON.parse(localStorage.getItem(QUOTE_KEY) || '{}'); } catch (_) { quote = {}; }
-    if (quote.robot !== state.name || !quote.no) Object.assign(quote, { robot: state.name, no: docNo(), date: new Date().toISOString().slice(0, 10) });
+    if (quote.robot !== state.name || !quote.no) Object.assign(quote, { robot: state.name, no: docNo(), date: today() });
     quote.validDays = quote.validDays ?? 30; quote.vat = quote.vat ?? true; quote.discount = quote.discount ?? 0;
     saveQuote();
   }
@@ -60,8 +75,17 @@
 
     $('doc').innerHTML = `<div class="sheet">
       <div class="doc-head">
-        <div class="brand"><i></i><div><b>TESR Co., Ltd.</b><span>Thai Embedded System and Robotics · tesrshop.com</span></div></div>
-        <div class="doc-meta"><h1>ใบสรุปสเปก &amp; ใบเสนอราคา</h1><div>เลขที่ <b>${esc(quote.no)}</b></div><div>วันที่ ${esc(quote.date)} · ยืนราคา <span id="vDays">${quote.validDays}</span> วัน</div></div>
+        <div class="brand" style="align-items:flex-start"><i style="width:88px;height:100px"></i><div style="max-width:420px">
+          <b style="font-size:17px">${COMPANY.th}</b><span style="display:block;font-size:12px;color:#8B0000;font-family:'Chakra Petch'">${COMPANY.en}</span>
+          <span style="display:block;font-size:11.5px;line-height:1.45;margin-top:3px">${COMPANY.address}</span>
+          <span style="display:block;font-size:11px;line-height:1.4;color:#8a857a">${COMPANY.addressEn}</span>
+          <span style="display:block;font-size:11.5px;margin-top:2px">เลขประจำตัวผู้เสียภาษี (Tax ID) <b>${COMPANY.taxId}</b> · ${COMPANY.web}</span></div></div>
+        <div class="doc-meta"><h1>ใบสรุปสเปก &amp; ใบเสนอราคา</h1><div style="font-family:'Chakra Petch';font-size:12px;letter-spacing:1px;color:#8B0000;margin-bottom:6px">QUOTATION</div>
+          <div>เลขที่ <b>${esc(quote.no)}</b></div>
+          <div>วันที่ <b id="qDate">${longDate(quote.date)}</b></div>
+          <div>ยืนราคาถึง <b id="qUntil">${longDate(addDays(quote.date, quote.validDays))}</b> (<span id="vDays">${quote.validDays}</span> วัน)</div>
+          <label class="no-print" style="display:inline-flex;flex-direction:row;gap:6px;align-items:center;margin-top:6px;font-size:11.5px;color:#6d6a63">แก้วันที่
+            <input type="date" data-q="date" value="${esc(quote.date)}" style="background:#fff;color:#1b1b1f;border:1px solid #d8d4ca;padding:2px 6px;font-size:12px"></label></div>
       </div>
       <div class="cust">
         <label>ลูกค้า / บริษัท<input data-q="customer" value="${esc(quote.customer || '')}" placeholder="ชื่อบริษัท"></label>
@@ -133,14 +157,17 @@
       <tr class="grand"><td colspan="5" class="num">รวมทั้งสิ้น</td><td class="num">${baht(t.grand)}</td></tr>`;
     $('priceNote').textContent = t.unpriced ? `มี ${t.unpriced} รายการที่ยังไม่มีราคาในแคตตาล็อก (“สอบถาม”) — ยอดรวมยังไม่รวมรายการเหล่านี้` : '';
     $('vDays').textContent = quote.validDays;
+    $('qDate').textContent = longDate(quote.date); $('qUntil').textContent = longDate(addDays(quote.date, quote.validDays));
     $('sStatus').textContent = `${state.name} · ${dv.bom.lines.length} รายการ · ${t.grand ? baht(t.grand) + ' ฿' : 'รอราคา'}`;
   }
 
   document.addEventListener('input', (e) => {
     const k = e.target.dataset && e.target.dataset.q; if (!k || !state) return;
     quote[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.type === 'number' ? Number(e.target.value) : e.target.value;
-    saveQuote(); if (['discount', 'vat', 'validDays'].includes(k)) renderTotals();
+    saveQuote(); if (['discount', 'vat', 'validDays', 'date'].includes(k)) renderTotals();
   });
+  // dates follow the TH / EN switch (Thai: Buddhist year)
+  document.addEventListener('click', (e) => { if (e.target.closest('.lang-switch button') && state) setTimeout(renderTotals, 0); });
   $('aBack').onclick = () => { location.href = './index.html'; };
   $('aPrint').onclick = () => window.print();
   $('aBom').onclick = () => state && download(`${state.name}_bom.csv`, T.bomCsv(dv.bom), 'text/csv');
