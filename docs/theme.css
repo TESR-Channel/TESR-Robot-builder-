@@ -219,3 +219,6 @@ body.garage-body main.garage { flex:1 1 auto; min-height:0; height:auto; }
   .grid { grid-template-columns:1fr !important; }
   .navrow button { flex:1; }
 }
+
+/* bilingual snippets: <span class="i18n-th">…</span><span class="i18n-en">…</span> follow the TH / EN switch (html[lang]) */
+html[lang="en"] .i18n-th, html:not([lang="en"]) .i18n-en { display:none !important; }
