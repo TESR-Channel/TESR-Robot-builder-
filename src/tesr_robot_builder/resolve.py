@@ -62,6 +62,8 @@ class ResolvedHardware(BaseModel):
     optical_frame: str | None
     driver_package: str | None
     driver_apt: list[str]
+    driver_source: dict[str, Any] | None = None  # git checkout for drivers that are not on apt (written to drivers.repos)
+    driver_launch: str | None = None  # the driver's own launch file, e.g. sllidar_c1_launch.py
     topic: str | None
     sensor: dict[str, Any] | None
 
@@ -143,6 +145,8 @@ def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
                 optical_frame=(f"{inst.frame}_optical" if (is_cam and inst.frame) else None),
                 driver_package=(drv.package if drv else None),
                 driver_apt=(drv.apt if drv else []),
+                driver_source=(getattr(drv, "source", None) if drv else None),
+                driver_launch=(getattr(drv, "launch", None) if drv else None),
                 topic=(drv.topics.get("main") if drv and drv.topics else (rec.ros.topic if rec.ros else None)),
                 sensor=sensor,
             )

@@ -1,6 +1,6 @@
 {
  "generator": "0.1.0",
- "registry_hash": "66bbc0283d17",
+ "registry_hash": "413815a144a7",
  "raw_url": "https://raw.githubusercontent.com/TESR-Channel/TESR-Robot-builder-/main/",
  "files": [
   "examples/ironx_gen2.robot.yaml",
@@ -12,7 +12,9 @@
   "registry/drivers/realsense_d435i/jazzy/manifest.yaml",
   "registry/drivers/realsense_d455/jazzy/manifest.yaml",
   "registry/drivers/rplidar_s2/jazzy/manifest.yaml",
+  "registry/drivers/slamtec_c1/jazzy/manifest.yaml",
   "registry/drivers/slamtec_p3/jazzy/manifest.yaml",
+  "registry/drivers/slamtec_s3/jazzy/manifest.yaml",
   "registry/drivers/tesr_imu/jazzy/manifest.yaml",
   "registry/drivers/tesr_md200/jazzy/manifest.yaml",
   "registry/drivers/tesr_md400/jazzy/manifest.yaml",
@@ -29,7 +31,9 @@
   "registry/hardware/imu/tesr_imu.yaml",
   "registry/hardware/lidar/ld19.yaml",
   "registry/hardware/lidar/rplidar_s2.yaml",
+  "registry/hardware/lidar/slamtec_c1.yaml",
   "registry/hardware/lidar/slamtec_p3.yaml",
+  "registry/hardware/lidar/slamtec_s3.yaml",
   "registry/hardware/motor/generic_bldc_12v_60w.yaml",
   "registry/hardware/motor/generic_bldc_24v_100w.yaml",
   "registry/hardware/motor/generic_bldc_24v_200w.yaml",

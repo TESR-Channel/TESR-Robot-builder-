@@ -31,3 +31,5 @@ sku,hardware_ref,category,name_th,name_en,brand,price_thb,unit,stock_status,lead
 ,dcdc_48_12,power_supply,,DC-DC 48 V → 12 V 10 A,generic,,piece,,,,,,"out 12 V 10 A; 48 V, 3/130 W",,,,
 ,dcdc_48_5,power_supply,,DC-DC 48 V → 5 V 10 A,generic,,piece,,,,,,"out 5 V 10 A; 48 V, 2/55 W",,,,
 ,generic_estop,estop,,"Emergency stop button (mushroom, 2 NC contacts)",generic,,piece,,,,,,,,,,
+,slamtec_s3,lidar,ไลดาร์ Slamtec RPLIDAR S3 (ToF 40 ม.),"Slamtec RPLIDAR S3 2D ToF LiDAR, 40 m",Slamtec,,piece,,,,,,"40 m, 10 mm, 32 kHz, 10-20 Hz, 360°, TTL UART, indoor & outdoor",,AMR / outdoor / large warehouse,,
+,slamtec_c1,lidar,ไลดาร์ Slamtec RPLIDAR C1 (ToF 12 ม.),"Slamtec RPLIDAR C1 2D ToF LiDAR, 12 m",Slamtec,,piece,,,,,,"12 m, 15 mm, 5 kHz, 8-12 Hz, 360°, TTL UART, indoor & outdoor",,education / service robot / low cost,,
