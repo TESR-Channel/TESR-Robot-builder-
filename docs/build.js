@@ -147,11 +147,30 @@ async function renderPackages(res) {
   }
 }
 
+// ------------------------------------------------------------------ the field from the arena editor (arena.html), if any
+(function navLink() {
+  const nav = document.querySelector('header.tesr nav');
+  if (nav && !nav.querySelector('a[href="./arena.html"]')) (nav.querySelector('a[href="./guide.html"]') || nav.lastElementChild).insertAdjacentHTML('beforebegin', '<a href="./arena.html"><span class="i18n-th">🧱 ออกแบบสนาม</span><span class="i18n-en">🧱 Arena editor</span></a>');
+})();
+let myArena = null;
+(function loadArena() {
+  let a = null; try { a = JSON.parse(localStorage.getItem('tesr_rb_arena') || 'null'); } catch (_) { a = null; }
+  if (!a || !a.items) return;
+  const s = document.createElement('script'); s.src = './arena-export.js';
+  s.onload = () => { myArena = window.TESR_ARENA.normalize(a); if (lastResult) renderLaunch(lastResult); };
+  document.head.appendChild(s);
+})();
+const arenaPkg = () => (myArena ? window.TESR_ARENA.packageName(myArena) : null);
+
 function renderLaunch(res) {
-  const n = res.summary.name, pre = res.summary.prefix;
+  const n = res.summary.name, pre = res.summary.prefix, repos = !!res.files['drivers.repos'], ap = arenaPkg();
+  const build = `unzip ${n}_ws.zip && cd ${n}_ws\nsource /opt/ros/jazzy/setup.bash\n${repos ? 'sudo apt install -y python3-vcstool\nvcs import src < drivers.repos\n' : ''}rosdep install --from-paths src -y --ignore-src\ncolcon build --symlink-install && source install/setup.bash`;
+  const share = ap ? `$(ros2 pkg prefix ${ap})/share/${ap}` : '';
   const cmds = [
-    ['1 · Build', 'ครั้งแรกเท่านั้น', `unzip ${n}_ws.zip && cd ${n}_ws\nrosdep install --from-paths src -y --ignore-src\ncolcon build --symlink-install && source install/setup.bash`, false],
+    ['1 · Build', repos ? 'ครั้งแรกเท่านั้น · ดึง driver ที่ไม่มีใน apt ด้วย vcs' : 'ครั้งแรกเท่านั้น', build, false],
     ['2 · จำลอง + ทำแผนที่ + นำทาง', 'คำสั่งเดียว — คลิก 2D Goal Pose ใน RViz', `ros2 launch ${pre}_bringup sim.launch.py`, true],
+    ...(ap ? [['2b · สนามของฉัน (arena editor)', `${myArena.name} · หุ่นเริ่มที่ 0,0,0`, `ros2 launch ${pre}_bringup sim.launch.py world:=${share}/worlds/${myArena.name}.sdf x:=0 y:=0 yaw:=0`, true],
+      ['2c · สนามของฉัน + แผนที่สำเร็จรูป (AMCL)', 'ไม่ต้องขับทำแผนที่ก่อน', `ros2 launch ${pre}_bringup sim.launch.py world:=${share}/worlds/${myArena.name}.sdf x:=0 y:=0 yaw:=0 slam:=false map:=${share}/maps/${myArena.name}.yaml`, false]] : []),
     ['3 · ขับด้วยคีย์บอร์ด', 'อีก terminal', 'ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true', false],
     ['4 · บันทึกแผนที่ → ใช้ AMCL', 'หลังขับสำรวจครบ', `ros2 run nav2_map_server map_saver_cli -f ~/${n}_map\nros2 launch ${pre}_bringup sim.launch.py slam:=false map:=$HOME/${n}_map.yaml`, false],
     ['5 · หุ่นจริง', 'ต่อมอเตอร์ไดรเวอร์ + เซนเซอร์แล้ว', `ros2 launch ${pre}_bringup robot.launch.py hardware:=real nav:=true`, false],
@@ -219,17 +238,82 @@ $('validate').onclick = () => pipeline(false);
 
 $('downloadZip').onclick = async () => {
   if (!lastResult) return;
-  const name = lastResult.summary.name, prefix = lastResult.summary.prefix;
+  const name = lastResult.summary.name, prefix = lastResult.summary.prefix, ap = arenaPkg();
   const zip = new JSZip(), root = zip.folder(`${name}_ws`);
   for (const [p, c] of Object.entries(lastResult.files)) root.file(p, c);
   for (const [fname, file] of extraFiles) root.file(`src/${prefix}_description/meshes/${fname}`, await file.arrayBuffer());
-  const cmds = [...document.querySelectorAll('#launch .cmd')].map((el) => `## ${el.querySelector('b').textContent}\n\n\`\`\`bash\n${el.querySelector('pre').textContent}\n\`\`\``).join('\n\n');
-  root.file('README.md', `# ${name}_ws — ROS 2 Jazzy\n\nGenerated in the browser by TESR Robot Builder (engine ${lastResult.summary.versions.generator}, registry ${lastResult.summary.versions.registry}).\nDetails: src/${prefix}_bringup/README.md\n\n${cmds}\n`);
+  if (ap) for (const [p, c] of Object.entries(window.TESR_ARENA.packageFiles(myArena, { prefix }))) root.file(`src/${p}`, c);
+  root.file('README.md', workspaceReadme(lastResult, ap));
   const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${name}_ws.zip`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   toast(`⬇ ${name}_ws.zip — ต่อไป: คำสั่ง 1 และ 2 ใน Launch pad`);
 };
+
+// Step-by-step README at the top of the zip — readable on GitHub, in VS Code or with `cat`.
+function workspaceReadme(res, ap) {
+  const name = res.summary.name, prefix = res.summary.prefix, repos = !!res.files['drivers.repos'];
+  const pkgs = [...new Set(Object.keys(res.files).filter((p) => p.startsWith('src/')).map((p) => p.split('/')[1]))].sort();
+  if (ap) pkgs.push(ap);
+  const cmds = [...document.querySelectorAll('#launch .cmd')].map((el) => `### ${el.querySelector('b').textContent}\n\n\`\`\`bash\n${el.querySelector('pre').textContent}\n\`\`\``).join('\n\n');
+  return `# ${name}_ws — ROS 2 Jazzy workspace
+
+Generated in the browser by **TESR Robot Builder** (engine ${res.summary.versions.generator}, registry ${res.summary.versions.registry}).
+Full illustrated guide: ${new URL('./guide.html', location.href).href}
+
+## What is inside
+\`\`\`
+${name}_ws/                 ← this folder IS the ROS 2 workspace
+├── README.md               ← you are here
+${repos ? '├── drivers.repos           ← drivers built from source (vcs import)\n' : ''}└── src/
+${pkgs.map((p, i) => `    ${i === pkgs.length - 1 ? '└──' : '├──'} ${p}/`).join('\n')}
+\`\`\`
+
+## 0 · Requirements (once) · สิ่งที่ต้องมี
+Ubuntu 24.04 + ROS 2 Jazzy desktop (Windows: WSL2 + Ubuntu 24.04), then:
+\`\`\`bash
+sudo apt update && sudo apt install -y python3-colcon-common-extensions python3-rosdep python3-vcstool unzip ros-jazzy-teleop-twist-keyboard
+sudo rosdep init; rosdep update
+\`\`\`
+
+## 1 · Put the workspace in your home folder · วางไฟล์
+\`\`\`bash
+cd ~ && unzip ~/Downloads/${name}_ws.zip      # → ~/${name}_ws/src/...
+cd ~/${name}_ws
+\`\`\`
+
+## 2 · Build (first time, and after you change xacro / add packages) · Build
+\`\`\`bash
+source /opt/ros/jazzy/setup.bash
+${repos ? 'vcs import src < drivers.repos          # sensor/motor drivers that are not on apt\n' : ''}rosdep install --from-paths src -y --ignore-src
+colcon build --symlink-install
+\`\`\`
+
+## 3 · Source — in EVERY new terminal · อย่าลืม source ทุก terminal ใหม่
+\`\`\`bash
+source ~/${name}_ws/install/setup.bash
+echo "source ~/${name}_ws/install/setup.bash" >> ~/.bashrc     # optional: do it automatically
+\`\`\`
+
+## 4 · Run
+${cmds}
+
+## Edit and rebuild
+Change the robot in the Garage (or the field in the arena editor) and export again, or edit the YAML files in \`src/*/config/\`
+(thanks to \`--symlink-install\`, YAML changes need only a relaunch; xacro changes need \`colcon build\` again).
+Details per package: \`src/${prefix}_bringup/README.md\`.
+
+## Problems?
+| symptom | fix |
+|---|---|
+| \`Package '${prefix}_bringup' not found\` | you forgot step 3 (source) |
+| Gazebo black / slow in a VM or WSL | \`export LIBGL_ALWAYS_SOFTWARE=1\` then relaunch |
+| robot does not move | \`ros2 control list_controllers\` — all must be *active* |
+
+---
+TESR Co.,Ltd. · LINE www.tesrshop.com/line · tesrshop@gmail.com · 082-983-7768
+`;
+}
 
 // ------------------------------------------------------------------ celebration
 function burst() {

@@ -35,6 +35,7 @@ const ACTIONS = {
   drive, play,
   quote: () => { mark(4); click('#exSummary'); },
   ros: () => { mark(4); click('#exBuild'); },
+  arena: () => { location.href = './arena.html'; },
   guide: () => openGuide(),
 };
 
@@ -87,7 +88,7 @@ function injectUI() {
   bar.innerHTML = `
     <div class="ux-step now" data-step="1"><span class="n">1</span><span class="t"><b>เลือกหุ่น</b>พิมพ์เขียวสำเร็จรูป</span><span class="btns"><button data-ux="pick">🤖 เลือก</button></span></div>
     <div class="ux-step" data-step="2"><span class="n">2</span><span class="t"><b>แต่งหุ่น</b>ขนาด ล้อ เซนเซอร์ แบต</span><span class="btns"><button data-ux="tune">🔧 แต่ง</button></span></div>
-    <div class="ux-step" data-step="3"><span class="n">3</span><span class="t"><b>ทดสอบ</b>ขับเอง หรือเล่นภารกิจ</span><span class="btns"><button data-ux="drive">🎮 ขับ</button><button class="hot" data-ux="play">🏁 เล่นภารกิจ</button></span></div>
+    <div class="ux-step" data-step="3"><span class="n">3</span><span class="t"><b>ทดสอบ</b>ขับเอง หรือเล่นภารกิจ</span><span class="btns"><button data-ux="drive">🎮 ขับ</button><button class="hot" data-ux="play">🏁 เล่นภารกิจ</button><button data-ux="arena" title="Arena editor">🧱 <span class="i18n-th">สนาม</span><span class="i18n-en">Arena</span></button></span></div>
     <div class="ux-step" data-step="4"><span class="n">4</span><span class="t"><b>ใช้งานจริง</b>ใบเสนอราคา / ROS 2</span><span class="btns"><button class="gold" data-ux="quote">📋 ใบเสนอราคา</button><button data-ux="ros">🚀 ROS 2</button></span></div>
     <div class="ux-step help"><span class="btns"><button class="ghost" data-ux="guide" title="วิธีใช้">❔</button></span></div>`;
   const main = document.querySelector('main.garage');
@@ -99,6 +100,7 @@ function injectUI() {
   // how to use the exported files (ROS 2 workspace, robot.yaml, URDF, BOM)
   const nav = document.querySelector('header.tesr nav');
   if (nav && !nav.querySelector('a[href="./guide.html"]')) nav.insertAdjacentHTML('beforeend', '<a href="./guide.html"><span class="i18n-th">📘 คู่มือใช้ไฟล์</span><span class="i18n-en">📘 File guide</span></a>');
+  if (nav && !nav.querySelector('a[href="./arena.html"]')) nav.querySelector('a[href="./guide.html"]').insertAdjacentHTML('beforebegin', '<a href="./arena.html"><span class="i18n-th">🧱 ออกแบบสนาม</span><span class="i18n-en">🧱 Arena editor</span></a>');
   const ex = document.querySelector('#hud .exports');
   if (ex) ex.insertAdjacentHTML('beforeend', '<a class="wide" href="./guide.html" style="text-align:center;font-size:12.5px;color:var(--gold);padding:6px;border:1px dashed rgba(201,168,76,.5);border-radius:6px;text-decoration:none"><span class="i18n-th">📘 วิธีนำไฟล์ที่ส่งออกไปใช้ (ROS 2)</span><span class="i18n-en">📘 How to use the exported files (ROS 2)</span></a>');
 
