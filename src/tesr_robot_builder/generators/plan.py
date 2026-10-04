@@ -71,6 +71,18 @@ class Plan:
         return [s.topic for s in self.lidars]
 
 
+# Gazebo rays per scan. With the datasheet sampling rate this matches the real sensor (e.g. C1: 5 kHz / 10 Hz = 500
+# points per turn); capped at 1440 so a 32 kHz S3 still simulates on a modest PC. Without it: 2 rays per degree.
+SIM_MAX_SAMPLES = 1440
+
+
+def lidar_samples(sample_rate_hz: float | None, rate_hz: float, fov_deg: float) -> int:
+    if sample_rate_hz and rate_hz > 0:
+        n = float(sample_rate_hz) / rate_hz * fov_deg / 360.0
+        return int(max(90, min(SIM_MAX_SAMPLES, round(n))))
+    return int(round(fov_deg * 2))
+
+
 def build_plan(r: ResolvedRobot) -> Plan:
     d = r.definition
     m = d.requirements.motion
@@ -88,9 +100,11 @@ def build_plan(r: ResolvedRobot) -> Plan:
             if embedded:
                 fov = min(fov, 270.0)
             half = math.pi if fov >= 359.9 else math.radians(fov) / 2.0
-            lidars.append(SensorPlan(h.id, h.frame, "lidar", topic, topic.lstrip("/"), float(s.get("rate_hz") or 10.0),
+            rate = float(s.get("rate_hz") or 10.0)
+            samples = lidar_samples(s.get("sample_rate_hz"), rate, fov)
+            lidars.append(SensorPlan(h.id, h.frame, "lidar", topic, topic.lstrip("/"), rate,
                                      float(s.get("range_m") or 12.0), max(float(s.get("min_range_m") or 0.05), 0.02), fov,
-                                     round(-half, 5), round(half, 5), int(round(fov * 2)), embedded))
+                                     round(-half, 5), round(half, 5), samples, embedded))
         elif h.category in ("depth_camera", "rgb_camera"):
             base = f"/{h.id}"
             cams.append(SensorPlan(h.id, h.frame, h.category, base, h.id, float(s.get("rate_hz") or 15.0),

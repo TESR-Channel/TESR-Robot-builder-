@@ -1,0 +1,24 @@
+id: slamtec_s3
+category: lidar
+name: Slamtec RPLIDAR S3 (2D ToF, 40 m)
+manufacturer: Slamtec
+mass_kg: 0.115  # TODO confirm with the datasheet (not on the TESR spec sheet)
+dims_m: [0.0598, 0.0556, 0.0413]  # 55.6 x 59.8 x 41.3 mm (Slamtec RPLIDAR spec sheet)
+electrical: {voltage_v: 5, typical_w: 2.5, peak_w: 3.5}  # TODO confirm current draw with the datasheet
+interfaces: [uart, usb2]  # TTL UART, sold with a USB adapter
+sensor:
+  type: lidar_2d
+  range_m: 40
+  min_range_m: 0.05  # TODO confirm blind zone with the datasheet
+  fov_deg: 360
+  rate_hz: 10  # rotational speed 10–20 Hz
+  rate_range_hz: [10, 20]
+  sample_rate_hz: 32000
+  resolution_m: 0.010
+  technology: tof
+  environment: indoor_outdoor
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+sources: ["Slamtec RPLIDAR series spec sheet (S2/S2E/S2L/S3/T1/A1/A2/A3/C1/MAPPER)"]
+catalog_ref: tesrshop
+notes: TESR focus LiDAR. Range/resolution/sampling/rotation/size/interface from the Slamtec spec sheet; mass, power and blind zone still to confirm.

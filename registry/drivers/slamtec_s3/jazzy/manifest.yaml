@@ -1,0 +1,12 @@
+hw: slamtec_s3
+distro: jazzy
+package: sllidar_ros2
+apt: []
+pip: []
+node: sllidar_node
+launch: sllidar_s3_launch.py
+params: {serial_port: /dev/ttyUSB0, serial_baudrate: 1000000, frame_id: laser, scan_mode: DenseBoost}
+source: {type: git, url: https://github.com/Slamtec/sllidar_ros2.git, version: main}
+topics: {main: /scan}
+frame: laser
+notes: Official Slamtec ROS 2 driver, built from source (listed in drivers.repos). TODO confirm baud rate / scan mode against the S3 user manual.

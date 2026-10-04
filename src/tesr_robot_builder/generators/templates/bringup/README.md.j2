@@ -6,6 +6,10 @@ LiDAR: {{ p.lidars|length }} ({{ p.scan_topics|join(', ') or '—' }}), cameras:
 
 ## 1 · Build
 ```bash
+source /opt/ros/jazzy/setup.bash
+{%- if has_repos %}
+vcs import src < drivers.repos          # drivers that are not on apt ({{ repos_pkgs }}) — sudo apt install python3-vcstool
+{%- endif %}
 rosdep install --from-paths src -y --ignore-src
 colcon build --symlink-install && source install/setup.bash
 ```
@@ -22,12 +26,20 @@ ros2 launch {{ pkg }} sim.launch.py slam:=false map:=$HOME/{{ d.meta.name }}_map
 ```
 Drive by keyboard: `ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true`
 
+Your own world from the Robot Builder **arena editor** (walls, boxes, ArUco markers):
+```bash
+ros2 launch {{ pkg }} sim.launch.py world:=$HOME/my_arena.sdf x:=0 y:=0 yaw:=0
+```
+
 ## 3 · Real robot
 ```bash
 ros2 launch {{ pkg }} robot.launch.py hardware:=real nav:=true
 ```
 Motor driver plugin: `{{ p.real_plugin or 'not in the registry yet — mock hardware is used' }}`. Start the sensor drivers
 ({{ r.hardware|map(attribute='driver_package')|select|unique|join(', ') or '—' }}) so they publish {{ p.scan_topics|join(', ') or 'no LiDAR' }}.
+{%- for h in r.hardware if h.driver_launch %}
+- `{{ h.id }}`: `ros2 launch {{ h.driver_package }} {{ h.driver_launch }}`
+{%- endfor %}
 
 ## Packages
 | package | what |

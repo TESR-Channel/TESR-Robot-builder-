@@ -4,6 +4,7 @@
     ros2 launch {{ pkg }} sim.launch.py
 
 In RViz click "2D Goal Pose" — the robot plans, drives and maps the TESR arena at the same time.
+Your own world (arena editor):  ros2 launch {{ pkg }} sim.launch.py world:=<path>/my_arena.sdf x:=0 y:=0 yaw:=0
 Drive by hand instead:  ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
 """
 import os
@@ -16,13 +17,21 @@ from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
-    sim = os.path.join(get_package_share_directory('{{ r.package("gazebo") }}'), 'launch', 'sim.launch.py')
+    gazebo = get_package_share_directory('{{ r.package("gazebo") }}')
+    sim = os.path.join(gazebo, 'launch', 'sim.launch.py')
     navigation = os.path.join(get_package_share_directory('{{ r.package("navigation") }}'), 'launch', 'navigation.launch.py')
     return LaunchDescription([
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('slam', default_value='true'),
         DeclareLaunchArgument('map', default_value=''),
-        IncludeLaunchDescription(PythonLaunchDescriptionSource(sim)),
+        # any Gazebo world, e.g. one designed in the Robot Builder arena editor: world:=/path/to/arena.sdf x:=0 y:=0 yaw:=0
+        DeclareLaunchArgument('world', default_value=os.path.join(gazebo, 'worlds', 'tesr_arena.sdf')),
+        DeclareLaunchArgument('x', default_value='-4.5'),
+        DeclareLaunchArgument('y', default_value='0.0'),
+        DeclareLaunchArgument('yaw', default_value='0.0'),
+        IncludeLaunchDescription(PythonLaunchDescriptionSource(sim), launch_arguments={
+            'world': LaunchConfiguration('world'), 'x': LaunchConfiguration('x'),
+            'y': LaunchConfiguration('y'), 'yaw': LaunchConfiguration('yaw')}.items()),
         # give Gazebo a few seconds to spawn the robot and start the controllers before Nav2 asks for TF
         TimerAction(period=6.0, actions=[IncludeLaunchDescription(
             PythonLaunchDescriptionSource(navigation),

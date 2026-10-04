@@ -1,0 +1,12 @@
+hw: slamtec_c1
+distro: jazzy
+package: sllidar_ros2
+apt: []
+pip: []
+node: sllidar_node
+launch: sllidar_c1_launch.py
+params: {serial_port: /dev/ttyUSB0, serial_baudrate: 460800, frame_id: laser, scan_mode: Standard}
+source: {type: git, url: https://github.com/Slamtec/sllidar_ros2.git, version: main}
+topics: {main: /scan}
+frame: laser
+notes: Official Slamtec ROS 2 driver, built from source (listed in drivers.repos). TODO confirm baud rate / scan mode against the C1 user manual.
