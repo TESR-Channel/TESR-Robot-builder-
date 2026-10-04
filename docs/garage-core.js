@@ -26,28 +26,28 @@
       mission: { application: 'amr', envType: 'factory', floor: 'concrete', payload: 300, vMax: 1.0, aMax: 0.5, wMax: 1.0, runtimeH: 8, slopeDeg: 5, minAisle: 1.2, cogOffsetZ: 0.25 },
       chassis: { shape: 'box', length: 1.0, width: 0.7, height: 0.35, clearance: 0.05, color: 'gunmetal' },
       drive: { type: 'differential', wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, casterLayout: 'corners4', driverCount: 1 },
-      compute: 'x86_pc', sensors: { lidar: ['slamtec_p3', 'diag2'], depth_camera: ['realsense_d455', 'front1'], imu: 'tesr_imu' }, estop: true,
+      compute: 'x86_pc', sensors: { lidar: ['slamtec_s3', 'diag2'], depth_camera: ['realsense_d455', 'front1'], imu: 'tesr_imu' }, estop: true,
     },
     service_60: {
       label: 'หุ่นบริการ 60 kg', icon: '🏥', desc: 'ส่งของในโรงพยาบาล/สำนักงาน · ตัวถังกลม เลี้ยวในที่แคบ', name: 'service_robot_60', prefix: 'tesr_service',
       mission: { application: 'service', envType: 'hospital', floor: 'tile', payload: 60, vMax: 0.8, aMax: 0.5, wMax: 1.2, runtimeH: 10, slopeDeg: 3, minAisle: 1.0, cogOffsetZ: 0.3 },
       chassis: { shape: 'round', length: 0.52, width: 0.52, height: 0.45, clearance: 0.04, color: 'white' },
       drive: { type: 'differential', wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.42, wheelbase: 0.3, gearRatio: 15, casterLayout: 'front_rear', driverCount: 1 },
-      compute: 'rpi5', sensors: { lidar: ['rplidar_s2', 'front1'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
+      compute: 'rpi5', sensors: { lidar: ['slamtec_c1', 'front1'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
     },
     edu_small: {
       label: 'หุ่นเรียน IRON-X class', icon: '🎓', desc: 'หุ่นเล็กสำหรับ TESR Academy · 12 V · ราคาประหยัด', name: 'edu_robot', prefix: 'edu_robot',
       mission: { application: 'research', envType: 'laboratory', floor: 'tile', payload: 2, vMax: 0.5, aMax: 0.5, wMax: 1.5, runtimeH: 2, slopeDeg: 3, minAisle: 0, cogOffsetZ: 0.05 },
       chassis: { shape: 'box', length: 0.26, width: 0.24, height: 0.1, clearance: 0.02, color: 'crimson' },
       drive: { type: 'differential', wheelDiameter: 0.1, wheelWidth: 0.03, track: 0.2, wheelbase: 0.2, gearRatio: 10, casterLayout: 'rear1', driverCount: 1 },
-      compute: 'rpi5', sensors: { lidar: ['ld19', 'front1'], imu: 'tesr_imu' }, estop: false,
+      compute: 'rpi5', sensors: { lidar: ['slamtec_c1', 'front1'], imu: 'tesr_imu' }, estop: false,
     },
     mecanum_30: {
       label: 'Mecanum 30 kg', icon: '🧭', desc: 'เคลื่อนที่ทุกทิศ สไลด์ข้างได้ · งานวิจัย/แลป', name: 'mecanum_demo', prefix: 'mecanum_demo',
       mission: { application: 'research', envType: 'laboratory', floor: 'epoxy', payload: 30, vMax: 1.0, aMax: 0.8, wMax: 1.5, runtimeH: 4, slopeDeg: 2, minAisle: 1.0, cogOffsetZ: 0.15 },
       chassis: { shape: 'box', length: 0.6, width: 0.5, height: 0.25, clearance: 0.05, color: 'carbon' },
       drive: { type: 'mecanum', wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, casterLayout: 'front_rear', driverCount: 2 },
-      compute: 'x86_pc', sensors: { lidar: ['rplidar_s2', 'fr2'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
+      compute: 'x86_pc', sensors: { lidar: ['slamtec_c1', 'fr2'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
     },
   };
 
