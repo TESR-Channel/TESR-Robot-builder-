@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESR Robot Builder — ออกแบบสนาม Gazebo · Arena editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
+<style>
+  [hidden] { display:none !important; }
+  body.arena-body { display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden; }
+  header.tesr { flex:none; }
+  .ar { flex:1 1 auto; min-height:0; display:grid; grid-template-columns:270px minmax(0,1fr) 300px; gap:8px; padding:8px; }
+  .pn { overflow:auto; padding:12px; border:1px solid rgba(201,168,76,.22); border-radius:12px; background:linear-gradient(180deg,#16161c,#0b0b0f); }
+  .pn h2 { font-family:'Chakra Petch'; font-size:12.5px; letter-spacing:1.4px; text-transform:uppercase; color:var(--gold); margin:12px 0 6px; }
+  .pn h2:first-child { margin-top:0; }
+  .presets { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .presets button { background:#101014; border:1px solid var(--line); color:var(--text); font-size:12px; padding:8px 6px; border-radius:9px; text-align:left; line-height:1.25; }
+  .presets button b { display:block; font-size:18px; } .presets button:hover { border-color:var(--gold); }
+  .row { display:flex; gap:6px; align-items:center; margin:5px 0; flex-wrap:wrap; } .row label { flex:1; min-width:70px; }
+  .row input, .row select { width:100%; padding:4px 6px; font-size:12.5px; }
+  .stagew { position:relative; border:1px solid rgba(201,168,76,.3); border-radius:12px; overflow:hidden; background:#06060a; min-height:0; }
+  #cv { position:absolute; inset:0; width:100%; height:100%; touch-action:none; display:block; }
+  .tools { position:absolute; top:8px; left:8px; right:8px; display:flex; gap:5px; flex-wrap:wrap; z-index:2; pointer-events:none; }
+  .tools button { pointer-events:auto; background:rgba(16,16,22,.92); border:1px solid rgba(201,168,76,.3); color:var(--text); font-size:12.5px; padding:6px 10px; border-radius:9px; }
+  .tools button.on { background:linear-gradient(180deg,#ffe08a,#C9A84C); color:#1a1300; font-weight:600; }
+  .tools .sp { flex:1; }
+  .mode { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:2; }
+  .mode button { font-size:14px; padding:9px 16px; border-radius:11px; }
+  .mode button.edit { background:#1c1c22; } .mode button.on { box-shadow:0 0 0 2px var(--gold) inset; }
+  .zoom { position:absolute; right:8px; bottom:10px; display:flex; flex-direction:column; gap:4px; z-index:2; }
+  .zoom button { width:34px; height:34px; padding:0; background:rgba(16,16,22,.92); border:1px solid rgba(201,168,76,.3); color:var(--text); }
+  .hint { position:absolute; left:10px; bottom:58px; right:60px; font-size:12px; color:#cfcac0; background:rgba(8,8,12,.75); padding:6px 10px; border-radius:8px; z-index:2; pointer-events:none; }
+  .joy { position:absolute; left:16px; bottom:70px; width:120px; height:120px; border-radius:50%; border:2px solid rgba(201,168,76,.5); background:rgba(201,168,76,.08); z-index:3; touch-action:none; display:none; }
+  .joy i { position:absolute; left:40px; top:40px; width:40px; height:40px; border-radius:50%; background:rgba(201,168,76,.7); }
+  body.testing .joy.touch { display:block; }
+  .kv2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; } .kv2 div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
+  .kv2 b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:15px; } .kv2 span { font-size:11px; color:var(--muted); }
+  .list div { font-size:12.5px; padding:4px 8px; border-left:3px solid var(--line); margin:3px 0; background:#0d0d11; border-radius:0 6px 6px 0; }
+  .list div.ok { border-color:var(--ok); } .list div.hit { border-color:var(--gold); }
+  .ex { display:grid; gap:6px; } .ex button { font-size:13px; padding:9px; }
+  .muted2 { font-size:11.5px; color:var(--muted); }
+  .chk { display:flex; gap:10px; flex-wrap:wrap; font-size:12.5px; } .chk label { flex-direction:row; align-items:center; gap:5px; color:var(--text); }
+  @media (max-width:1149px) { body.arena-body { height:auto; overflow:auto; } .ar { grid-template-columns:1fr 1fr; grid-template-areas:"st st" "l r"; } .stagew { grid-area:st; height:64vh; height:64dvh; min-height:360px; } #left { grid-area:l; } #right { grid-area:r; } }
+  @media (max-width:767px) { .ar { grid-template-columns:1fr; grid-template-areas:"st" "r" "l"; padding:6px; } .stagew { height:62dvh; } .tools button { padding:6px 8px; font-size:12px; } }
+</style>
+</head>
+<body class="arena-body">
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav><a href="./index.html">1 · 🛠 Garage 3D</a><a href="./summary.html">2 · 📋 สรุปสเปก &amp; ใบเสนอราคา</a><a href="./build.html">3 · ⚙️ สร้าง ROS 2 workspace</a><a class="active" href="./arena.html"><span class="i18n-th">🧱 ออกแบบสนาม</span><span class="i18n-en">🧱 Arena editor</span></a><a href="./guide.html"><span class="i18n-th">📘 คู่มือใช้ไฟล์</span><span class="i18n-en">📘 File guide</span></a></nav>
+  <div class="status" id="st">—</div>
+</header>
+<main class="ar">
+  <aside class="pn" id="left">
+    <h2><span class="i18n-th">สนามสำเร็จรูป</span><span class="i18n-en">Ready-made fields</span></h2>
+    <div class="presets" id="presets"></div>
+    <h2><span class="i18n-th">ตั้งค่าสนาม</span><span class="i18n-en">Field settings</span></h2>
+    <div class="row"><label><span class="i18n-th">ชื่อ (ใช้ตั้งชื่อ package)</span><span class="i18n-en">Name (used for the package)</span><input id="aName"></label></div>
+    <div class="row"><label><span class="i18n-th">กว้าง X (m)</span><span class="i18n-en">Width X (m)</span><input id="aW" type="number" min="1" max="60" step="0.5"></label>
+      <label><span class="i18n-th">ยาว Y (m)</span><span class="i18n-en">Depth Y (m)</span><input id="aH" type="number" min="1" max="60" step="0.5"></label></div>
+    <div class="row"><label><span class="i18n-th">ความสูงกำแพงรอบ (m)</span><span class="i18n-en">Border wall height (m)</span><input id="aWH" type="number" min="0.2" max="3" step="0.1"></label>
+      <label style="flex-direction:row;align-items:center;gap:6px;padding-top:14px"><input id="aBorder" type="checkbox" style="width:auto"> <span class="i18n-th">กำแพงรอบสนาม</span><span class="i18n-en">Border walls</span></label></div>
+    <div class="row"><label><span class="i18n-th">ตารางจับ (snap)</span><span class="i18n-en">Snap grid</span><select id="aSnap"><option value="0">off</option><option value="0.05">5 cm</option><option value="0.1">10 cm</option><option value="0.25">25 cm</option><option value="0.5">50 cm</option></select></label></div>
+    <h2><span class="i18n-th">วิธีใช้</span><span class="i18n-en">How to</span></h2>
+    <div class="muted2" id="howto"></div>
+  </aside>
+
+  <section class="stagew" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="tools" id="tools"></div>
+    <div class="hint" id="hint"></div>
+    <div class="zoom"><button id="zIn">＋</button><button id="zOut">－</button><button id="zFit">⤢</button></div>
+    <div class="mode"><button class="edit on" id="mEdit">✏️ <span class="i18n-th">ออกแบบ</span><span class="i18n-en">Design</span></button><button class="gold" id="mTest">▶ <span class="i18n-th">ทดสอบขับ</span><span class="i18n-en">Test drive</span></button></div>
+    <div class="joy" id="joy"><i></i></div>
+  </section>
+
+  <aside class="pn" id="right">
+    <div id="propsBox"><h2><span class="i18n-th">คุณสมบัติชิ้นที่เลือก</span><span class="i18n-en">Selected object</span></h2><div id="props"></div></div>
+    <div id="testBox" hidden>
+      <h2><span class="i18n-th">ผลทดสอบ</span><span class="i18n-en">Test results</span></h2>
+      <div class="kv2" id="hud"></div>
+      <div class="chk" style="margin-top:8px">
+        <label><input type="checkbox" id="oRays" checked style="width:auto"> LiDAR</label>
+        <label><input type="checkbox" id="oSlam" checked style="width:auto"> SLAM map</label>
+        <label><input type="checkbox" id="oCam" checked style="width:auto"> <span class="i18n-th">กล้อง</span><span class="i18n-en">Camera</span></label>
+        <label><input type="checkbox" id="oHide" style="width:auto"> <span class="i18n-th">ซ่อนสนาม (ดูแค่ที่หุ่นเห็น)</span><span class="i18n-en">Hide field (robot's view only)</span></label>
+      </div>
+      <h2><span class="i18n-th">จุดหมาย</span><span class="i18n-en">Goals</span></h2><div class="list" id="goals"></div>
+      <h2>ArUco</h2><div class="list" id="arucoList"></div>
+      <button class="ghost" id="tReset" style="width:100%;margin-top:8px">↻ <span class="i18n-th">เริ่มใหม่</span><span class="i18n-en">Restart</span></button>
+    </div>
+    <h2><span class="i18n-th">ส่งออกไปใช้กับ ROS 2 / Gazebo</span><span class="i18n-en">Export for ROS 2 / Gazebo</span></h2>
+    <div class="ex">
+      <button class="gold" id="xPkg">📦 <span class="i18n-th">Gazebo world package (.zip)</span><span class="i18n-en">Gazebo world package (.zip)</span></button>
+      <button class="ghost" id="xAruco">🖨 <span class="i18n-th">พิมพ์ ArUco ขนาดจริง</span><span class="i18n-en">Print ArUco at real size</span></button>
+      <button class="ghost" id="xJson">💾 arena.json</button>
+      <button class="ghost" id="xImport">📂 <span class="i18n-th">นำเข้า arena.json</span><span class="i18n-en">Import arena.json</span></button>
+      <input type="file" id="fImport" accept=".json" hidden>
+    </div>
+    <p class="muted2" id="xNote"></p>
+  </aside>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="./arena-export.js"></script>
+<script src="./arena.js"></script>
+<script src="./i18n.js"></script>
+</body>
+</html>
