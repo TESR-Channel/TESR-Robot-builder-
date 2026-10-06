@@ -1,0 +1,65 @@
+# AGV → AMR retrofit — "brain kit" on an existing factory AGV. The AGV's PLC keeps driving the motors;
+# ROS 2 adds SLAM + Nav2 and talks to the PLC over Modbus TCP (generated <prefix>_base_bridge package).
+# Wheel numbers describe the AGV's kinematics (for Gazebo and Nav2); mechanical dims are the AGV footprint.
+schema_version: 1
+meta:
+  name: agv_retrofit
+  package_prefix: agv_amr
+  description: Existing 1.2 x 0.8 m differential AGV upgraded to a navigating AMR (Jetson + 2 LiDAR + IMU)
+  tags: [amr, retrofit, plc]
+
+target:
+  ros_distro: jazzy
+  os: ubuntu-24.04
+  compute: jetson_orin_nano
+  arch: arm64
+  deployment: docker
+
+requirements:
+  application: amr
+  environment: {type: factory, indoor: true, floor: concrete, max_slope_deg: 3, min_aisle_m: 1.4}
+  payload: {max_kg: 500, cog_offset_m: [0.0, 0.0, 0.3]}
+  motion: {v_max: 1.0, a_max: 0.4, w_max: 0.8}
+  runtime_h: 8
+
+mechanical:
+  dims_m: {length: 1.2, width: 0.8, height: 0.35, ground_clearance: 0.05}
+  mass_kg: {robot: 250, total: auto}
+
+drive:
+  type: differential
+  base: external
+  wheels: {diameter_m: 0.2, width_m: 0.06, separation_m: 0.7}
+  casters:
+    - {xyz: [0.45, 0.25, 0.0]}
+    - {xyz: [0.45, -0.25, 0.0]}
+    - {xyz: [-0.45, 0.25, 0.0]}
+    - {xyz: [-0.45, -0.25, 0.0]}
+  motor: {hw: agv_existing_base, count: 2, gear_ratio: 1, driver: plc_modbus_bridge}
+
+hardware:
+  - {id: lidar_1, hw: slamtec_s3, frame: lidar_1_link, parent: base_link, xyz: [0.585, 0.385, 0.08], rpy: [0, 0, 0.7854]}
+  - {id: lidar_2, hw: slamtec_s3, frame: lidar_2_link, parent: base_link, xyz: [-0.585, -0.385, 0.08], rpy: [0, 0, -2.3562]}
+  - {id: imu, hw: tesr_imu, frame: imu_link, parent: base_link, xyz: [0.0, 0.0, 0.2], rpy: [0, 0, 0]}
+  - {id: plc_bridge, hw: plc_modbus_bridge}
+  - {id: estop, hw: generic_estop, io: DI1}
+
+power:
+  battery: {hw: agv_existing_base}
+  bus_v: 24
+  rails:
+    - {v: 5, hw: dcdc_24_5}
+    - {v: 19, hw: dcdc_24_19}
+
+io:
+  DI: {1: estop}
+comms: [dds, mqtt, modbus_tcp]
+
+ros:
+  control: {stack: ros2_control, controller: auto}
+  localization: {slam: slam_toolbox, amcl: true, ekf: auto}
+  navigation: {profile: indoor_amr, planner: auto, controller: auto, costmap: auto, safety_margin_m: 0.05, features: [manual, slam, nav, waypoints]}
+  perception: {depth_to_costmap: false}
+
+sim: {engine: gz_harmonic, world: empty, renderer: ogre1}
+integrations: {node_red: true, studio_pro: true}

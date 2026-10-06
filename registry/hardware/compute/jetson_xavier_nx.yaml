@@ -1,0 +1,22 @@
+id: jetson_xavier_nx
+category: compute
+name: NVIDIA Jetson Xavier NX Developer Kit (8 GB)
+manufacturer: NVIDIA
+mass_kg: 0.18  # TODO confirm
+dims_m: [0.103, 0.0905, 0.031]  # dev kit 103 x 90.5 x 31 mm
+electrical: {voltage_v: 19, typical_w: 15, peak_w: 20}  # 19 V DC jack (reference adapter); power modes 10/15/20 W. TODO confirm accepted input range
+interfaces: [usb3, usb2, ethernet, uart, i2c, spi, gpio, csi]
+compute:
+  arch: arm64
+  ram_gb: 8
+  gpu: true
+  usb3_ports: 4
+  ethernet_ports: 1
+  supported_distros: [jazzy]
+  supported_os: [ubuntu-24.04]
+  host_os: jetpack-5 (ubuntu-20.04)  # ROS 2 Jazzy runs in Docker (ubuntu-24.04 container) on the JetPack host
+  docker_required: true
+verified: false
+sources: []
+catalog_ref: tesrshop
+notes: Older-generation Jetson (JetPack 5 / Ubuntu 20.04 host). ROS 2 Jazzy runs in Docker; GPU acceleration inside the container is more limited than on Orin.

@@ -1,0 +1,8 @@
+hw: plc_modbus_bridge
+distro: jazzy
+package: base_bridge
+apt: [python3-pymodbus]
+pip: []
+node: plc_bridge
+topics: {main: /cmd_vel}
+notes: Generated per robot as <prefix>_base_bridge (no ros2_control plugin) — see its README for the PLC register map.

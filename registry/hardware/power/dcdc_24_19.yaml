@@ -1,0 +1,9 @@
+id: dcdc_24_19
+category: power_supply
+name: DC-DC 24 V → 19 V 5 A (for Jetson)
+manufacturer: generic
+mass_kg: 0.12
+dims_m: [0.07, 0.05, 0.03]
+electrical: {voltage_v: 24, typical_w: 2, peak_w: 100}
+power_supply: {output_v: 19, output_a: 5}
+verified: false

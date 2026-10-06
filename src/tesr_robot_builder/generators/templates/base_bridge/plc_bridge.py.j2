@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+# {{ header }}
+"""PLC bridge for {{ d.meta.name }} — an existing AGV driven by its own PLC, steered by ROS 2 over Modbus TCP.
+
+/cmd_vel (TwistStamped) ──► holding registers  cmd_register+0..4 = vx, vy, wz, heartbeat, enable
+/odom + TF          ◄── registers         feedback_register+0..3 = vx, vy, wz, status (bit0 E-stop, bit1 fault, bit2 ready)
+Speeds are signed 16-bit (two's complement) scaled by linear_scale / angular_scale. A watchdog writes zero speed and
+enable = 0 when /cmd_vel stops for cmd_timeout seconds; the PLC must also stop the AGV if the heartbeat stops changing.
+mode: dry_run runs without a PLC (odom integrates the commands) — use it to test Nav2 before connecting.
+"""
+import inspect
+import math
+
+import rclpy
+from geometry_msgs.msg import TransformStamped, Twist, TwistStamped
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from std_msgs.msg import Bool
+from tf2_ros import TransformBroadcaster
+
+
+def to_u16(v: float) -> int:
+    return max(-32768, min(32767, int(round(v)))) & 0xFFFF
+
+
+def to_i16(u: int) -> int:
+    return u - 0x10000 if u & 0x8000 else u
+
+
+class PlcBridge(Node):
+    def __init__(self):
+        super().__init__('plc_bridge')
+        g = lambda name, default: self.declare_parameter(name, default).value  # noqa: E731
+        self.mode = g('mode', 'dry_run')
+        self.host, self.port, self.unit = g('host', '192.168.1.10'), int(g('port', 502)), int(g('unit_id', 1))
+        self.cmd_reg, self.fb_reg = int(g('cmd_register', 100)), int(g('feedback_register', 200))
+        self.fb_input, self.use_fb = bool(g('feedback_is_input_register', False)), bool(g('use_feedback', True))
+        self.ls, self.as_ = float(g('linear_scale', 1000.0)), float(g('angular_scale', 1000.0))
+        self.v_max, self.w_max, self.holonomic = float(g('v_max', {{ p.v_max }})), float(g('w_max', {{ p.w_max }})), bool(g('holonomic', {{ 'True' if p.holonomic else 'False' }}))
+        self.timeout = float(g('cmd_timeout', 0.5))
+        self.odom_frame, self.base_frame, self.publish_tf = g('odom_frame', 'odom'), g('base_frame', 'base_footprint'), bool(g('publish_tf', True))
+        rate = float(g('rate_hz', 20.0))
+        if bool(g('stamped', True)):
+            self.create_subscription(TwistStamped, 'cmd_vel', lambda m: self.on_cmd(m.twist), 10)
+        else:
+            self.create_subscription(Twist, 'cmd_vel', self.on_cmd, 10)
+        self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
+        self.estop_pub = self.create_publisher(Bool, 'base/estop', 10)
+        self.tf = TransformBroadcaster(self) if self.publish_tf else None
+        self.cmd = (0.0, 0.0, 0.0)
+        self.last_cmd = self.get_clock().now()
+        self.x = self.y = self.yaw = 0.0
+        self.heartbeat = 0
+        self.client = None
+        self.kw = 'slave'
+        self.last = self.get_clock().now()
+        self.create_timer(1.0 / rate, self.tick)
+        self.get_logger().info(f'PLC bridge in {self.mode} mode' + (f' → {self.host}:{self.port} unit {self.unit}' if self.mode == 'modbus_tcp' else ' (no PLC)'))
+
+    # ------------------------------------------------------------------ Modbus
+    def connect(self):
+        if self.client is not None and self.client.connected:
+            return True
+        try:
+            from pymodbus.client import ModbusTcpClient  # apt: python3-pymodbus
+        except ImportError:
+            self.get_logger().error('pymodbus missing: sudo apt install python3-pymodbus', throttle_duration_sec=5.0)
+            return False
+        if self.client is None:
+            self.client = ModbusTcpClient(self.host, port=self.port, timeout=0.3)
+            params = inspect.signature(self.client.write_registers).parameters  # pymodbus renamed slave → device_id in 3.9
+            self.kw = 'device_id' if 'device_id' in params else 'slave' if 'slave' in params else 'unit'
+        if not self.client.connect():
+            self.get_logger().warn(f'cannot reach PLC at {self.host}:{self.port}', throttle_duration_sec=5.0)
+            return False
+        return True
+
+    def exchange(self, regs):
+        """Write the command block, read the feedback block. Returns (vx, vy, wz, status) or None."""
+        if not self.connect():
+            return None
+        try:
+            w = self.client.write_registers(self.cmd_reg, regs, **{self.kw: self.unit})
+            if w.isError():
+                raise IOError(w)
+            read = self.client.read_input_registers if self.fb_input else self.client.read_holding_registers
+            r = read(self.fb_reg, count=4, **{self.kw: self.unit})
+            if r.isError():
+                raise IOError(r)
+            v = r.registers
+            return to_i16(v[0]) / self.ls, to_i16(v[1]) / self.ls, to_i16(v[2]) / self.as_, v[3]
+        except Exception as e:  # keep running; the PLC watchdog stops the AGV
+            self.get_logger().warn(f'Modbus error: {e}', throttle_duration_sec=2.0)
+            self.client.close()
+            return None
+
+    # ------------------------------------------------------------------ loop
+    def on_cmd(self, t: Twist):
+        clamp = lambda v, m: max(-m, min(m, v))  # noqa: E731
+        self.cmd = (clamp(t.linear.x, self.v_max), clamp(t.linear.y, self.v_max) if self.holonomic else 0.0, clamp(t.angular.z, self.w_max))
+        self.last_cmd = self.get_clock().now()
+
+    def tick(self):
+        now = self.get_clock().now()
+        dt = (now - self.last).nanoseconds * 1e-9
+        self.last = now
+        fresh = (now - self.last_cmd).nanoseconds * 1e-9 < self.timeout
+        vx, vy, wz = self.cmd if fresh else (0.0, 0.0, 0.0)
+        self.heartbeat = (self.heartbeat + 1) & 0xFFFF
+        estop = False
+        if self.mode == 'modbus_tcp':
+            fb = self.exchange([to_u16(vx * self.ls), to_u16(vy * self.ls), to_u16(wz * self.as_), self.heartbeat, 1 if fresh else 0])
+            if fb is None:
+                vx = vy = wz = 0.0
+            else:
+                estop = bool(fb[3] & 0x1)
+                if self.use_fb:
+                    vx, vy, wz = fb[0], fb[1], fb[2]
+        self.estop_pub.publish(Bool(data=estop))
+        if estop:
+            vx = vy = wz = 0.0
+        # integrate odometry in the odom frame
+        c, s = math.cos(self.yaw), math.sin(self.yaw)
+        self.x += (vx * c - vy * s) * dt
+        self.y += (vx * s + vy * c) * dt
+        self.yaw = math.atan2(math.sin(self.yaw + wz * dt), math.cos(self.yaw + wz * dt))
+        qz, qw = math.sin(self.yaw / 2), math.cos(self.yaw / 2)
+        o = Odometry()
+        o.header.stamp = now.to_msg()
+        o.header.frame_id, o.child_frame_id = self.odom_frame, self.base_frame
+        o.pose.pose.position.x, o.pose.pose.position.y = self.x, self.y
+        o.pose.pose.orientation.z, o.pose.pose.orientation.w = qz, qw
+        o.twist.twist.linear.x, o.twist.twist.linear.y, o.twist.twist.angular.z = vx, vy, wz
+        o.pose.covariance[0] = o.pose.covariance[7] = 0.01
+        o.pose.covariance[35] = 0.02
+        self.odom_pub.publish(o)
+        if self.tf:
+            tf = TransformStamped()
+            tf.header = o.header
+            tf.child_frame_id = self.base_frame
+            tf.transform.translation.x, tf.transform.translation.y = self.x, self.y
+            tf.transform.rotation.z, tf.transform.rotation.w = qz, qw
+            self.tf.sendTransform(tf)
+
+    def stop(self):
+        if self.mode == 'modbus_tcp' and self.client is not None and self.client.connected:
+            try:
+                self.client.write_registers(self.cmd_reg, [0, 0, 0, self.heartbeat, 0], **{self.kw: self.unit})
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def main():
+    rclpy.init()
+    node = PlcBridge()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.stop()
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

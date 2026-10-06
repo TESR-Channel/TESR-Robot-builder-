@@ -1,0 +1,23 @@
+# {{ header }}
+# PLC bridge for {{ d.meta.name }} — edit to match the PLC program. Register map: see README.md of this package.
+plc_bridge:
+  ros__parameters:
+    mode: dry_run              # dry_run (no PLC: integrates the commands) | modbus_tcp (set by robot.launch.py hardware:=real)
+    host: 192.168.1.10         # PLC IP address
+    port: 502
+    unit_id: 1                 # Modbus unit / slave id
+    cmd_register: 100          # first holding register written: vx, vy, wz, heartbeat, enable
+    feedback_register: 200     # first register read: vx, vy, wz, status
+    feedback_is_input_register: false   # true = read input registers (FC4) instead of holding registers (FC3)
+    use_feedback: true         # false = no speed feedback from the PLC: odom integrates the commands (rely on SLAM/AMCL)
+    linear_scale: 1000.0       # register units per m/s   (1000 → mm/s)
+    angular_scale: 1000.0      # register units per rad/s (1000 → mrad/s)
+    v_max: {{ p.v_max }}
+    w_max: {{ p.w_max }}
+    holonomic: {{ 'true' if p.holonomic else 'false' }}
+    rate_hz: 20.0
+    cmd_timeout: 0.5           # s without /cmd_vel → write zero speed and enable = 0
+    stamped: true              # Nav2 / teleop publish TwistStamped on /cmd_vel
+    odom_frame: odom
+    base_frame: base_footprint
+    publish_tf: true

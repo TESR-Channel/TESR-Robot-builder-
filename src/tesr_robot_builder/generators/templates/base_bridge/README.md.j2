@@ -1,0 +1,39 @@
+<!-- {{ header }} -->
+# {{ pkg }} — AGV → AMR: ROS 2 ↔ PLC over Modbus TCP
+
+{{ d.meta.name }} uses an **existing AGV**: its PLC keeps driving the motors, brakes and safety. This node sends the
+navigation speed to the PLC and reads the AGV's speed back as `/odom`.
+
+```bash
+ros2 launch {{ r.package("bringup") }} robot.launch.py                       # dry run, no PLC: test SLAM / Nav2 / RViz
+ros2 launch {{ r.package("bringup") }} robot.launch.py hardware:=real nav:=true   # talk to the PLC + navigation
+```
+Set the PLC address and registers in `config/plc_bridge.yaml` (built with `--symlink-install`, so just relaunch).
+
+## Register map for the PLC programmer
+Signed 16-bit (two's complement). Scales: linear ×{{ '%g' % 1000 }} (mm/s), angular ×{{ '%g' % 1000 }} (mrad/s) — change `linear_scale` / `angular_scale` to match.
+
+| Address | Direction | Name | Unit / meaning |
+|---|---|---|---|
+| `cmd_register + 0` (100) | ROS → PLC (holding) | vx | forward speed, mm/s |
+| `cmd_register + 1` (101) | ROS → PLC (holding) | vy | sideways speed, mm/s {{ '(holonomic AGV)' if p.holonomic else '(always 0 — differential)' }} |
+| `cmd_register + 2` (102) | ROS → PLC (holding) | wz | turn rate, mrad/s (+ = left / counter-clockwise) |
+| `cmd_register + 3` (103) | ROS → PLC (holding) | heartbeat | +1 every cycle ({{ 20 }} Hz) — **PLC must stop if it stops changing for > 0.5 s** |
+| `cmd_register + 4` (104) | ROS → PLC (holding) | enable | 1 = follow the speed, 0 = stop |
+| `feedback_register + 0` (200) | PLC → ROS | vx | measured forward speed, mm/s (from the AGV's encoders) |
+| `feedback_register + 1` (201) | PLC → ROS | vy | measured sideways speed, mm/s |
+| `feedback_register + 2` (202) | PLC → ROS | wz | measured turn rate, mrad/s |
+| `feedback_register + 3` (203) | PLC → ROS | status | bit0 E-stop active · bit1 fault · bit2 ready |
+
+Limits in the bridge: v_max {{ p.v_max }} m/s, w_max {{ p.w_max }} rad/s. Keep the PLC's own limits, safety scanners
+and E-stop chain — the bridge does not replace them.
+
+## No speed feedback from the PLC?
+Set `use_feedback: false`. `/odom` then integrates the commanded speed, which drifts; SLAM / AMCL with the LiDAR
+corrects the map position, but expect weaker local control. Adding encoder feedback in the PLC is strongly recommended.
+
+## Checklist before the first move
+1. `ping` the PLC from the robot computer (same subnet, e.g. 192.168.1.x).
+2. Lift the drive wheels or block the AGV, start with `hardware:=real`, drive slowly with teleop:
+   `ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true`
+3. Check `ros2 topic echo /odom` follows the wheels and `ros2 topic echo /base/estop` turns true with the E-stop pressed.

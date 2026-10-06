@@ -1,0 +1,9 @@
+id: agv_existing_base
+category: comm
+name: Existing AGV base (motors, drivers and battery controlled by the customer's PLC)
+manufacturer: customer
+mass_kg: 0
+dims_m: [0.01, 0.01, 0.01]
+external: true
+verified: true
+notes: Placeholder used by drive.base external (AGV -> AMR retrofit). Not supplied — the robot brain sends velocity commands to the PLC.

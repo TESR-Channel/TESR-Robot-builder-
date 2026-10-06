@@ -1,0 +1,10 @@
+id: plc_modbus_bridge
+category: comm
+name: PLC bridge over Modbus TCP (generated ROS 2 node)
+manufacturer: TESR
+mass_kg: 0
+dims_m: [0.01, 0.01, 0.01]
+interfaces: [ethernet]
+external: true
+verified: true
+notes: Software bridge generated into <prefix>_base_bridge — /cmd_vel to PLC holding registers, PLC feedback to /odom. Wire the computer's Ethernet port to the PLC.

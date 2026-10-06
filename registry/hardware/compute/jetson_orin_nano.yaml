@@ -1,0 +1,22 @@
+id: jetson_orin_nano
+category: compute
+name: NVIDIA Jetson Orin Nano Developer Kit (8 GB)
+manufacturer: NVIDIA
+mass_kg: 0.2  # TODO confirm (dev kit with heatsink + fan)
+dims_m: [0.100, 0.079, 0.021]  # dev kit carrier board 100 x 79 x 21 mm
+electrical: {voltage_v: 19, typical_w: 15, peak_w: 25}  # 19 V DC jack (reference adapter); module power modes 7-25 W (Super). TODO confirm accepted input range
+interfaces: [usb3, usb2, ethernet, uart, i2c, spi, gpio, csi, can]
+compute:
+  arch: arm64
+  ram_gb: 8
+  gpu: true
+  usb3_ports: 4
+  ethernet_ports: 1
+  supported_distros: [jazzy]
+  supported_os: [ubuntu-24.04]
+  host_os: jetpack-6 (ubuntu-22.04)  # ROS 2 Jazzy runs in Docker (ubuntu-24.04 container) on the JetPack host
+  docker_required: true
+verified: false
+sources: []
+catalog_ref: tesrshop
+notes: GPU computer for AI / vision. ROS 2 Jazzy needs Ubuntu 24.04, so it runs in Docker on the JetPack host (target.deployment docker).
