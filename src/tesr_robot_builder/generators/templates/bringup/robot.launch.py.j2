@@ -2,7 +2,11 @@
 """Bring up {{ d.meta.name }} ({{ d.drive.type }} drive, ROS 2 {{ d.target.ros_distro }}) — on the real robot or with mock hardware.
 
     ros2 launch {{ pkg }} robot.launch.py                       # mock hardware: controllers + TF, no robot needed
+{% if d.drive.base == 'external' %}
+    ros2 launch {{ pkg }} robot.launch.py hardware:=real        # existing AGV: Modbus TCP to its PLC ({{ r.package("base_bridge") }})
+{% else %}
     ros2 launch {{ pkg }} robot.launch.py hardware:=real        # real motor driver ({{ p.real_plugin or 'no ros2_control plugin in the registry yet' }})
+{% endif %}
     ros2 launch {{ pkg }} robot.launch.py hardware:=real nav:=true   # + slam_toolbox + Nav2 + RViz
 
 Sensor drivers ({{ r.hardware|map(attribute='driver_package')|select|unique|join(', ') or 'none' }}) are started by their own
@@ -15,12 +19,35 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+{% if d.drive.base == 'external' %}
+from launch.substitutions import Command, LaunchConfiguration, PythonExpression
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+{% else %}
 from launch.substitutions import LaunchConfiguration
+{% endif %}
 
 
 def generate_launch_description():
-    control = os.path.join(get_package_share_directory('{{ r.package("control") }}'), 'launch', 'control.launch.py')
     navigation = os.path.join(get_package_share_directory('{{ r.package("navigation") }}'), 'launch', 'navigation.launch.py')
+{% if d.drive.base == 'external' %}
+    # Existing AGV: its PLC drives the motors. hardware:=mock → bridge in dry_run (no PLC), hardware:=real → Modbus TCP.
+    description = get_package_share_directory('{{ r.package("description") }}')
+    robot_description = ParameterValue(Command(['xacro ', os.path.join(description, 'urdf', 'robot.urdf.xacro'), ' hardware:=mock']), value_type=str)
+    bridge_cfg = os.path.join(get_package_share_directory('{{ r.package("base_bridge") }}'), 'config', 'plc_bridge.yaml')
+    mode = PythonExpression(["'modbus_tcp' if '", LaunchConfiguration('hardware'), "' == 'real' else 'dry_run'"])
+    return LaunchDescription([
+        DeclareLaunchArgument('hardware', default_value='mock', description='mock (dry run, no PLC) | real (Modbus TCP to the PLC)'),
+        DeclareLaunchArgument('nav', default_value='false', description='start slam_toolbox + Nav2 + RViz'),
+        Node(package='robot_state_publisher', executable='robot_state_publisher', output='screen',
+             parameters=[{'robot_description': robot_description}]),
+        Node(package='joint_state_publisher', executable='joint_state_publisher', output='screen'),  # AGV wheels: fixed TF only
+        Node(package='{{ r.package("base_bridge") }}', executable='plc_bridge', output='screen', parameters=[bridge_cfg, {'mode': mode}]),
+        IncludeLaunchDescription(PythonLaunchDescriptionSource(navigation), condition=IfCondition(LaunchConfiguration('nav')),
+                                 launch_arguments={'use_sim_time': 'false'}.items()),
+    ])
+{% else %}
+    control = os.path.join(get_package_share_directory('{{ r.package("control") }}'), 'launch', 'control.launch.py')
     return LaunchDescription([
         DeclareLaunchArgument('hardware', default_value='mock', description='mock | real'),
         DeclareLaunchArgument('nav', default_value='false', description='start slam_toolbox + Nav2 + RViz'),
@@ -29,3 +56,4 @@ def generate_launch_description():
         IncludeLaunchDescription(PythonLaunchDescriptionSource(navigation), condition=IfCondition(LaunchConfiguration('nav')),
                                  launch_arguments={'use_sim_time': 'false'}.items()),
     ])
+{% endif %}

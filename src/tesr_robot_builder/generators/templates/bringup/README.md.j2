@@ -7,9 +7,9 @@ LiDAR: {{ p.lidars|length }} ({{ p.scan_topics|join(', ') or '—' }}), cameras:
 ## 1 · Build
 ```bash
 source /opt/ros/jazzy/setup.bash
-{%- if has_repos %}
+{% if has_repos %}
 vcs import src < drivers.repos          # drivers that are not on apt ({{ repos_pkgs }}) — sudo apt install python3-vcstool
-{%- endif %}
+{% endif %}
 rosdep install --from-paths src -y --ignore-src
 colcon build --symlink-install && source install/setup.bash
 ```
@@ -35,11 +35,19 @@ ros2 launch {{ pkg }} sim.launch.py world:=$HOME/my_arena.sdf x:=0 y:=0 yaw:=0
 ```bash
 ros2 launch {{ pkg }} robot.launch.py hardware:=real nav:=true
 ```
-Motor driver plugin: `{{ p.real_plugin or 'not in the registry yet — mock hardware is used' }}`. Start the sensor drivers
-({{ r.hardware|map(attribute='driver_package')|select|unique|join(', ') or '—' }}) so they publish {{ p.scan_topics|join(', ') or 'no LiDAR' }}.
-{%- for h in r.hardware if h.driver_launch %}
+{% if d.drive.base == 'external' %}
+
+**Existing AGV (AGV → AMR):** the motors stay under the PLC. `{{ r.package("base_bridge") }}` sends `/cmd_vel` to the PLC over
+Modbus TCP and publishes `/odom` from its speed feedback — set the PLC IP / registers in its `config/plc_bridge.yaml`
+and give the register map in its README to the PLC programmer. Without `hardware:=real` the bridge runs a dry run (no PLC).
+{% else %}
+Motor driver plugin: `{{ p.real_plugin or 'not in the registry yet — mock hardware is used' }}`.
+{% endif %}
+
+Start the sensor drivers ({{ r.hardware|selectattr('category', 'ne', 'comm')|map(attribute='driver_package')|select|unique|join(', ') or '—' }}) so they publish {{ p.scan_topics|join(', ') or 'no LiDAR' }}:
+{% for h in r.hardware if h.driver_launch %}
 - `{{ h.id }}`: `ros2 launch {{ h.driver_package }} {{ h.driver_launch }}`
-{%- endfor %}
+{% endfor %}
 
 ## Packages
 | package | what |

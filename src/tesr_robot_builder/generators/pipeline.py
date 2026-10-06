@@ -23,6 +23,7 @@ from ..resolve import ResolvedRobot, resolve
 from ..rules import builtin as _builtin  # noqa: F401  (registers rules)
 from ..rules.engine import Report, RuleContext, run_rules
 from ..schema.definition import RobotDefinition, definition_digest, load_definition
+from . import base_bridge as _base_bridge  # noqa: F401
 from . import bringup as _bringup  # noqa: F401
 from . import control as _control  # noqa: F401
 from . import description as _description  # noqa: F401
