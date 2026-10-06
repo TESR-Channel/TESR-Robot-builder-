@@ -51,7 +51,31 @@
   const mm = (m) => Math.round(m * 1000);
   // The chassis frame is not sold: the customer builds it. This turns the Garage design into a practical starting point —
   // extrusion size, cut list, plates, wheel / caster / sensor mounting — to be checked by the customer's engineer.
+  // Existing AGV (drive.base external): the customer keeps the vehicle — this is how to fit the brain kit and wire it to the PLC.
+  function retrofitGuide() {
+    const s = state, busV = s.power.busV, comp = dv.compute;
+    const lid = dv.sensors.filter((x) => x.category === 'lidar').map((x) => `${esc(x.id)} (${mm(x.pos[0])}, ${mm(x.pos[1])}, ${mm(x.pos[2])}) mm`).join(' · ');
+    const rows = [
+      [L('คอมพิวเตอร์', 'Computer'), `${comp ? esc(comp.name) : '—'} · ${L('ใส่กล่องระบายอากาศ ยึดแผ่นกันสั่น ใกล้กึ่งกลางรถ', 'in a ventilated box on anti-vibration mounts near the centre')}`],
+      [L('แผ่นยึดชุดสมอง', 'Brain-kit plate'), L('อะลูมิเนียม 3 มม. ประมาณ 300 × 200 มม. สำหรับคอมพ์ + DC-DC + IMU · ยึดกับตัวรถด้วยน็อต M6', 'aluminium 3 mm, about 300 × 200 mm, for computer + DC-DC + IMU · bolt to the AGV with M6')],
+      ['IMU', L('ยึดแน่นใกล้จุดหมุนของรถ แกน x ชี้ไปหน้ารถ ไม่ติดบนแผ่นที่สั่น', 'rigidly near the turning centre, x axis to the front, not on a vibrating plate')],
+      ['LiDAR', `${lid || '—'} ${L('— ระนาบสแกนต้องโล่ง ไม่ให้ขอบรถ/ของบนรถบัง', '— keep the scan plane clear of the AGV body and the load')}`],
+      [L('ไฟเลี้ยง', 'Power'), `${L('จากแบตรถ', 'from the AGV battery')} ${busV} V → ${dv.rails.map((r) => `DC-DC ${r.v} V`).join(', ') || '—'} · ${L('ใส่ฟิวส์ + สวิตช์แยก', 'add a fuse + isolating switch')} · ~${fmt(dv.electronicsW, 0)} W`],
+      ['PLC', L('สาย LAN จากคอมพ์ไป PLC (Modbus TCP, IP คงที่วงเดียวกัน เช่น 192.168.1.x)', 'Ethernet from the computer to the PLC (Modbus TCP, fixed IPs on one subnet, e.g. 192.168.1.x)')],
+      [L('รีจิสเตอร์ PLC', 'PLC registers'), L('100–104: vx, vy (mm/s), wz (mrad/s), heartbeat, enable · 200–203: ความเร็วจริง vx, vy, wz, สถานะ (บิต0 E-stop)', '100–104: vx, vy (mm/s), wz (mrad/s), heartbeat, enable · 200–203: measured vx, vy, wz, status (bit0 E-stop)')],
+    ];
+    const tips = [
+      L('PLC ต้องหยุดรถเองถ้า heartbeat ไม่เปลี่ยนเกิน 0.5 วินาที — ห้ามพึ่งคำสั่งจาก ROS อย่างเดียว', 'The PLC must stop the AGV by itself when the heartbeat stops changing for > 0.5 s — never rely on ROS alone'),
+      L('คงระบบความปลอดภัยเดิมของรถไว้ทั้งหมด (E-stop, safety scanner, bumper)', 'Keep all of the AGV’s own safety (E-stop, safety scanners, bumpers)'),
+      L('ทดสอบครั้งแรกด้วย dry run (ไม่ต่อ PLC) แล้วค่อยยกล้อ/กั้นรถ ขับช้า ๆ', 'Test first with the dry run (no PLC), then with the wheels lifted / AGV blocked at low speed'),
+      L('ตารางรีจิสเตอร์ฉบับเต็มอยู่ใน README ของ package base_bridge (ขั้น 3)', 'The full register map is in the README of the base_bridge package (step 3)'),
+    ];
+    return `<h2>${L('แนวทางติดตั้งชุดสมองบนรถ AGV', 'Fitting the brain kit to the AGV')} <span class="muted" style="text-transform:none;letter-spacing:0">(${L('รถ AGV เป็นของลูกค้า — ไม่รวมในใบเสนอราคา', 'the AGV is the customer’s — not included in this quotation')})</span></h2>
+      ${kvT(rows)}
+      <ul class="note" style="margin:8px 0 0 18px;padding:0">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
+  }
   function frameGuide() {
+    if (dv.external) return retrofitGuide();
     const s = state, c = s.chassis, dr = s.drive, m = s.mission;
     const load = dv.totalMass;
     const prof = load <= 40 ? { id: '2020', a: 0.02 } : load <= 150 ? { id: '3030', a: 0.03 } : { id: '4040', a: 0.04 };
@@ -168,7 +192,7 @@
           ['ใช้งานต่อการชาร์จ', `${m.runtimeH} h (คำนวณได้ ~${fmt(dv.runtimeAch, 1)} h)`], ['พื้น / ทางลาด', `${FLOOR[m.floor] || m.floor} · ${m.slopeDeg}°`], ['ช่องทางแคบสุด', m.minAisle ? `${m.minAisle} m` : '—']])}</div>
         <div><h3>ตัวถัง</h3>${kv([['รูปทรง', c.shape === 'round' ? `กลม Ø${c.width} m` : `${c.length} × ${c.width} m`], ['สูง / ใต้ท้อง', `${c.height} m / ${c.clearance} m`],
           ['มวลหุ่น / รวมบรรทุก', `${fmt(dv.robotMass, 0)} kg / ${fmt(dv.totalMass, 0)} kg`], ['โครงจากไฟล์', c.shell ? esc(c.shell.file) : 'ทรงเรขาคณิต'], ['ชิ้นส่วนเพิ่ม', `${(s.parts || []).length} ชิ้น`], ['E-stop', s.estop ? 'มี' : 'ไม่มี']])}</div>
-        <div><h3>ระบบขับเคลื่อน</h3>${kv([['ชนิด', dr.type === 'mecanum' ? 'Mecanum 4 ล้อ (holonomic)' : `Differential 2 ล้อขับ + ล้อประคอง ${CASTER[dr.casterLayout] || ''}`],
+        <div><h3>ระบบขับเคลื่อน</h3>${kv([['ชนิด', (dv.external ? L('รถ AGV เดิม (PLC คุมมอเตอร์) · ', 'existing AGV (PLC drives the motors) · ') : '') + (dr.type === 'mecanum' ? 'Mecanum 4 ล้อ (holonomic)' : `Differential 2 ล้อขับ + ล้อประคอง ${CASTER[dr.casterLayout] || ''}`)],
           ['ล้อ', `Ø${fmt(dr.wheelDiameter * 1000, 0)} mm × ${fmt(dr.wheelWidth * 1000, 0)} mm · ระยะล้อ ${dr.track} m${dr.type === 'mecanum' ? ` · wheelbase ${dr.wheelbase} m` : ''}`],
           ['มอเตอร์', motor ? `${esc(motor.name)} × ${dv.nDrive}` : '—'], ['อัตราทด', `${dr.gearRatio}:1`], ['Low-level control', driver ? `${esc(driver.name)} × ${dr.driverCount}` : '—']])}</div>
         <div><h3>พลังงาน</h3>${kv([['ระบบไฟ', `${s.power.busV} V${dv.suggestedBusV !== s.power.busV ? ` (แนะนำ ${dv.suggestedBusV} V)` : ''}`], ['แบตเตอรี่', bat ? esc(bat.name) : '—'],
@@ -203,7 +227,8 @@
       <table class="t"><thead><tr><th class="num">#</th><th>รายการ</th><th>SKU / ลิงก์</th><th class="num">จำนวน</th><th class="num">ราคา/หน่วย (฿)</th><th class="num">รวม (฿)</th></tr></thead>
         <tbody>${bomRows}</tbody><tfoot id="tfoot"></tfoot></table>
       <p class="note" id="priceNote"></p>
-      <p class="note">${L('โครงรถ / ตัวถัง: ลูกค้าจัดทำเอง ไม่รวมในใบเสนอราคานี้ — ดู "แนวทางสร้างโครงรถ" ด้านบน', 'Chassis frame: built by the customer, not included in this quotation — see the "Chassis frame build guide" above')}</p>
+      <p class="note">${dv.external ? L('รถ AGV และระบบ PLC เป็นของลูกค้า ไม่รวมในใบเสนอราคานี้ — ราคาเป็นชุดสมอง (คอมพ์ เซนเซอร์ ไฟเลี้ยง) · ดู "แนวทางติดตั้งชุดสมองบนรถ AGV" ด้านบน', 'The AGV and its PLC are the customer’s and not included — this quotation covers the brain kit (computer, sensors, power) · see "Fitting the brain kit to the AGV" above')
+        : L('โครงรถ / ตัวถัง: ลูกค้าจัดทำเอง ไม่รวมในใบเสนอราคานี้ — ดู "แนวทางสร้างโครงรถ" ด้านบน', 'Chassis frame: built by the customer, not included in this quotation — see the "Chassis frame build guide" above')}</p>
       <p class="note">ราคาอุปกรณ์จาก TESR Shop ณ วันที่ออกเอกสาร · ยังไม่รวมค่าประกอบ ติดตั้ง ซอฟต์แวร์ และอบรม เว้นแต่ระบุในหมายเหตุ · สเปกคำนวณโดย TESR Robot Builder (ตรวจด้วยกฎวิศวกรรม 16 ข้อก่อนสร้าง ROS 2 workspace)</p>
       <div style="margin-top:14px;padding:12px 14px;border:1.5px solid #C9A84C;border-radius:8px;background:#fffaf0;break-inside:avoid">
         <b style="font-family:'Chakra Petch';color:#8B0000">${L('สนใจสั่งซื้อ · สอบถาม · นัดติดตั้งและอบรม ติดต่อ TESR', 'To order, ask questions or book installation & training — contact TESR')}</b>
