@@ -233,6 +233,8 @@ def voltages_match(ctx: RuleContext) -> list[Finding]:
 
 @register("R-PWR-002", "power", "battery pack voltage (nominal x series) matches the bus")
 def battery_pack_matches_bus(ctx: RuleContext) -> list[Finding]:
+    if ctx.defn.drive.base == "external":
+        return [Finding("R-PWR-002", "power", "PASS", f"battery belongs to the existing AGV — the robot brain runs from its {ctx.defn.power.bus_v:g} V bus", path="power.battery")]
     b = ctx.defn.power.battery
     rec = ctx.registry.hw(b.hw)
     ex = rec.model_dump() if rec else {}

@@ -135,8 +135,12 @@ class Motor(StrictModel):
 DriveType = Literal["differential", "mecanum"]  # later: four_wheel_differential, omni, ackermann, tracked
 
 
+DriveBase = Literal["own", "external"]  # external: an existing AGV whose PLC drives the motors (AGV -> AMR retrofit)
+
+
 class Drive(StrictModel):
     type: DriveType
+    base: DriveBase = "own"
     wheels: Wheels
     casters: list[Caster] = []
     motor: Motor
