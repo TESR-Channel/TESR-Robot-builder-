@@ -49,7 +49,19 @@
       drive: { type: 'mecanum', wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, casterLayout: 'front_rear', driverCount: 2 },
       compute: 'x86_pc', sensors: { lidar: ['slamtec_c1', 'fr2'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
     },
+    // Brain kit for an existing AGV (AGV → AMR): computer + LiDAR + IMU only — the AGV's PLC keeps driving the motors.
+    // The body/wheel sizes describe the customer's AGV so the footprint, costmap and LiDAR placement come out right.
+    agv_retrofit: {
+      label: 'ชุดสมอง AGV → AMR', icon: '🧠', desc: 'ติดคอมพ์ + LiDAR + IMU บนรถ AGV เดิม · ส่งคำสั่งให้ PLC ผ่าน Modbus TCP', name: 'agv_retrofit', prefix: 'agv_amr',
+      mission: { application: 'amr', envType: 'factory', floor: 'concrete', payload: 500, vMax: 1.0, aMax: 0.4, wMax: 0.8, runtimeH: 8, slopeDeg: 3, minAisle: 1.4, cogOffsetZ: 0.3 },
+      chassis: { shape: 'box', length: 1.2, width: 0.8, height: 0.35, clearance: 0.05, color: 'gold' },
+      drive: { type: 'differential', base: 'external', wheelDiameter: 0.2, wheelWidth: 0.06, track: 0.7, wheelbase: 0.5, gearRatio: 1, casterLayout: 'corners4', driverCount: 1 },
+      busV: 24, compute: 'jetson_orin_nano', sensors: { lidar: ['slamtec_s3', 'diag2'], imu: 'tesr_imu' }, estop: true,
+    },
   };
+  // drive.base 'external' = an existing AGV whose PLC drives the motors; ROS 2 talks to the PLC (generated base_bridge package)
+  const isExternal = (state) => !!(state.drive && state.drive.base === 'external');
+  const EXT = { base: 'agv_existing_base', bridge: 'plc_modbus_bridge' };
 
   // ------------------------------------------------------------------ geometry helpers (all in base_link: x forward, z up, origin at axle height)
   function chassisZ(state) {
@@ -129,8 +141,8 @@
     const state = {
       version: 1, blueprint: key, name: b.name, prefix: b.prefix, description: b.label,
       mission: { ...b.mission }, chassis: { ...b.chassis, shell: null },
-      drive: { ...b.drive, motor: null, driver: null }, power: { busV: 24, battery: null },
-      compute: b.compute, sensors: [], parts: [], estop: b.estop, user: {},
+      drive: { base: 'own', ...b.drive, motor: null, driver: null }, power: { busV: b.busV || 24, battery: null },
+      compute: b.compute, sensors: [], parts: [], estop: b.estop, user: b.busV ? { busV: true } : {},
     };
     if (state.chassis.shape === 'round') state.chassis.length = state.chassis.width;
     const sn = b.sensors;
@@ -143,6 +155,11 @@
   // Parts the player has not picked by hand follow the sizing (like auto-equip in a game)
   function pickParts(state, registry) {
     const t = T(), busV = state.power.busV, u = state.user || (state.user = {});
+    if (isExternal(state)) { // the AGV keeps its own motors, drivers and battery
+      state.drive.motor = null; state.drive.driver = null; state.power.battery = null;
+      if (!state.compute) state.compute = (t.byCategory(registry, 'compute')[0] || {}).id || null;
+      return;
+    }
     const dv = derive(state, registry, []);
     if (!u.motor || !state.drive.motor) {
       const ms = t.recommendMotors(registry, busV, dv.dt);
@@ -207,7 +224,9 @@
     const suggestedBusV = t.suggestBusV(dt.powerElecPeak, totalMass);
     const packV = nominal ? nominal * series : null;
     const packWh = packV ? packV * cap * parallel : 0;
-    const runtimeAch = pw.totalAvgW > 0 ? packWh * 0.8 / pw.totalAvgW : 0;
+    const ext = isExternal(state);
+    // existing AGV: its own battery is assumed to cover the shift (the brain kit adds ~electronicsW on top)
+    const runtimeAch = ext ? m.runtimeH : pw.totalAvgW > 0 ? packWh * 0.8 / pw.totalAvgW : 0;
     const margin = motor && motor.motor ? motor.motor.rated_torque_nm / Math.max(dt.requiredMotorRatedTorque, 1e-6) : 0;
     const motorOk = motor ? t.motorFits(motor, dt) : false;
     const lidars = sensors.filter((s) => s.category === 'lidar');
@@ -229,9 +248,12 @@
     // bill of materials
     const qty = new Map(), role = new Map();
     const add = (id, n, what) => { if (!id || n <= 0) return; qty.set(id, (qty.get(id) || 0) + n); if (!role.has(id)) role.set(id, what); };
-    add(state.compute, 1, 'compute'); add(dr.motor, nDrive, 'motor'); add(dr.driver, dr.driverCount, 'motor driver');
-    const wheel = t.wheelFor(registry, dr.type, dr.wheelDiameter);
-    if (wheel) add(wheel.id, Math.ceil(nDrive / (wheel.wheel?.per_set || 1)), 'wheel');
+    add(state.compute, 1, 'compute');
+    if (!ext) {
+      add(dr.motor, nDrive, 'motor'); add(dr.driver, dr.driverCount, 'motor driver');
+      const wheel = t.wheelFor(registry, dr.type, dr.wheelDiameter);
+      if (wheel) add(wheel.id, Math.ceil(nDrive / (wheel.wheel?.per_set || 1)), 'wheel');
+    }
     sensors.forEach((s) => add(s.hw, 1, s.category));
     if (state.estop) add('generic_estop', 1, 'E-stop');
     add(state.power.battery, series * parallel, 'battery');
@@ -245,13 +267,14 @@
 
     // warnings (plain Thai, each with the fix)
     const W = [], push = (lvl, txt) => W.push({ lvl, txt });
-    if (!motor) push('err', 'ยังไม่ได้เลือกมอเตอร์');
+    if (ext) push('ok', `ฐานรถเป็น AGV เดิม — PLC คุมมอเตอร์/แบต · ระบบส่งความเร็วให้ PLC ผ่าน Modbus TCP (package base_bridge) · ชุดสมองใช้ไฟ ${fmt(electronicsW, 0)} W จากแบต ${busV} V ของรถ`);
+    else if (!motor) push('err', 'ยังไม่ได้เลือกมอเตอร์');
     else if (!motorOk) push('err', `มอเตอร์ ${motor.name} แรงไม่พอ — ต้องการ ≥ ${fmt(dt.requiredMotorRatedTorque, 2)} N·m ที่ ${fmt(dt.motorRpm, 0)} rpm: เพิ่มอัตราทด ลดความเร็ว หรือเลือกมอเตอร์ใหญ่ขึ้น`);
-    if (motor && !voltMatch(t.volt(motor), busV)) push('warn', `มอเตอร์เป็น ${t.volt(motor)} V แต่ระบบไฟ ${busV} V — ต้องมีไดรเวอร์ที่จ่าย ${t.volt(motor)} V ให้มอเตอร์`);
+    if (!ext && motor && !voltMatch(t.volt(motor), busV)) push('warn', `มอเตอร์เป็น ${t.volt(motor)} V แต่ระบบไฟ ${busV} V — ต้องมีไดรเวอร์ที่จ่าย ${t.volt(motor)} V ให้มอเตอร์`);
     if (driver && !voltMatch(t.volt(driver), busV)) push('warn', `ไดรเวอร์เป็น ${t.volt(driver)} V แต่ระบบไฟ ${busV} V — ใส่ DC-DC หรือเลือกไดรเวอร์ ${busV} V`);
     if (battery && packV && !voltMatch(packV, busV)) push('warn', `แบต ${nominal} V ×${series} = ${fmt(packV)} V ไม่ตรงระบบไฟ ${busV} V — ต้องมี DC-DC ระหว่างแบตกับ bus`);
     else if (battery && series > 1) push('ok', `แบต ${nominal} V ต่ออนุกรม ${series} ก้อน = ${fmt(packV)} V${parallel > 1 ? ` · ต่อขนาน ${parallel} ชุด` : ''} (BOM คิด ${series * parallel} ก้อน)`);
-    if (battery && runtimeAch < m.runtimeH * 0.95) push('warn', `ใช้งานได้ประมาณ ${fmt(runtimeAch)} h จากเป้า ${m.runtimeH} h — เลือกแบตความจุสูงขึ้น`);
+    if (!ext && battery && runtimeAch < m.runtimeH * 0.95) push('warn', `ใช้งานได้ประมาณ ${fmt(runtimeAch)} h จากเป้า ${m.runtimeH} h — เลือกแบตความจุสูงขึ้น`);
     if (!lidars.length) push('err', 'ยังไม่มี LiDAR — หุ่นทำแผนที่ (SLAM) และนำทางเองไม่ได้');
     else if (coverage < 0.75) push('warn', `LiDAR มองรอบตัวได้ ${Math.round(coverage * 100)}% — มีจุดบอด: เพิ่ม LiDAR ตัวที่ 2 (เฉียงแบบ KURO-X) หรือย้ายขึ้นหลังคา`);
     if ((m.payload > 50 || totalMass > 80) && !state.estop) push('err', 'หุ่นหนักเกิน 50 kg ต้องมีปุ่ม E-stop');
@@ -266,7 +289,7 @@
     if (!W.some((w) => w.lvl !== 'ok')) push('ok', 'พร้อมออกรบ — ไม่พบปัญหา ส่งต่อไปสร้าง ROS 2 workspace หรือเปิดใน Gazebo ได้เลย');
 
     const stats = {
-      speed: clamp(m.vMax / 2), power: clamp(margin / 2), endurance: clamp(runtimeAch / Math.max(m.runtimeH * 1.5, 0.1)),
+      speed: clamp(m.vMax / 2), power: ext ? 0.8 : clamp(margin / 2), endurance: clamp(runtimeAch / Math.max(m.runtimeH * 1.5, 0.1)),
       vision: coverage, safety: clamp((state.estop ? 0.4 : 0) + (tip.ok ? 0.3 : 0) + 0.3 * coverage),
     };
     const avg = (stats.speed + stats.power + stats.endurance + stats.vision + stats.safety) / 5;
@@ -274,7 +297,7 @@
     const score = errs ? Math.min(0.39, avg) : Math.max(0, avg - 0.04 * warns);
     const rank = score >= 0.8 ? 'S' : score >= 0.68 ? 'A' : score >= 0.55 ? 'B' : score >= 0.4 ? 'C' : 'D';
     return { r, bottom, top, nDrive, sensors, motor, driver, battery, compute, nominal, series, parallel, packV, packWh, runtimeAch, robotMass, totalMass, dt, pw,
-      suggestedBusV, margin, motorOk, nav, coverage, tip, rails, wheels, casters, casterR: casterRadius(state), bom, warnings: W, stats, score, rank, electronicsW };
+      suggestedBusV, margin, motorOk, external: ext, nav, coverage, tip, rails, wheels, casters, casterR: casterRadius(state), bom, warnings: W, stats, score, rank, electronicsW };
   }
 
   // ------------------------------------------------------------------ Robot Definition v1
@@ -294,19 +317,21 @@
       `  runtime_h: ${m.runtimeH}`,
       'mechanical:', `  dims_m: {length: ${c.length}, width: ${c.width}, height: ${c.height}, ground_clearance: ${c.clearance}}`,
       '  mass_kg: {robot: auto, total: auto}',
-      'drive:', `  type: ${dr.type}`,
+      'drive:', `  type: ${dr.type}`, ...(isExternal(state) ? ['  base: external  # existing AGV — its PLC drives the motors'] : []),
       `  wheels: {diameter_m: ${dr.wheelDiameter}, width_m: ${dr.wheelWidth}, separation_m: ${dr.track}${dr.type === 'mecanum' ? `, wheelbase_m: ${dr.wheelbase}` : ''}}`,
     ];
     if (dv.casters.length) { L.push('  casters:'); dv.casters.forEach((k) => L.push(`    - {xyz: [${k.x}, ${k.y}, 0]}`)); }
-    L.push(`  motor: {hw: ${dr.motor}, count: ${dv.nDrive}, gear_ratio: ${dr.gearRatio}, driver: ${dr.driver}}`, 'hardware:');
+    const ext = isExternal(state);
+    L.push(ext ? `  motor: {hw: ${EXT.base}, count: ${dv.nDrive}, gear_ratio: 1, driver: ${EXT.bridge}}` : `  motor: {hw: ${dr.motor}, count: ${dv.nDrive}, gear_ratio: ${dr.gearRatio}, driver: ${dr.driver}}`, 'hardware:');
     dv.sensors.forEach((s) => L.push(`  - {id: ${s.id}, hw: ${s.hw}, frame: ${s.frame}, parent: base_link, xyz: [${s.pos.map(r4).join(', ')}], rpy: [0, 0, ${r4(s.yaw)}]}`));
-    for (let k = 0; k < dr.driverCount; k++) L.push(`  - {id: ${dr.driverCount > 1 ? `motor_driver_${k + 1}` : 'motor_driver'}, hw: ${dr.driver}}`);
+    if (ext) L.push(`  - {id: plc_bridge, hw: ${EXT.bridge}}`);
+    else for (let k = 0; k < dr.driverCount; k++) L.push(`  - {id: ${dr.driverCount > 1 ? `motor_driver_${k + 1}` : 'motor_driver'}, hw: ${dr.driver}}`);
     if (state.estop) L.push('  - {id: estop, hw: generic_estop, io: DI1}');
     const pack = (dv.series > 1 ? `, series: ${dv.series}` : '') + (dv.parallel > 1 ? `, parallel: ${dv.parallel}` : '');
-    L.push('power:', `  battery: {hw: ${state.power.battery}${pack}}`, `  bus_v: ${state.power.busV}`);
+    L.push('power:', ext ? `  battery: {hw: ${EXT.base}}  # the AGV's own battery` : `  battery: {hw: ${state.power.battery}${pack}}`, `  bus_v: ${state.power.busV}`);
     if (dv.rails.length) { L.push('  rails:'); dv.rails.forEach((rl) => L.push(`    - {v: ${rl.v}${rl.hw ? `, hw: ${rl.hw}` : ''}}`)); }
     if (state.estop) L.push('io: {DI: {1: estop}}');
-    L.push('comms: [dds, mqtt]', 'ros:', '  control: {stack: ros2_control, controller: auto}', '  localization: {slam: slam_toolbox, amcl: true, ekf: auto}',
+    L.push(ext ? 'comms: [dds, mqtt, modbus_tcp]' : 'comms: [dds, mqtt]', 'ros:', '  control: {stack: ros2_control, controller: auto}', '  localization: {slam: slam_toolbox, amcl: true, ekf: auto}',
       '  navigation: {profile: indoor_amr, planner: auto, controller: auto, costmap: auto, safety_margin_m: 0.05, features: [manual, slam, nav, waypoints]}',
       `  perception: {depth_to_costmap: ${dv.sensors.some((s) => /camera/.test(s.category))}}`,
       'sim: {engine: gz_harmonic, world: empty, renderer: ogre1}', 'integrations: {node_red: true, studio_pro: true}');
@@ -651,7 +676,7 @@ ${topics}
     return files;
   }
 
-  const api = { BLUEPRINTS, CHASSIS_COLORS, applyBlueprint, autoResolve, derive, placeLayout, assignIds, chassisZ, rimPoint, wheelSpots, casterSpots, casterRadius,
+  const api = { BLUEPRINTS, CHASSIS_COLORS, isExternal, applyBlueprint, autoResolve, derive, placeLayout, assignIds, chassisZ, rimPoint, wheelSpots, casterSpots, casterRadius,
     toYaml, toUrdf, rosPackage, bridgeArgs, voltMatch, uid, r4 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR_GARAGE = api;
