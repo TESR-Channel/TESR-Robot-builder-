@@ -27,7 +27,7 @@ const ICON = { lidar: '📡', depth_camera: '📷', rgb_camera: '📷', imu: '�
 let registry = null, ids = {}, catalog = [], state = null, dv = null, T = null;
 const meshStore = new Map();   // file name → ArrayBuffer (uploaded STL)
 const geoCache = new Map();    // file name → BufferGeometry
-let tab = 'mission', selectedUid = null, mount = null;
+let tab = 'start', selectedUid = null, mount = null;
 const flags = { scan: true, xray: false, payload: true, spin: false, drive: false, lite: false };
 try { const v = localStorage.getItem(LITE_KEY); flags.lite = v == null ? matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 : v === '1'; } catch (_) { /* private mode */ }
 
@@ -394,7 +394,7 @@ function select(u) {
   selectedUid = u;
   const o = u && objectByUid(u);
   if (o && !flags.drive) tc.attach(o); else tc.detach();
-  updateSelBox(); renderInspector(); if (tab === 'sensors' || tab === 'parts') renderTab();
+  updateSelBox(); renderInspector(); if (tab === 'sensors' || tab === 'chassis') renderTab();
 }
 function rotateSel(d) { const it = selectedUid && findItem(selectedUid); if (!it) return; const y = (it.yaw || 0) + d; it.yaw = Math.round(Math.atan2(Math.sin(y), Math.cos(y)) * 1e4) / 1e4; changed(false); }
 function deleteSel() {
@@ -488,9 +488,34 @@ function withReanchor(fn) {
   state.sensors.forEach(move); (state.parts || []).forEach(move);
 }
 
-// ================================================================== UI: tabs
+// ================================================================== UI: step-by-step wizard (left panel)
+// One step at a time, Back / Next at the bottom. Rarely-needed options sit in <details class="adv"> so each step stays short.
+const STEPS = [
+  { id: 'start', icon: '🤖', t: 'เลือกแบบเริ่มต้น', d: 'เลือกแบบที่ใกล้กับงานของคุณที่สุด แล้วค่อยปรับทีละขั้น' },
+  { id: 'mission', icon: '🎯', t: 'งานที่ต้องทำ', d: 'หุ่นต้องบรรทุกเท่าไร วิ่งเร็วแค่ไหน ใช้งานนานเท่าไร — ระบบคำนวณอุปกรณ์ให้' },
+  { id: 'chassis', icon: '🧱', t: 'ตัวถัง', d: 'ขนาดและรูปทรงของหุ่น' },
+  { id: 'drive', icon: '🛞', t: 'ล้อ & มอเตอร์', d: 'ระบบขับเคลื่อน — มอเตอร์ระบบเลือกให้อัตโนมัติ' },
+  { id: 'sensors', icon: '📡', t: 'เซนเซอร์', d: 'LiDAR สำหรับทำแผนที่และหลบสิ่งกีดขวาง' },
+  { id: 'power', icon: '🔋', t: 'ไฟ & แบตเตอรี่', d: 'แรงดันระบบและแบตเตอรี่ — ระบบแนะนำให้' },
+  { id: 'brain', icon: '🧠', t: 'คอมพิวเตอร์', d: 'สมองของหุ่นที่รัน ROS 2 Jazzy' },
+];
+const STEP_KEY = 'tesr_rb_step';
+try { const v = localStorage.getItem(STEP_KEY); if (STEPS.some((x) => x.id === v)) tab = v; } catch (_) { /* ignore */ }
+const openAdv = new Set();
 const tabBody = $('tabBody');
-$('tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b)); renderTab(); });
+const stepIdx = () => Math.max(0, STEPS.findIndex((x) => x.id === tab));
+function goStep(i) {
+  if (i >= STEPS.length) { $('exSummary').click(); return; }
+  tab = STEPS[Math.max(0, i)].id;
+  try { localStorage.setItem(STEP_KEY, tab); } catch (_) { /* ignore */ }
+  renderTab(); tabBody.scrollTop = 0;
+  if (innerWidth < 1150) $('bay').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-step]'); if (b) goStep(Number(b.dataset.step)); });
+$('wzFoot').addEventListener('click', (e) => { const b = e.target.closest('button[data-go]'); if (b) goStep(stepIdx() + Number(b.dataset.go)); });
+tabBody.addEventListener('toggle', (e) => { const d = e.target; if (d.dataset && d.dataset.adv) { if (d.open) openAdv.add(d.dataset.adv); else openAdv.delete(d.dataset.adv); } }, true);
+const adv = (key, label, inner) => `<details class="adv" data-adv="${key}" ${openAdv.has(key) ? 'open' : ''}><summary>${label}</summary>${inner}</details>`;
+const isExt = () => state.drive.base === 'external';
 
 const volt = (h) => (h && h.electrical ? h.electrical.voltage_v : null);
 const slider = (path, label, min, max, step, unit = '') => {
@@ -519,71 +544,96 @@ function card(h, { act, slot, on, chips = '', go = '' }) {
     <div><b>${esc(h.name)}</b><div class="spec">${esc(specOf(h))}</div><div class="chips">${chips}${shopChip(h.id, h.name)}</div></div>${go}</div>`;
 }
 const vChip = (v, busV) => (v == null ? '' : G.voltMatch(v, busV) ? `<span class="ok">${v} V ✓</span>` : `<span class="warn">${v} V</span>`);
+const autoTag = (slot) => (state.user[slot] ? ` <button class="mini ghost" data-act="auto" data-slot="${slot}">↺ ให้ระบบเลือก</button>` : ' <span class="note">· ระบบเลือกให้</span>');
 
 function renderTab() {
-  const s = state, busV = s.power.busV, byCat = (c) => T.byCategory(registry, c);
+  const s = state, busV = s.power.busV, byCat = (c) => T.byCategory(registry, c), i = stepIdx(), st = STEPS[i];
+  // header: progress + title
+  $('tabs').innerHTML = `<div class="wz-dots">${STEPS.map((x, k) => `<button data-step="${k}" class="${k === i ? 'on' : k < i ? 'done' : ''}" title="${k + 1}. ${x.t}" aria-label="${k + 1}. ${x.t}"></button>`).join('')}</div>
+    <div class="wz-count">ขั้นที่ ${i + 1} จาก ${STEPS.length}</div><div class="wz-title">${st.icon} ${st.t}</div><p class="wz-desc">${st.d}</p>`;
+  const nx = STEPS[i + 1];
+  $('wzFoot').innerHTML = (i > 0 ? '<button class="back" data-go="-1">← ย้อนกลับ</button>' : '')
+    + `<button class="primary next" data-go="1">${nx ? `ถัดไป: ${nx.t} →` : '✓ เสร็จ — ไปสรุป & ราคา →'}</button>`;
+
   let h = '';
-  if (tab === 'mission') {
-    h += '<h2>เลือกพิมพ์เขียว</h2><div class="bp">' + Object.entries(G.BLUEPRINTS).map(([k, b]) =>
+  if (tab === 'start') {
+    h += '<div class="bp">' + Object.entries(G.BLUEPRINTS).map(([k, b]) =>
       `<div class="pcard ${s.blueprint === k ? 'on' : ''}" data-act="bp" data-v="${k}"><div class="ico">${b.icon}</div><div><b>${esc(b.label)}</b><div class="spec">${esc(b.desc)}</div></div></div>`).join('') + '</div>';
-    h += '<p class="note">เลือกแล้วแต่งต่อได้ทุกชิ้น — ระบบคำนวณมอเตอร์ แบต และแรงดันให้ตามภารกิจ</p>';
-    h += '<h2>ภารกิจ</h2>' + slider('mission.payload', 'น้ำหนักของที่บรรทุก', 0, 1000, 5, 'kg') + slider('mission.vMax', 'ความเร็วสูงสุด', 0.2, 2, 0.1, 'm/s')
-      + slider('mission.runtimeH', 'ใช้งานต่อการชาร์จ', 0.5, 16, 0.5, 'h') + slider('mission.slopeDeg', 'ทางลาดชันสุด', 0, 15, 0.5, '°')
-      + '<div class="note">พื้น</div>' + seg('floor', [['concrete', 'คอนกรีต'], ['epoxy', 'อีพ็อกซี'], ['tile', 'กระเบื้อง'], ['carpet', 'พรม'], ['asphalt', 'ยางมะตอย'], ['gravel', 'กรวด']], s.mission.floor)
-      + '<div class="note">สถานที่</div>' + seg('env', [['factory', 'โรงงาน'], ['warehouse', 'คลังสินค้า'], ['hospital', 'โรงพยาบาล'], ['office', 'สำนักงาน'], ['laboratory', 'แลป'], ['outdoor', 'กลางแจ้ง']], s.mission.envType);
+    h += '<p class="note">เลือกแล้วยังแก้ได้ทุกอย่างในขั้นถัดไป · ถ้ามีรถ AGV อยู่แล้ว เลือก <b>ชุดสมอง AGV → AMR</b></p>';
+  } else if (tab === 'mission') {
+    h += slider('mission.payload', 'น้ำหนักของที่บรรทุก', 0, 1000, 5, 'kg') + slider('mission.vMax', 'ความเร็วสูงสุด', 0.2, 2, 0.1, 'm/s')
+      + (isExt() ? '' : slider('mission.runtimeH', 'ใช้งานต่อการชาร์จ', 0.5, 16, 0.5, 'h')) + slider('mission.slopeDeg', 'ทางลาดชันสุด', 0, 15, 0.5, '°');
+    h += '<h2>พื้นที่วิ่ง</h2>' + seg('floor', [['concrete', 'คอนกรีต'], ['epoxy', 'อีพ็อกซี'], ['tile', 'กระเบื้อง'], ['carpet', 'พรม'], ['asphalt', 'ยางมะตอย'], ['gravel', 'กรวด']], s.mission.floor);
+    h += adv('env', 'สถานที่ใช้งาน', seg('env', [['factory', 'โรงงาน'], ['warehouse', 'คลังสินค้า'], ['hospital', 'โรงพยาบาล'], ['office', 'สำนักงาน'], ['laboratory', 'แลป'], ['outdoor', 'กลางแจ้ง']], s.mission.envType));
   } else if (tab === 'chassis') {
-    h += '<h2>รูปทรงตัวถัง</h2>' + seg('shape', [['box', '⬛ สี่เหลี่ยม'], ['round', '⚪ กลม']], s.chassis.shape);
+    h += seg('shape', [['box', '⬛ สี่เหลี่ยม'], ['round', '⚪ กลม']], s.chassis.shape);
     h += (s.chassis.shape === 'round' ? '' : slider('chassis.length', 'ยาว', 0.2, 2, 0.01, 'm')) + slider('chassis.width', s.chassis.shape === 'round' ? 'เส้นผ่านศูนย์กลาง' : 'กว้าง', 0.15, 1.5, 0.01, 'm')
-      + slider('chassis.height', 'สูง (ตัวถัง)', 0.05, 1.2, 0.01, 'm') + slider('chassis.clearance', 'ระยะใต้ท้อง', 0.01, 0.2, 0.005, 'm');
+      + slider('chassis.height', 'สูง (ตัวถัง)', 0.05, 1.2, 0.01, 'm');
     h += '<h2>สี</h2><div class="seg">' + Object.entries(CHASSIS_HEX).map(([k, v]) => `<button class="sw ${s.chassis.color === k ? 'on' : ''}" title="${k}" data-act="color" data-v="${k}" style="background:#${v.toString(16).padStart(6, '0')}"></button>`).join('') + '</div>';
-    h += '<h2>โครงจากไฟล์ของคุณ</h2><p class="note">อัปโหลด STL ของโครง (mm หรือ m ตรวจให้อัตโนมัติ) — ระบบวัดขนาดแล้วปรับ ยาว×กว้าง×สูง ให้ตรง ใช้เป็นหน้าตาใน RViz/Gazebo</p>'
-      + `<div class="seg"><button data-act="uploadShell">⬆️ อัปโหลดโครง STL</button>${s.chassis.shell ? `<button data-act="clearShell">✕ ใช้ทรงเรขาคณิต</button>` : ''}</div>`
-      + (s.chassis.shell ? `<p class="note">ใช้ไฟล์ <code>${esc(s.chassis.shell.file)}</code>${geoCache.has(s.chassis.shell.file) ? '' : ' — <b>ยังไม่มีไฟล์ในเครื่องนี้ อัปโหลดอีกครั้ง</b>'}</p>` : '');
+    h += adv('chassis', 'ขั้นสูง: ระยะใต้ท้อง · โครงจากไฟล์ STL · ชิ้นส่วนเสริม',
+      slider('chassis.clearance', 'ระยะใต้ท้อง', 0.01, 0.2, 0.005, 'm')
+      + '<h2>โครงจากไฟล์ของคุณ</h2><p class="note">อัปโหลด STL ของโครง (mm หรือ m ตรวจให้อัตโนมัติ) — ระบบปรับ ยาว×กว้าง×สูง ให้ตรง และใช้เป็นหน้าตาใน RViz/Gazebo</p>'
+      + `<div class="seg"><button data-act="uploadShell">⬆️ อัปโหลดโครง STL</button>${s.chassis.shell ? '<button data-act="clearShell">✕ ใช้ทรงเรขาคณิต</button>' : ''}</div>`
+      + (s.chassis.shell ? `<p class="note">ใช้ไฟล์ <code>${esc(s.chassis.shell.file)}</code>${geoCache.has(s.chassis.shell.file) ? '' : ' — <b>ยังไม่มีไฟล์ในเครื่องนี้ อัปโหลดอีกครั้ง</b>'}</p>` : '')
+      + '<h2>ชิ้นส่วนเสริม</h2><p class="note">กดแล้วคลิกบนตัวถังเพื่อวาง — เช่น เสา LiDAR กันชน ถาดบน</p>'
+      + seg('addPart', [['box', '⬛ กล่อง'], ['cylinder', '🥫 ทรงกระบอก'], ['sphere', '⚪ ทรงกลม'], ['stl', '⬆️ STL']], '')
+      + ((s.parts || []).length ? s.parts.map((p, k) => `<div class="installed ${selectedUid === p.uid ? 'sel' : ''}" data-act="sel" data-v="${p.uid}"><span class="sw" style="width:14px;height:14px;background:${esc(p.color)}"></span><span class="nm">part_${k + 1} · ${p.kind === 'mesh' ? esc(p.file) : p.kind} · ${fmt(p.mass, 2)} kg</span><button data-act="del" data-v="${p.uid}">ถอด</button></div>`).join('') : ''));
   } else if (tab === 'drive') {
-    h += '<h2>ระบบขับ</h2>'
-      + `<div class="pcard ${s.drive.type === 'differential' ? 'on' : ''}" data-act="drive" data-v="differential"><div class="ico">🛞</div><div><b>Differential 2 ล้อขับ</b><div class="spec">เลี้ยวด้วยความเร็วล้อต่างกัน + ล้อประคอง · ทนทาน ราคาประหยัด</div></div></div>`
-      + `<div class="pcard ${s.drive.type === 'mecanum' ? 'on' : ''}" data-act="drive" data-v="mecanum"><div class="ico">🧭</div><div><b>Mecanum 4 ล้อ</b><div class="spec">สไลด์ข้าง/หมุนอยู่กับที่ · พื้นเรียบเท่านั้น</div></div></div>`
-      + '<div class="pcard locked"><div class="ico">🚙</div><div><b>Skid-steer 4 ล้อขับ</b><div class="spec">พื้นขรุขระ/กลางแจ้ง</div></div></div>'
-      + '<div class="pcard locked"><div class="ico">🏎️</div><div><b>Ackermann (เลี้ยวแบบรถยนต์)</b><div class="spec">ความเร็วสูง ทางยาว</div></div></div>';
-    if (s.drive.type === 'differential') h += '<h2>ล้อประคอง</h2>' + seg('caster', [['front_rear', 'หน้า+หลัง'], ['corners4', '4 มุม'], ['rear1', 'หลัง 1'], ['front1', 'หน้า 1']], s.drive.casterLayout);
-    h += '<h2>ล้อ & เกียร์</h2>' + slider('drive.wheelDiameter', 'เส้นผ่านศูนย์กลางล้อ', 0.06, 0.4, 0.005, 'm') + slider('drive.wheelWidth', 'หน้ากว้างล้อ', 0.02, 0.12, 0.005, 'm')
-      + slider('drive.track', 'ระยะห่างล้อซ้าย-ขวา', 0.1, 1.5, 0.01, 'm') + (s.drive.type === 'mecanum' ? slider('drive.wheelbase', 'ระยะล้อหน้า-หลัง', 0.1, 1.5, 0.01, 'm') : '')
-      + slider('drive.gearRatio', 'อัตราทดเกียร์', 1, 60, 1, ':1');
-    h += `<h2>มอเตอร์ ${s.user.motor ? '<button class="mini ghost" data-act="auto" data-slot="motor">↺ ให้ระบบเลือก</button>' : '<span class="note">(ระบบเลือกให้)</span>'}</h2>`;
-    h += T.recommendMotors(registry, busV, dv.dt).map((m) => card(m.hw, { act: 'pick', slot: 'motor', on: s.drive.motor === m.hw.id,
-      chips: vChip(volt(m.hw), busV) + (m.fits ? '<span class="ok">แรงพอ</span>' : '<span class="err">แรงไม่พอ</span>') })).join('');
+    h += '<h2>ฐานรถ</h2>' + seg('base', [['own', '🛠 สร้างหุ่นใหม่'], ['external', '🚚 รถ AGV เดิม + PLC']], s.drive.base || 'own');
+    if (isExt()) {
+      h += '<div class="callout">ใช้มอเตอร์ ไดรเวอร์ และแบตของรถ AGV เดิม — PLC คุมล้อ ระบบส่งคำสั่งความเร็วให้ PLC ผ่าน Modbus TCP (package <code>base_bridge</code>) · ใส่ขนาดล้อให้ตรงกับรถจริงเพื่อคำนวณระยะทาง</div>'
+        + slider('drive.wheelDiameter', 'เส้นผ่านศูนย์กลางล้อ', 0.06, 0.4, 0.005, 'm') + slider('drive.track', 'ระยะห่างล้อซ้าย-ขวา', 0.1, 1.5, 0.01, 'm');
+    } else {
+      h += '<h2>ระบบขับ</h2>'
+        + `<div class="pcard ${s.drive.type === 'differential' ? 'on' : ''}" data-act="drive" data-v="differential"><div class="ico">🛞</div><div><b>Differential 2 ล้อขับ</b><div class="spec">เลี้ยวด้วยความเร็วล้อต่างกัน · ทนทาน ราคาประหยัด</div></div></div>`
+        + `<div class="pcard ${s.drive.type === 'mecanum' ? 'on' : ''}" data-act="drive" data-v="mecanum"><div class="ico">🧭</div><div><b>Mecanum 4 ล้อ</b><div class="spec">สไลด์ข้าง/หมุนอยู่กับที่ · พื้นเรียบเท่านั้น</div></div></div>`;
+      h += '<h2>ล้อ</h2>' + slider('drive.wheelDiameter', 'เส้นผ่านศูนย์กลางล้อ', 0.06, 0.4, 0.005, 'm') + slider('drive.track', 'ระยะห่างล้อซ้าย-ขวา', 0.1, 1.5, 0.01, 'm')
+        + (s.drive.type === 'mecanum' ? slider('drive.wheelbase', 'ระยะล้อหน้า-หลัง', 0.1, 1.5, 0.01, 'm') : '');
+      const motors = T.recommendMotors(registry, busV, dv.dt);
+      const mcard = (m) => card(m.hw, { act: 'pick', slot: 'motor', on: s.drive.motor === m.hw.id, chips: vChip(volt(m.hw), busV) + (m.fits ? '<span class="ok">แรงพอ</span>' : '<span class="err">แรงไม่พอ</span>') });
+      const cur = motors.find((m) => m.hw.id === s.drive.motor);
+      h += `<h2>มอเตอร์${autoTag('motor')}</h2>` + (cur ? mcard(cur) : '<p class="note">ยังไม่มีมอเตอร์ที่แรงพอ — ลองลดน้ำหนักหรือความเร็ว</p>');
+      h += adv('drive', 'ขั้นสูง: เปลี่ยนมอเตอร์ · เกียร์ · หน้ากว้างล้อ · ล้อประคอง',
+        '<h2>มอเตอร์ทั้งหมด</h2>' + motors.map(mcard).join('')
+        + slider('drive.gearRatio', 'อัตราทดเกียร์', 1, 60, 1, ':1') + slider('drive.wheelWidth', 'หน้ากว้างล้อ', 0.02, 0.12, 0.005, 'm')
+        + (s.drive.type === 'differential' ? '<h2>ล้อประคอง</h2>' + seg('caster', [['front_rear', 'หน้า+หลัง'], ['corners4', '4 มุม'], ['rear1', 'หลัง 1'], ['front1', 'หน้า 1']], s.drive.casterLayout) : ''));
+    }
   } else if (tab === 'sensors') {
-    h += '<h2>ติดตั้งด่วน (LiDAR)</h2>' + seg('lidarLayout', [['front1', 'หลังคา 1 ตัว'], ['diag2', 'เฉียง 2 ตัว (KURO-X)'], ['fr2', 'หน้า+หลัง'], ['rear3', '3 ตัว'], ['corner4', '4 มุม']], '');
-    h += '<p class="note">หรือกด <b>ติดตั้ง</b> ที่การ์ดแล้วคลิกตำแหน่งบนตัวถัง (กด <kbd>Shift</kbd> ค้างเพื่อวางหลายตัว) · เลือกชิ้นแล้วลากลูกศรเพื่อย้าย <kbd>R</kbd> หมุน 45° <kbd>Del</kbd> ถอด</p>';
+    const lidars = byCat('lidar'), curL = (s.sensors.find((x) => x.category === 'lidar') || {}).hw;
+    h += '<h2>รุ่น LiDAR</h2>' + seg('lidarModel', lidars.map((r) => [r.id, esc(r.name.replace(/^Slamtec\s+/i, '').replace(/\s*\(.*\)\s*$/, ''))]), curL);
+    h += '<h2>ตำแหน่งติดตั้ง</h2>' + seg('lidarLayout', [['front1', 'หลังคา 1 ตัว'], ['diag2', 'เฉียง 2 ตัว'], ['fr2', 'หน้า+หลัง'], ['rear3', '3 ตัว'], ['corner4', '4 มุม']], '');
     h += '<h2>ติดตั้งอยู่</h2>' + (dv.sensors.length ? dv.sensors.map((x) => `<div class="installed ${selectedUid === x.uid ? 'sel' : ''}" data-act="sel" data-v="${x.uid}">${ICON[x.category] || '🔩'}<span class="nm">${x.id} · ${esc(x.rec?.name || x.hw)}${x.category === 'lidar' ? ` · ${x.fov}°` : ''}</span><button data-act="del" data-v="${x.uid}">ถอด</button></div>`).join('') : '<p class="note">ยังไม่มีเซนเซอร์</p>');
-    [['lidar', 'LiDAR'], ['depth_camera', 'กล้อง depth'], ['imu', 'IMU']].forEach(([cat, label]) => {
-      h += `<h2>${label}</h2>` + byCat(cat).map((r) => card(r, { act: 'mount', slot: cat, on: false, go: '<button class="mini go">ติดตั้ง</button>' })).join('');
-    });
+    h += '<p class="note">แตะชิ้นในภาพ 3D เพื่อย้าย · <kbd>R</kbd> หมุน · <kbd>Del</kbd> ถอด</p>';
+    h += adv('sensors', 'เพิ่มเซนเซอร์เอง (กล้อง depth · IMU · LiDAR)', '<p class="note">กด <b>ติดตั้ง</b> แล้วคลิกตำแหน่งบนตัวถัง (<kbd>Shift</kbd> ค้าง = วางหลายตัว)</p>'
+      + [['lidar', 'LiDAR'], ['depth_camera', 'กล้อง depth'], ['imu', 'IMU']].map(([cat, label]) => `<h2>${label}</h2>` + byCat(cat).map((r) => card(r, { act: 'mount', slot: cat, on: false, go: '<button class="mini go">ติดตั้ง</button>' })).join('')).join(''));
   } else if (tab === 'power') {
-    h += `<h2>แรงดันระบบ ${s.user.busV ? '<button class="mini ghost" data-act="volt" data-v="auto">↺ ให้ระบบแนะนำ</button>' : '<span class="note">(ระบบแนะนำ)</span>'}</h2>`
-      + seg('volt', [[12, '12 V หุ่นเล็ก'], [24, '24 V ทั่วไป'], [48, '48 V หนัก']], busV) + `<p class="note">แนะนำ ${dv.suggestedBusV} V จากกำลังสูงสุด ${fmt(dv.dt.powerElecPeak, 0)} W · มวล ${fmt(dv.totalMass, 0)} kg — ใช้แบตแรงดันอื่นได้ ระบบคิดการต่ออนุกรมให้</p>`;
-    h += `<h2>แบตเตอรี่ ${s.user.battery ? '<button class="mini ghost" data-act="auto" data-slot="battery">↺ ให้ระบบเลือก</button>' : ''}</h2>` + T.byCategory(registry, 'battery').map((b) => {
-      const nv = b.battery?.nominal_v ?? volt(b), n = Math.max(1, Math.round(busV / nv));
-      const chip = G.voltMatch(nv, busV) ? `<span class="ok">${nv} V ✓</span>` : G.voltMatch(nv * n, busV) ? `<span class="warn">อนุกรม ${n} ก้อน</span>` : `<span class="err">${nv} V ต้องมี DC-DC</span>`;
-      return card(b, { act: 'pick', slot: 'battery', on: s.power.battery === b.id, chips: chip });
-    }).join('');
-    h += `<h2>Low-level control (ไดรเวอร์) ${s.user.driver ? '<button class="mini ghost" data-act="auto" data-slot="driver">↺ ให้ระบบเลือก</button>' : ''}</h2>` + T.byCategory(registry, 'motor_driver').map((d) => card(d, { act: 'pick', slot: 'driver', on: s.drive.driver === d.id, chips: vChip(volt(d), busV) })).join('');
-    h += '<h2>ความปลอดภัย</h2>' + `<div class="pcard ${s.estop ? 'on' : ''}" data-act="estop"><div class="ico">🛑</div><div><b>ปุ่ม E-stop</b><div class="spec">บังคับเมื่อหุ่นหนักเกิน 50 kg</div><div class="chips">${shopChip('generic_estop', 'Emergency stop')}</div></div></div>`;
+    const estop = `<h2>ความปลอดภัย</h2><div class="pcard ${s.estop ? 'on' : ''}" data-act="estop"><div class="ico">🛑</div><div><b>${isExt() ? 'สัญญาณ E-stop เข้า PLC' : 'ปุ่ม E-stop'}</b><div class="spec">${isExt() ? 'ต่อปุ่มหยุดฉุกเฉินเดิมของรถเข้า PLC — ระบบหยุดส่งความเร็วเมื่อกด' : 'บังคับเมื่อหุ่นหนักเกิน 50 kg'}</div><div class="chips">${shopChip('generic_estop', 'Emergency stop')}</div></div></div>`;
+    if (isExt()) {
+      h += '<h2>แรงดันแบตของรถ AGV</h2>' + seg('volt', [[12, '12 V'], [24, '24 V'], [48, '48 V']], busV)
+        + `<div class="callout">ชุดสมองใช้ไฟจากแบตของรถผ่าน DC-DC → 19 V / 12 V / 5 V (ระบบใส่ในรายการอุปกรณ์ให้) · กินไฟประมาณ ${fmt(dv.dt.powerElecPeak || 0, 0)} W</div>` + estop;
+    } else {
+      h += `<h2>แรงดันระบบ${s.user.busV ? ' <button class="mini ghost" data-act="volt" data-v="auto">↺ ให้ระบบแนะนำ</button>' : ' <span class="note">· ระบบแนะนำ</span>'}</h2>`
+        + seg('volt', [[12, '12 V หุ่นเล็ก'], [24, '24 V ทั่วไป'], [48, '48 V หนัก']], busV) + `<p class="note">แนะนำ ${dv.suggestedBusV} V จากกำลังสูงสุด ${fmt(dv.dt.powerElecPeak, 0)} W · มวล ${fmt(dv.totalMass, 0)} kg</p>`;
+      const bcard = (b) => {
+        const nv = b.battery?.nominal_v ?? volt(b), n = Math.max(1, Math.round(busV / nv));
+        const chip = G.voltMatch(nv, busV) ? `<span class="ok">${nv} V ✓</span>` : G.voltMatch(nv * n, busV) ? `<span class="warn">อนุกรม ${n} ก้อน</span>` : `<span class="err">${nv} V ต้องมี DC-DC</span>`;
+        return card(b, { act: 'pick', slot: 'battery', on: s.power.battery === b.id, chips: chip });
+      };
+      const bats = byCat('battery'), curB = bats.find((b) => b.id === s.power.battery);
+      h += `<h2>แบตเตอรี่${autoTag('battery')}</h2>` + (curB ? bcard(curB) : '<p class="note">ยังไม่ได้เลือก</p>') + estop;
+      h += adv('power', 'ขั้นสูง: เปลี่ยนแบตเตอรี่ · ไดรเวอร์มอเตอร์',
+        '<h2>แบตเตอรี่ทั้งหมด</h2>' + bats.map(bcard).join('')
+        + `<h2>ไดรเวอร์มอเตอร์${autoTag('driver')}</h2>` + byCat('motor_driver').map((d) => card(d, { act: 'pick', slot: 'driver', on: s.drive.driver === d.id, chips: vChip(volt(d), busV) })).join(''));
+    }
   } else if (tab === 'brain') {
-    h += '<h2>คอมพิวเตอร์</h2>' + T.byCategory(registry, 'compute').map((c) => {
-      const usb3 = dv.sensors.filter((x) => (x.rec?.interfaces || []).includes('usb3')).length;
-      const chip = c.compute && usb3 > c.compute.usb3_ports ? `<span class="warn">USB3 ไม่พอ (${usb3})</span>` : '<span class="ok">พอร์ตพอ</span>';
+    const usb3 = dv.sensors.filter((x) => (x.rec?.interfaces || []).includes('usb3')).length;
+    h += byCat('compute').map((c) => {
+      const k = c.compute || {};
+      const chip = (k.usb3_ports != null && usb3 > k.usb3_ports ? `<span class="warn">USB3 ไม่พอ (${usb3})</span>` : '<span class="ok">พอร์ตพอ</span>')
+        + (k.gpu ? '<span class="ok">GPU (AI/vision)</span>' : '') + (k.docker_required ? '<span class="warn">Jazzy ใน Docker</span>' : '');
       return card(c, { act: 'pick', slot: 'compute', on: s.compute === c.id, chips: chip });
-    }).join('') + '<p class="note">ROS 2 Jazzy · Ubuntu 24.04 · ซอฟต์แวร์ทั้งหมดสร้างในขั้น 3</p>';
-  } else if (tab === 'parts') {
-    h += '<h2>ชิ้นส่วนเรขาคณิต</h2><p class="note">กดแล้วคลิกบนตัวถังเพื่อวาง — เช่น เสา LiDAR, กันชน, ถาดบน, กล่องอุปกรณ์</p>'
-      + seg('addPart', [['box', '⬛ กล่อง'], ['cylinder', '🥫 ทรงกระบอก'], ['sphere', '⚪ ทรงกลม']], '')
-      + '<h2>ชิ้นส่วนจากไฟล์</h2>' + seg('uploadPart', [['stl', '⬆️ อัปโหลด STL']], '')
-      + '<h2>ติดตั้งอยู่</h2>' + ((s.parts || []).length ? s.parts.map((p, i) => `<div class="installed ${selectedUid === p.uid ? 'sel' : ''}" data-act="sel" data-v="${p.uid}"><span class="sw" style="width:14px;height:14px;background:${esc(p.color)}"></span><span class="nm">part_${i + 1} · ${p.kind === 'mesh' ? esc(p.file) : p.kind} · ${fmt(p.mass, 2)} kg</span><button data-act="del" data-v="${p.uid}">ถอด</button></div>`).join('') : '<p class="note">ยังไม่มี</p>');
-  } else {
-    h += `<h2>วิธีเล่น</h2><p class="note">1) เลือก <b>พิมพ์เขียว</b> ในแท็บภารกิจ แล้วปรับน้ำหนัก ความเร็ว ชั่วโมงใช้งาน<br>2) แต่ง <b>โครง</b> และ <b>ล้อ</b> — หรืออัปโหลด STL ของคุณเอง<br>3) <b>เซนเซอร์</b>: กดติดตั้งแล้วคลิกบนตัวถัง · หลังคา = 360° · มุม/ขอบ = 270° หันออก<br>4) ดู <b>RANK</b> และแถบสเตตัสด้านขวา แก้ตามแจ้งเตือนจนได้ S/A<br>5) 🎮 ทดลองขับ: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (mecanum <kbd>Q</kbd>/<kbd>E</kbd> สไลด์)<br>6) <b>🏁 ภารกิจ</b>: เล่น 5 ด่านในโกดังเดียวกับ Gazebo — ทำแผนที่ด้วย LiDAR ส่งของ ลอดช่องแคบ วัดแบต เก็บดาว/XP/เหรียญ<br>7) ส่งออก: 📋 ขั้น 2 ใบเสนอราคา · 🚀 ขั้น 3 workspace (ros2_control/Nav2/Gazebo)</p>
-      <h2>ปุ่มลัด</h2><p class="note"><kbd>R</kbd> หมุน 45° · <kbd>Shift</kbd>+<kbd>R</kbd> หมุนกลับ · <kbd>Del</kbd> ถอด · <kbd>Esc</kbd> ยกเลิก · ลากซ้าย = หมุนมุมกล้อง · ลากขวา = เลื่อน · ล้อเมาส์ = ซูม</p>
-      <h2>ข้อมูลอุปกรณ์</h2><p class="note">สเปกมาจาก <code>data/registry.json</code> · ราคา/ลิงก์ TESR Shop จากไฟล์ CSV หรือ Google Sheet ของทีม (ตั้งค่าในหน้า 1) — เพิ่มสินค้าในชีตแล้วขึ้นในโรงรถทันที</p>`;
+    }).join('');
+    h += '<p class="note">ทุกเครื่องรัน ROS 2 Jazzy · Jetson ใช้ JetPack (Ubuntu 22.04/20.04) จึงรัน Jazzy ใน Docker — คำสั่งติดตั้งอยู่ใน README ที่ส่งออก</p>';
   }
   tabBody.innerHTML = h;
 }
@@ -605,13 +655,15 @@ tabBody.addEventListener('click', (e) => {
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act, v = a.dataset.v, id = a.dataset.id, slot = a.dataset.slot;
   const s = state;
-  if (act === 'bp') { state = G.applyBlueprint(v, registry); selectedUid = null; tc.detach(); driveRoot.position.set(0, 0, 0); driveRoot.rotation.set(0, 0, 0); $('robotName').value = state.name; changed(false); fitView(); }
+  if (act === 'bp') { state = G.applyBlueprint(v, registry); openAdv.clear(); selectedUid = null; tc.detach(); driveRoot.position.set(0, 0, 0); driveRoot.rotation.set(0, 0, 0); $('robotName').value = state.name; changed(false); fitView(); }
   else if (act === 'floor') { s.mission.floor = v; changed(true); }
   else if (act === 'env') { s.mission.envType = v; changed(true); }
   else if (act === 'shape') { withReanchor(() => { s.chassis.shape = v; if (v === 'round') s.chassis.length = s.chassis.width; }); changed(true); }
   else if (act === 'color') { s.chassis.color = v; changed(false); }
   else if (act === 'drive') { s.drive.type = v; s.drive.driverCount = v === 'mecanum' ? 2 : 1; if (v === 'mecanum' && !s.drive.wheelbase) s.drive.wheelbase = r2(s.chassis.length * 0.6); changed(true); }
   else if (act === 'caster') { s.drive.casterLayout = v; changed(false); }
+  else if (act === 'base') { s.drive.base = v; if (v === 'external') { s.user.busV = true; s.drive.gearRatio = 1; } changed(true); }
+  else if (act === 'lidarModel') { s.sensors.forEach((x) => { if (x.category === 'lidar') x.hw = v; }); changed(true); }
   else if (act === 'pick') { if (slot === 'motor') s.drive.motor = id; else if (slot === 'driver') s.drive.driver = id; else if (slot === 'battery') s.power.battery = id; else if (slot === 'compute') s.compute = id; s.user[slot] = true; changed(true); }
   else if (act === 'auto') { s.user[slot] = false; changed(true); }
   else if (act === 'volt') { if (v === 'auto') s.user.busV = false; else { s.power.busV = Number(v); s.user.busV = true; } changed(true); }
@@ -623,6 +675,7 @@ tabBody.addEventListener('click', (e) => {
   }
   else if (act === 'sel') { if (!e.target.closest('button')) select(v); return; }
   else if (act === 'del') { selectedUid = v; deleteSel(); }
+  else if (act === 'addPart' && v === 'stl') { $('partInput').click(); return; }
   else if (act === 'addPart') { const size = v === 'box' ? [0.2, 0.15, 0.05] : v === 'cylinder' ? [0.06, 0.06, 0.25] : [0.1, 0.1, 0.1]; startMount({ kind: 'part', part: { kind: v, size, color: '#8c8c92', mass: 0.3 } }); return; }
   else if (act === 'uploadPart') { $('partInput').click(); return; }
   else if (act === 'uploadShell') { $('shellInput').click(); return; }
@@ -660,7 +713,7 @@ $('partInput').onchange = async (e) => {
 function renderHud() {
   const s = dv.stats, m = state.mission;
   $('rank').dataset.rank = dv.rank; $('rank').innerHTML = `<small>RANK</small>${dv.rank}`;
-  $('robotSub').textContent = `${state.drive.type === 'mecanum' ? 'Mecanum' : 'Differential'} · ${state.power.busV} V · ${dv.sensors.filter((x) => x.category === 'lidar').length} LiDAR · ${dv.sensors.filter((x) => /camera/.test(x.category)).length} กล้อง`;
+  $('robotSub').textContent = `${state.drive.base === 'external' ? 'AGV เดิม + PLC' : state.drive.type === 'mecanum' ? 'Mecanum' : 'Differential'} · ${state.power.busV} V · ${dv.sensors.filter((x) => x.category === 'lidar').length} LiDAR · ${dv.sensors.filter((x) => /camera/.test(x.category)).length} กล้อง`;
   $('stats').innerHTML = [
     ['⚡ ความเร็ว', s.speed, `${m.vMax} m/s`], ['💪 แรงขับ', s.power, dv.motor ? `×${fmt(dv.margin, 1)}` : '—'],
     ['🔋 ความอึด', s.endurance, `${fmt(dv.runtimeAch, 1)} / ${m.runtimeH} h`], ['👁 การมองเห็น', s.vision, `${Math.round(dv.coverage * 100)}%`],
@@ -673,11 +726,26 @@ function renderHud() {
     <div><b>${dv.nominal ? `${dv.nominal} V ×${dv.series}${dv.parallel > 1 ? ` ×${dv.parallel}∥` : ''}` : '—'}</b><span>แพ็กแบต · ${fmt(dv.packWh, 0)} Wh</span></div>
     <div><b>${dv.nav.localCostmap} m</b><span>Nav2 costmap · infl ${dv.nav.inflationRadius}</span></div>
     <div><b>${dv.bom.total ? fmt(dv.bom.total, 0) + ' ฿' : 'รอราคา'}</b><span>ราคาอุปกรณ์</span></div>`;
-  $('warnings').innerHTML = dv.warnings.map((w) => `<div class="wi ${w.lvl}">${w.lvl === 'err' ? '🔴' : w.lvl === 'warn' ? '⚠️' : '✅'} ${esc(w.txt)}</div>`).join('');
+  // overview: one status line + 4 key numbers; problems listed (max 3), details stay folded
+  const bad = dv.warnings.filter((w) => w.lvl !== 'ok'), errs = bad.filter((w) => w.lvl === 'err').length;
+  const cls = errs ? 'err' : bad.length ? 'warn' : 'ok';
+  const head = errs ? `🔴 ต้องแก้ ${errs} เรื่อง` : bad.length ? `⚠️ ควรดู ${bad.length} เรื่อง` : '✅ พร้อมใช้งาน';
+  const sub = errs || bad.length ? 'ดูรายการด้านล่าง แล้วแก้ในขั้นที่เกี่ยวข้อง' : 'ออกแบบผ่านทุกข้อ ไปขั้นสรุป & ราคาได้เลย';
+  const ext = state.drive.base === 'external';
+  $('overview').innerHTML = `<div class="ov-top"><div class="ov-state ${cls}"><b>${head}</b>${sub}</div></div>
+    <div class="kpis">
+      <div><b>${fmt(dv.totalMass, 0)} kg</b><span>น้ำหนักรวม</span></div>
+      <div><b>${m.vMax} m/s</b><span>ความเร็วสูงสุด</span></div>
+      <div><b>${ext ? 'แบตรถ' : `${fmt(dv.runtimeAch, 1)} h`}</b><span>${ext ? `${state.power.busV} V จาก AGV` : `ใช้งาน/ชาร์จ (ต้องการ ${m.runtimeH} h)`}</span></div>
+      <div><b>${dv.bom.total ? fmt(dv.bom.total, 0) + ' ฿' : 'รอราคา'}</b><span>ราคาอุปกรณ์</span></div>
+    </div>`;
+  $('warnings').innerHTML = bad.slice(0, 3).map((w) => `<div class="wi ${w.lvl}">${esc(w.txt)}</div>`).join('')
+    + (bad.length > 3 ? `<p class="note">+ อีก ${bad.length - 3} เรื่องในใบสรุป</p>` : '');
   $('bomMini').innerHTML = dv.bom.lines.map((l) => {
     const p = l.product, link = p && p.shop_url ? `<a href="${esc(p.shop_url)}" target="_blank" rel="noopener">🛒 ${p.price != null ? fmt(p.price * l.qty, 0) + ' ฿' : 'ซื้อ'}</a>` : `<a href="https://tesrshop.com/?s=${encodeURIComponent(l.name)}" target="_blank" rel="noopener">🔍 Shop</a>`;
     return `<div class="bl"><span class="q">${l.qty}×</span><span class="n">${ICON[l.category] || '🔩'} ${esc(l.name)}</span>${link}</div>`;
   }).join('');
+  $('bomSum').textContent = `รายการอุปกรณ์ · ${dv.bom.lines.reduce((a, l) => a + l.qty, 0)} ชิ้น`;
   status(`${state.name} · RANK ${dv.rank} · ${dv.bom.lines.reduce((a, l) => a + l.qty, 0)} ชิ้น`);
 }
 function renderInspector(soft) {

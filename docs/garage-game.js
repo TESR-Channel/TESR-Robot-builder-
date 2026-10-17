@@ -259,7 +259,7 @@ function openMenu() {
     <div class="gm-pilot"><div class="lv">LV ${l}</div><div class="gm-xp"><div style="font-size:12px;color:#9a978f">${save.xp} / ${next} XP ถึง LV ${l + 1}</div><div class="gm-bar"><i style="width:${Math.round(100 * (save.xp - cur) / Math.max(next - cur, 1))}%"></i></div></div></div>
     <div class="gm-ms">${MISSIONS.map((ms, i) => `<div class="gm-m ${unlocked(i) ? '' : 'lock'}" data-m="${i}"><div class="ic">${ms.icon}</div><b>${i + 1}. ${ms.name}</b><small>${ms.brief}</small><div class="st">${starStr(save.best[ms.id]?.stars || 0)}</div>${save.best[ms.id] ? `<small>ดีที่สุด ${save.best[ms.id].time.toFixed(1)} s</small>` : ''}</div>`).join('')}</div>
     <div class="gm-ach">${Object.entries(ACH).map(([k, [ic, n, d]]) => `<span class="${save.ach.includes(k) ? 'on' : ''}" title="${d}">${ic} ${n}</span>`).join('')}</div>
-    <div class="gm-row"><button class="ghost" id="gmClose">กลับไปแต่งหุ่น</button></div></div>`;
+    <div class="gm-row"><button class="ghost" id="gmClose">ปิดเมนูภารกิจ</button></div></div>`;
   m.querySelectorAll('.gm-m').forEach((el) => el.addEventListener('click', () => { const i = Number(el.dataset.m); if (unlocked(i)) startMission(i); else toast('🔒 ผ่านภารกิจก่อนหน้าให้ได้อย่างน้อย 1 ดาวก่อน'); }));
   $('gmClose').onclick = () => { m.hidden = true; };
 }
@@ -348,7 +348,7 @@ function finish(ok, why) {
       <div><b>${Math.round(run.bat * 100)}%</b><span>แบตเหลือ</span></div><div><b>+${gained} XP</b><span>${lvUp ? `🎉 เลื่อนเป็น LV ${level(save.xp)}` : `LV ${level(save.xp)}`}</span></div></div>
     ${newAch.length ? `<div class="gm-ach" style="justify-content:center">${newAch.map((k) => `<span class="on">🏅 ${ACH[k][0]} ${ACH[k][1]} — ${ACH[k][2]}</span>`).join('')}</div>` : ''}
     <div class="muted" style="font-size:12.5px;margin-top:10px">${adviceFor(ok, why)}</div>
-    <div class="gm-row" style="justify-content:center"><button class="ghost" id="gmMenu">เมนูภารกิจ</button><button class="ghost" id="gmGarage">กลับไปแต่งหุ่น</button><button id="gmRetry">↻ เล่นอีกครั้ง</button>${ok && hasNext ? '<button class="gold" id="gmNext">ภารกิจถัดไป →</button>' : ''}</div></div>`;
+    <div class="gm-row" style="justify-content:center"><button class="ghost" id="gmMenu">เมนูภารกิจ</button><button class="ghost" id="gmGarage">ปิดเมนูภารกิจ</button><button id="gmRetry">↻ เล่นอีกครั้ง</button>${ok && hasNext ? '<button class="gold" id="gmNext">ภารกิจถัดไป →</button>' : ''}</div></div>`;
   $('gmMenu').onclick = openMenu; $('gmGarage').onclick = () => { m.hidden = true; stopMission(); };
   $('gmRetry').onclick = () => startMission(i); if ($('gmNext')) $('gmNext').onclick = () => startMission(i + 1);
 }

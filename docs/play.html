@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TESR Robot Builder — ② ทดสอบ &amp; เกม</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./theme.css"><link rel="stylesheet" href="./logo.css">
+<link rel="stylesheet" href="./garage.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+} }
+</script>
+</head>
+<body class="garage-body mode-play">
+<header class="tesr">
+  <h1>TESR <span>Robot Builder</span></h1>
+  <nav data-step="play"><a href="./index.html">① ออกแบบ</a><a class="active" href="./play.html">② ทดสอบ &amp; เกม</a><a href="./summary.html">③ สรุป &amp; ราคา</a><a href="./build.html">④ ส่งออก ROS 2</a><a href="./guide.html">📘 คู่มือ</a></nav>
+  <div class="status" id="gStatus">กำลังเปิดสนามทดสอบ…</div>
+</header>
+<main class="garage">
+  <aside class="panel-g" id="bay">
+    <div class="wz-head">
+      <div class="wz-title">🎮 ทดสอบ &amp; เกม</div>
+      <p class="wz-desc">ลองหุ่นที่ออกแบบไว้ในโลกจำลอง — ไม่กระทบแบบของคุณ</p>
+    </div>
+    <div class="scroll">
+      <div class="robot-chip"><div><b id="pcName">—</b><span id="pcSub">หุ่นจากขั้น 1 ออกแบบ</span></div><a href="./index.html">✏️ แก้แบบ</a></div>
+      <h2>เลือกโหมด</h2>
+      <div class="mode-card" data-mode="drive"><div class="ic">🎮</div><div><b>ขับอิสระ</b><span>ลองขับรอบโรงรถ ดูการเลี้ยวและระยะสแกน</span></div></div>
+      <div class="mode-card" data-mode="mission"><div class="ic">🏁</div><div><b>ภารกิจ 5 ด่าน (เกม)</b><span>ทำแผนที่ ส่งของ ลอดช่องแคบ เก็บดาวและ XP</span></div></div>
+      <a class="mode-card" href="./arena.html"><div class="ic">🧱</div><div><b>สนามของฉัน</b><span>วาดสนาม ผนัง สิ่งกีดขวาง ArUco แล้วส่งออกไป Gazebo</span></div></a>
+      <div class="mode-help" id="help-drive"><h2>วิธีขับ</h2><p class="note"><kbd>W</kbd>/<kbd>S</kbd> เดินหน้า-ถอย · <kbd>A</kbd>/<kbd>D</kbd> เลี้ยว · mecanum <kbd>Q</kbd>/<kbd>E</kbd> สไลด์ · <kbd>Esc</kbd> หยุด<br>มือถือ/แท็บเล็ต: ใช้โหมดภารกิจ (มีจอยสัมผัส)</p></div>
+      <div class="mode-help" id="help-mission"><h2>ภารกิจ</h2><p class="note">ใช้สเปกจริงของหุ่น: ความเร็ว แรงมอเตอร์ แบต และ LiDAR · โกดังเดียวกับ Gazebo ในไฟล์ที่ส่งออก</p></div>
+      <p class="note" style="margin-top:16px">ทดสอบเสร็จแล้ว → ไปขั้น 3 ดูสรุปสเปกและใบเสนอราคา</p>
+    </div>
+    <div class="foot"><a class="back quiet" href="./index.html" style="flex:0 0 auto">← ออกแบบ</a><a class="primary next" href="./summary.html" style="flex:1">ถัดไป: สรุป &amp; ราคา →</a></div>
+  </aside>
+  <section class="stage">
+    <div id="viewport"></div>
+    <div class="stage-top">
+      <div class="callsign"><small>ชื่อหุ่น</small><input id="robotName" spellcheck="false" maxlength="40" readonly><div class="sub" id="robotSub"></div></div>
+      <div class="rank" id="rank" data-rank="B"><small>RANK</small>B</div>
+    </div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="stage-tools" id="tools">
+      <button data-tool="drive" title="ทดลองขับ W A S D">🎮 ขับ</button>
+      <button data-tool="scan" class="on" title="แสดงระยะสแกน LiDAR / กล้อง">📡 ระยะสแกน</button>
+      <button data-tool="xray" title="มองทะลุตัวถัง">🩻</button>
+      <button data-tool="payload" class="on" title="แสดงของที่บรรทุก">📦</button>
+      <button data-tool="spin" title="หมุนโชว์">🔄 โชว์</button>
+      <button data-tool="fit" title="จัดมุมกล้อง">🎯 จัดมุม</button>
+      <button data-tool="shot" title="บันทึกภาพ">📸</button>
+      <button data-tool="lite" title="ปิด bloom/เงา สำหรับเครื่องที่ช้า">⚡ โหมดเบา</button>
+    </div>
+    <div class="loading" id="loading">LOADING TEST BAY…</div>
+  </section>
+  <!-- design controls are not used on this page; garage.js still expects them -->
+  <div hidden>
+    <div id="tabs"></div><div id="tabBody"></div><div id="wzFoot"></div><div id="hud"></div>
+    <div id="inspector"></div><div id="overview"></div><div id="warnings"></div><div id="stats"></div><div id="numbers"></div><div id="bomMini"></div><span id="bomSum"></span>
+    <button id="exZip"></button><button id="exYaml"></button><button id="exUrdf"></button><button id="exBom"></button><button id="exPng"></button><button id="exSave"></button><button id="exLoad"></button><button id="exSummary"></button><button id="exBuild"></button>
+  </div>
+</main>
+<input type="file" id="shellInput" accept=".stl,.STL" hidden>
+<input type="file" id="partInput" accept=".stl,.STL" hidden>
+<input type="file" id="saveInput" accept=".json" hidden>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="./garage-core.js"></script>
+<script type="module" src="./garage.js"></script>
+<script type="module" src="./garage-game.js"></script>
+<script type="module" src="./garage-ux.js"></script>
+<script src="./nav.js"></script>
+<script src="./i18n.js"></script>
+</body>
+</html>

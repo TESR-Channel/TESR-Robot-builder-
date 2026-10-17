@@ -1,0 +1,179 @@
+/* TESR Robot Builder — Garage pages (index.html = design, play.html = test & play)
+ * Calm layout: one primary (gold) action per area, everything else quiet. Advanced options live in <details class="adv">.
+ */
+body.garage-body { display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden; }
+body.garage-body > header.tesr { flex:none; }
+main.garage { flex:1 1 auto; min-height:0; display:grid; grid-template-columns:360px minmax(0, 1fr) 300px; gap:12px; padding:12px; }
+body.mode-play main.garage { grid-template-columns:320px minmax(0, 1fr); }
+
+/* ---------- panels */
+.panel-g { position:relative; display:flex; flex-direction:column; min-height:0; border:1px solid var(--line); border-radius:14px; background:#111116; }
+.panel-g > .scroll { flex:1 1 auto; min-height:0; overflow:auto; padding:16px 16px 8px; }
+.panel-g > .foot { flex:none; padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px; }
+.panel-g h2 { font-family:'Chakra Petch'; font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); font-weight:500; margin:18px 0 8px; }
+.panel-g h2:first-child { margin-top:0; }
+.panel-g .note { font-size:12.5px; color:var(--muted); margin:6px 0; line-height:1.5; }
+
+/* ---------- wizard header (left panel) */
+.wz-head { padding:14px 16px 12px; border-bottom:1px solid var(--line); flex:none; }
+.wz-dots { display:flex; gap:4px; margin-bottom:10px; }
+.wz-dots button { flex:1; height:5px; padding:0; border:none; border-radius:3px; background:#2a2a31; cursor:pointer; }
+.wz-dots button.done { background:rgba(201,168,76,.55); } .wz-dots button.on { background:var(--gold); }
+.wz-count { font-size:11.5px; color:var(--muted); letter-spacing:.5px; }
+.wz-title { font-family:'Chakra Petch'; font-size:20px; font-weight:700; margin:2px 0 2px; color:#fff; display:flex; align-items:center; gap:8px; }
+.wz-desc { font-size:13px; color:var(--muted); margin:0; }
+.foot .back { flex:0 0 auto; background:transparent; border:1px solid var(--line); color:var(--text); }
+.foot .next { flex:1; }
+button.primary, a.primary { background:linear-gradient(180deg, var(--gold-2), var(--gold)); color:#1a1300; font-weight:600; border:none; border-radius:10px; padding:11px 14px; font-size:14px; text-align:center; text-decoration:none; display:block; cursor:pointer; }
+button.quiet, a.quiet { background:#18181e; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 14px; font-size:13.5px; text-align:center; text-decoration:none; display:block; cursor:pointer; }
+button.quiet:hover, a.quiet:hover { border-color:rgba(201,168,76,.6); }
+
+/* ---------- option cards */
+.pcard { position:relative; display:grid; grid-template-columns:40px 1fr; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#0d0d11; margin:6px 0; cursor:pointer; transition:border-color .15s; }
+.pcard:hover { border-color:rgba(201,168,76,.55); }
+.pcard.on { border-color:var(--gold); background:rgba(201,168,76,.07); }
+.pcard.on::after { content:'✓'; position:absolute; right:10px; top:8px; width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:700; color:#1a1300; background:var(--gold); }
+.pcard.locked { opacity:.4; cursor:not-allowed; }
+.pcard .ico { width:40px; height:40px; border-radius:9px; display:grid; place-items:center; font-size:20px; background:#1a1a20; }
+.pcard b { font-size:13.5px; display:block; padding-right:26px; line-height:1.35; font-weight:600; }
+.pcard .spec { font-size:12px; color:var(--muted); line-height:1.45; }
+.chips { margin-top:4px; display:flex; flex-wrap:wrap; gap:4px; }
+.chips span, .chips a { font-size:11px; padding:0 7px; border-radius:9px; border:1px solid var(--line); color:var(--muted); text-decoration:none; }
+.chips .ok { color:#7fd39b; border-color:rgba(46,139,87,.6); } .chips .warn { color:#e9b45a; border-color:rgba(201,139,30,.6); } .chips .err { color:#ff8a80; border-color:rgba(192,57,43,.7); }
+.chips .price { color:var(--gold); border-color:rgba(201,168,76,.4); } .chips a:hover { color:#000; background:var(--gold); }
+.pcard .go { position:absolute; right:10px; bottom:10px; font-size:12px; padding:3px 10px; }
+.bp { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.bp .pcard { grid-template-columns:1fr; text-align:center; margin:0; padding:14px 10px; }
+.bp .pcard .ico { margin:0 auto; width:50px; height:50px; font-size:26px; }
+.bp .pcard b { padding:0; margin-top:4px; }
+.bp .pcard.on::after { right:8px; top:8px; }
+
+/* ---------- inputs */
+.sl { margin:12px 0; } .sl .row { display:flex; justify-content:space-between; font-size:13px; color:var(--text); }
+.sl .val { color:var(--gold); font-family:'Chakra Petch'; }
+.sl input[type=range] { width:100%; accent-color:var(--gold); background:transparent; border:none; padding:0; margin:4px 0 0; }
+.seg { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; }
+.seg button { background:#16161b; border:1px solid var(--line); font-size:12.5px; padding:6px 12px; border-radius:18px; color:var(--text); }
+.seg button.on { border-color:var(--gold); color:#1a1300; background:var(--gold); font-weight:600; }
+.sw { width:28px; height:28px; border-radius:50%; border:2px solid #333; cursor:pointer; padding:0; }
+.sw.on { border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,168,76,.35); }
+.installed { display:flex; align-items:center; gap:8px; font-size:12.5px; padding:6px 9px; border:1px solid var(--line); border-radius:8px; margin:4px 0; cursor:pointer; background:#0d0d11; }
+.installed.sel { border-color:var(--gold); } .installed .nm { flex:1; } .installed button { padding:2px 8px; font-size:11.5px; background:#26262c; }
+button.mini { font-size:11.5px; padding:2px 9px; }
+details.adv { margin:16px 0 6px; border:1px dashed #33333a; border-radius:10px; padding:0 12px; }
+details.adv > summary { cursor:pointer; list-style:none; padding:10px 0; font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+details.adv > summary::-webkit-details-marker { display:none; }
+details.adv > summary::before { content:'▸'; color:var(--gold); transition:transform .15s; }
+details.adv[open] > summary::before { transform:rotate(90deg); }
+details.adv[open] { padding-bottom:10px; }
+.callout { border:1px solid rgba(201,168,76,.35); background:rgba(201,168,76,.06); border-radius:10px; padding:10px 12px; font-size:12.5px; color:#e8dcb8; margin:8px 0; }
+kbd { font-family:'Chakra Petch'; font-size:11px; border:1px solid #444; border-bottom-width:2px; border-radius:4px; padding:0 5px; color:var(--text); }
+code { font-size:12px; }
+
+/* ---------- 3D stage */
+.stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:#05050a; min-height:0; }
+#viewport { position:absolute; inset:0; } #viewport canvas { display:block; width:100%; height:100%; }
+.stage-top { position:absolute; left:12px; right:12px; top:12px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; z-index:2; }
+.callsign { pointer-events:auto; background:rgba(8,8,12,.7); border:1px solid rgba(255,255,255,.08); padding:6px 12px; border-radius:10px; }
+.callsign small { display:block; font-family:'Chakra Petch'; letter-spacing:2px; color:var(--muted); font-size:10px; }
+.callsign input { background:transparent; border:none; outline:none; font-family:'Chakra Petch'; font-size:17px; color:#fff; padding:0; width:240px; }
+.callsign .sub { font-size:11.5px; color:var(--muted); }
+.rank { width:62px; height:68px; display:grid; place-items:center; align-content:center; font-family:'Chakra Petch'; font-size:30px; font-weight:700; line-height:1; color:var(--gold); background:rgba(8,8,12,.75);
+  clip-path:polygon(50% 0, 100% 22%, 100% 78%, 50% 100%, 0 78%, 0 22%); border:none; }
+.rank small { font-size:9px; letter-spacing:2px; color:var(--muted); }
+.rank[data-rank="S"] { color:#ffe58a; } .rank[data-rank="C"], .rank[data-rank="D"] { color:#ff6b5e; }
+.stage-tools { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); display:flex; gap:4px; background:rgba(8,8,12,.78); padding:5px; border:1px solid rgba(255,255,255,.08); border-radius:12px; z-index:2; }
+.stage-tools button { background:transparent; border:none; font-size:12.5px; padding:6px 10px; border-radius:8px; color:var(--muted); white-space:nowrap; }
+.stage-tools button:hover { color:var(--text); background:#1d1d23; }
+.stage-tools button.on { color:var(--gold); background:rgba(201,168,76,.12); }
+.banner { position:absolute; top:92px; left:50%; transform:translateX(-50%); background:rgba(8,8,12,.88); border:1px solid rgba(201,168,76,.5); padding:7px 16px; border-radius:20px; font-size:13px; z-index:2; white-space:nowrap; }
+.loading { position:absolute; inset:0; display:grid; place-items:center; font-family:'Chakra Petch'; letter-spacing:5px; color:var(--gold); background:#05050a; z-index:5; }
+/* design page shows only view tools; driving and missions live on the test page */
+body.mode-design #tools [data-tool="mission"], body.mode-design #tools [data-tool="drive"], body.mode-design #tools [data-tool="spin"], body.mode-design #tools [data-tool="payload"],
+body.mode-design .pilot-chip { display:none !important; }
+body.mode-play #tools [data-tool="mission"], body.mode-play #tools [data-tool="xray"], body.mode-play #tools [data-tool="shot"], body.mode-play #tools [data-tool="payload"] { display:none !important; }
+
+/* ---------- right panel: overview */
+.ov-top { display:flex; gap:12px; align-items:center; }
+.ov-state { font-size:13px; line-height:1.45; }
+.ov-state b { display:block; font-size:14px; }
+.ov-state.ok b { color:#7fd39b; } .ov-state.warn b { color:#e9b45a; } .ov-state.err b { color:#ff8a80; }
+.kpis { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0 4px; }
+.kpis div { background:#0d0d11; border:1px solid var(--line); border-radius:9px; padding:8px 10px; }
+.kpis b { display:block; font-family:'Chakra Petch'; color:#fff; font-size:16px; font-weight:500; } .kpis span { font-size:11.5px; color:var(--muted); }
+.wi { font-size:12.5px; padding:7px 10px; border-left:3px solid var(--line); margin:6px 0; background:#0d0d11; border-radius:0 8px 8px 0; line-height:1.45; }
+.wi.err { border-color:var(--err); } .wi.warn { border-color:var(--warn); } .wi.ok { border-color:var(--ok); }
+.stat { margin:10px 0; } .stat .row { display:flex; justify-content:space-between; font-size:12.5px; } .stat .row b { font-family:'Chakra Petch'; color:var(--gold); font-weight:500; }
+.bar { height:6px; background:#1e1e24; border-radius:4px; overflow:hidden; margin-top:4px; }
+.bar i { display:block; height:100%; background:var(--gold); border-radius:4px; transition:width .45s; }
+.numgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.numgrid div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
+.numgrid b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:14px; font-weight:500; } .numgrid span { font-size:11px; color:var(--muted); }
+.exports { display:grid; grid-template-columns:1fr 1fr; gap:6px; } .exports button { font-size:12.5px; padding:8px 6px; background:#18181e; border:1px solid var(--line); } .exports .wide { grid-column:1 / -1; }
+.bl { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:12px; border-bottom:1px solid var(--line); padding:6px 0; }
+.bl .q { color:var(--gold); font-family:'Chakra Petch'; min-width:22px; } .bl .n { flex:1; }
+.bl a { color:var(--gold); text-decoration:none; font-size:11.5px; white-space:nowrap; }
+.insp { border:1px solid rgba(201,168,76,.4); border-radius:10px; padding:10px; margin-bottom:12px; }
+.insp h2 { margin-top:0 !important; }
+.insp .grid4 { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; } .insp label { font-size:11px; } .insp input { width:100%; padding:4px 6px; font-size:12.5px; }
+.cta-stack { display:grid; gap:8px; }
+
+/* ---------- test & play page */
+.mode-card { display:grid; grid-template-columns:52px 1fr; gap:12px; align-items:center; padding:14px; border:1px solid var(--line); border-radius:12px; background:#0d0d11; margin:8px 0; cursor:pointer; text-decoration:none; color:var(--text); }
+.mode-card:hover { border-color:rgba(201,168,76,.6); }
+.mode-card.on { border-color:var(--gold); background:rgba(201,168,76,.07); }
+.mode-card .ic { width:52px; height:52px; border-radius:12px; display:grid; place-items:center; font-size:26px; background:#1a1a20; }
+.mode-card b { display:block; font-size:15px; } .mode-card span { font-size:12.5px; color:var(--muted); }
+.mode-help { display:none; } .mode-help.on { display:block; }
+.robot-chip { display:flex; gap:10px; align-items:center; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#0d0d11; }
+.robot-chip b { display:block; font-family:'Chakra Petch'; font-size:15px; } .robot-chip span { font-size:12px; color:var(--muted); }
+.robot-chip a { margin-left:auto; font-size:12.5px; color:var(--gold); text-decoration:none; white-space:nowrap; }
+
+/* ---------- first-visit guide */
+#uxGuide { position:fixed; inset:0; z-index:50; display:grid; place-items:center; background:rgba(3,3,6,.8); backdrop-filter:blur(4px); padding:16px; }
+#uxGuide .card { width:min(680px,100%); background:#121218; border:1px solid rgba(201,168,76,.45); border-radius:16px; padding:24px; }
+#uxGuide h2 { font-family:'Chakra Petch'; color:#fff; margin:0 0 4px; font-size:22px; } #uxGuide p { color:var(--muted); margin:0 0 16px; }
+#uxGuide .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+#uxGuide .s { border:1px solid var(--line); border-radius:12px; padding:14px 10px; background:#0d0d12; text-align:center; }
+#uxGuide .s .n { width:26px; height:26px; margin:0 auto 6px; border-radius:50%; display:grid; place-items:center; font-family:'Chakra Petch'; font-weight:700; color:#1a1300; background:var(--gold); }
+#uxGuide .s b { display:block; font-size:14px; margin-bottom:2px; } #uxGuide .s span { font-size:12px; color:var(--muted); }
+#uxGuide .row { display:flex; justify-content:center; margin-top:18px; } #uxGuide .row button { min-width:220px; }
+
+/* ---------- missions on touch screens (garage-game.js HUD) */
+[hidden] { display:none !important; }
+.gm-btns { position:absolute; left:8px; top:8px; display:flex; gap:6px; pointer-events:auto; z-index:5; }
+.gm-btns button { background:rgba(8,8,12,.88); border:1px solid rgba(201,168,76,.55); color:#f3e6bf; font-size:13px; padding:8px 12px; border-radius:10px; }
+.gm-play { display:inline-block; margin-top:8px; padding:6px 16px; border-radius:16px; background:var(--gold); color:#1a1300; font-size:13.5px; }
+body.gm-playing #tools, body.gm-playing .stage-top { display:none; }
+
+/* ---------- laptop */
+@media (min-width:1150px) and (max-width:1279px) { main.garage { grid-template-columns:320px minmax(0, 1fr) 270px; } }
+/* ---------- tablet: 3D on top, panels below */
+@media (max-width:1149px) {
+  body.garage-body { height:auto; min-height:100dvh; overflow:auto; }
+  main.garage, body.mode-play main.garage { grid-template-columns:1fr 1fr; grid-template-areas:"stage stage" "bay hud"; align-items:start; }
+  main.garage .stage { grid-area:stage; height:56vh; height:56dvh; min-height:360px; }
+  main.garage #bay { grid-area:bay; } main.garage #hud { grid-area:hud; }
+  body.mode-play main.garage { grid-template-areas:"stage stage" "bay bay"; }
+  .panel-g > .scroll { overflow:visible; }
+  #bay > .foot { position:sticky; bottom:0; background:#111116; border-radius:0 0 14px 14px; z-index:3; }
+  body.garage-body.gm-full { overflow:hidden; }
+  body.garage-body.gm-full main.garage .stage { position:fixed !important; inset:0 !important; height:100vh !important; height:100dvh !important; min-height:0 !important; z-index:1000; border-radius:0; border:none; }
+  .gm-btns { top:auto; bottom:calc(58px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); }
+}
+/* ---------- phone */
+@media (max-width:767px) {
+  main.garage, body.mode-play main.garage { grid-template-columns:1fr; grid-template-areas:"stage" "bay" "hud"; padding:8px; gap:8px; }
+  main.garage .stage { height:44vh; height:44dvh; min-height:280px; border-radius:12px; }
+  .stage-tools { left:6px; right:6px; transform:none; bottom:6px; overflow-x:auto; scrollbar-width:none; justify-content:flex-start; }
+  .stage-tools::-webkit-scrollbar { display:none; }
+  .stage-tools button { flex:none; padding:6px 8px; }
+  .stage-top { left:8px; right:8px; top:8px; }
+  .callsign input { font-size:14px; width:150px; } .callsign .sub { font-size:10.5px; max-width:56vw; }
+  .rank { width:48px; height:54px; font-size:22px; }
+  .banner { top:70px; white-space:normal; width:92%; text-align:center; font-size:12px; }
+  .insp .grid4 { grid-template-columns:1fr 1fr; }
+  #uxGuide .steps { grid-template-columns:1fr 1fr; }
+  .wz-title { font-size:18px; }
+}
+@media (max-height:500px) and (orientation:landscape) { main.garage .stage { height:86vh; height:86dvh; min-height:240px; } }
