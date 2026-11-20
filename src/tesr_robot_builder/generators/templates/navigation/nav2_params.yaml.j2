@@ -55,7 +55,7 @@ controller_server:
     general_goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       stateful: true
-      xy_goal_tolerance: 0.15
+      xy_goal_tolerance: {{ p.xy_goal_tolerance }}   # 0.4 × circumscribed radius, 0.15–0.30 m
       yaw_goal_tolerance: 0.2
     FollowPath:
       plugin: "{{ p.nav_controller }}"

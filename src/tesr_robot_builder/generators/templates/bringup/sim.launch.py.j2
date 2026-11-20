@@ -29,9 +29,11 @@ def generate_launch_description():
         DeclareLaunchArgument('x', default_value='-4.5'),
         DeclareLaunchArgument('y', default_value='0.0'),
         DeclareLaunchArgument('yaw', default_value='0.0'),
+        DeclareLaunchArgument('gui', default_value='true', description='false = no Gazebo window (RViz still opens)'),
+        DeclareLaunchArgument('rtf', default_value='1.0', description='real-time factor: 0.5 = half speed for a slow PC'),
         IncludeLaunchDescription(PythonLaunchDescriptionSource(sim), launch_arguments={
             'world': LaunchConfiguration('world'), 'x': LaunchConfiguration('x'),
-            'y': LaunchConfiguration('y'), 'yaw': LaunchConfiguration('yaw')}.items()),
+            'y': LaunchConfiguration('y'), 'yaw': LaunchConfiguration('yaw'), 'gui': LaunchConfiguration('gui'), 'rtf': LaunchConfiguration('rtf')}.items()),
         # give Gazebo a few seconds to spawn the robot and start the controllers before Nav2 asks for TF
         TimerAction(period=6.0, actions=[IncludeLaunchDescription(
             PythonLaunchDescriptionSource(navigation),

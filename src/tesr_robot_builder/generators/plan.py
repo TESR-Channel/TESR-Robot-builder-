@@ -55,6 +55,7 @@ class Plan:
     imus: list[SensorPlan] = field(default_factory=list)
     footprint: str = ""
     robot_radius: float = 0.3
+    xy_goal_tolerance: float = 0.15  # grows with the robot: a 1 m AMR cannot park to 15 cm with a_max 0.5
     inflation_radius: float = 0.5
     local_costmap_m: float = 3.0
     resolution: float = 0.05
@@ -139,6 +140,7 @@ def build_plan(r: ResolvedRobot) -> Plan:
         imus=imus,
         footprint=fp,
         robot_radius=round(circ, 3),
+        xy_goal_tolerance=round(min(0.30, max(0.15, 0.4 * circ)), 2),
         inflation_radius=cm.inflation_radius_m,
         local_costmap_m=cm.local_size_m,
         resolution=cm.resolution_m,

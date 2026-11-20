@@ -252,6 +252,7 @@ function buildRobot() {
 
   if (selectedUid) { const o = objectByUid(selectedUid); if (o && !flags.drive) tc.attach(o); else { tc.detach(); } }
   updateSelBox();
+  window.dispatchEvent(new Event('garage:built'));   // garage-layers.js redraws the TF / footprint layers
 }
 
 function sensorObject(si, isGhost) {
@@ -473,6 +474,7 @@ function refresh() {
   dv = G.derive(state, registry, catalog);
   renderHud(); renderInspector(true);
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (_) { /* quota */ }
+  window.dispatchEvent(new Event('garage:changed'));
 }
 // keep sensors/parts anchored to the chassis when its size changes
 function withReanchor(fn) {
@@ -816,7 +818,7 @@ $('exPng').onclick = () => toggleTool('shot');
 // One project for every page: the Garage state is the source; step 2 (summary) and step 3 (build) read from it.
 function saveProject(withShot) {
   const project = JSON.parse(localStorage.getItem(PROJECT_KEY) || '{}');
-  Object.assign(project, { yaml: G.toYaml(state, registry, dv), design: { name: state.name, prefix: state.prefix }, garage: state, saved_at: new Date().toISOString() });
+  Object.assign(project, { yaml: G.toYaml(state, registry, dv), design: { name: state.name, prefix: state.prefix }, garage: state, frames: G.frames(state, registry, dv), saved_at: new Date().toISOString() });
   localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   if (withShot) {
@@ -827,6 +829,7 @@ function saveProject(withShot) {
   }
 }
 $('exBuild').onclick = () => { saveProject(true); location.href = './build.html'; };
+window.addEventListener('pagehide', () => { if (state && dv) { try { saveProject(true); } catch (_) { /* quota */ } } });
 $('exSummary').onclick = () => { saveProject(true); location.href = './summary.html'; };
 $('exZip').onclick = async () => {
   if (!window.JSZip) { status('โหลด JSZip ไม่ได้ — ตรวจอินเทอร์เน็ต'); return; }

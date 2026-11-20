@@ -177,3 +177,47 @@ body.gm-playing #tools, body.gm-playing .stage-top { display:none; }
   .wz-title { font-size:18px; }
 }
 @media (max-height:500px) and (orientation:landscape) { main.garage .stage { height:86vh; height:86dvh; min-height:240px; } }
+
+
+/* ---------- layers / TF panel (garage-layers.js) */
+#layerBtn { color:var(--gold-2); border:1px solid rgba(201,168,76,.45); }
+#layerPanel { position:absolute; right:12px; top:92px; width:292px; max-height:calc(100% - 168px); overflow:auto; display:none; z-index:4; background:rgba(8,8,12,.93); border:1px solid rgba(201,168,76,.45); border-radius:12px; padding:10px 12px 12px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.55); scrollbar-width:thin; }
+#layerPanel.open { display:block; }
+.lp-head { display:flex; justify-content:space-between; align-items:center; font-family:'Chakra Petch'; color:var(--gold); margin-bottom:8px; }
+.lp-x { background:transparent; border:none; color:var(--muted); padding:2px 6px; font-size:14px; }
+.lp-presets { display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; margin-bottom:8px; }
+.lp-presets button { background:#17171c; border:1px solid var(--line); color:var(--text); font-size:12.5px; padding:6px 4px; border-radius:8px; }
+.lp-presets button.on { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,.1); }
+.lp-list { display:grid; gap:1px; }
+.lp-list label { display:grid; grid-template-columns:18px 20px 1fr; gap:7px; align-items:center; padding:5px 4px; border-radius:6px; cursor:pointer; }
+.lp-list label:hover { background:#1a1a20; }
+.lp-legend { margin:8px 0 6px; color:var(--muted); font-size:12px; }
+.lp-legend .ax { display:inline-block; width:14px; height:4px; border-radius:2px; margin:0 4px 2px 8px; vertical-align:middle; }
+.lp-legend .ax.x { background:#ff453a; } .lp-legend .ax.y { background:#30d158; } .lp-legend .ax.z { background:#3b82f6; }
+.lp-tree summary { font-size:12.5px; margin:4px 0 6px; }
+#tfTree { display:grid; gap:2px; }
+.tf-row { display:grid; grid-template-columns:8px 1fr; column-gap:7px; align-items:center; text-align:left; background:transparent; border:1px solid transparent; border-radius:6px; padding:3px 6px 3px calc(6px + var(--d) * 14px); color:var(--text); }
+.tf-row i { width:8px; height:8px; border-radius:50%; grid-row:1 / span 2; }
+.tf-row code { font-size:12.5px; color:#fff; }
+.tf-row small { grid-column:2; color:var(--muted); font-size:11px; }
+.tf-row:hover { background:#1a1a20; filter:none; }
+.tf-row.sel { border-color:var(--gold); background:rgba(201,168,76,.1); }
+.lp-info { margin-top:8px; padding:8px 10px; border-left:3px solid var(--gold); background:#0d0d11; border-radius:6px; font-size:12.5px; line-height:1.55; }
+.lp-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:10px; }
+.lp-actions button { font-size:12.5px; padding:7px 6px; }
+.lp-actions button:not(.gold) { background:#17171c; border:1px solid var(--line); }
+.lp-note { margin:8px 0 0; color:var(--muted); font-size:11.5px; line-height:1.5; }
+.quick-ex { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:10px 0 4px; }
+.quick-ex button { background:#17171c; border:1px solid rgba(201,168,76,.45); color:var(--gold-2); font-size:13px; padding:8px 6px; border-radius:8px; }
+body.gm-playing #layerPanel { display:none; }
+/* tablet / phone: the panel sits under the 3D view (garage-layers.js moves it into main.garage) */
+main.garage > #layerPanel { position:static; width:auto; max-height:none; grid-area:layers; box-shadow:none; }
+@media (max-width:1149px) {
+  main.garage:has(> #layerPanel.open) { grid-template-areas:"stage stage" "layers layers" "bay hud"; }
+  main.garage > #layerPanel .lp-list { grid-template-columns:1fr 1fr; }
+  main.garage > #layerPanel #tfTree { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:767px) {
+  main.garage:has(> #layerPanel.open) { grid-template-areas:"stage" "layers" "bay" "hud"; }
+  main.garage > #layerPanel #tfTree { grid-template-columns:1fr; }
+}

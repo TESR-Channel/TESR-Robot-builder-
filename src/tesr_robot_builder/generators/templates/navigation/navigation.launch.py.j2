@@ -10,7 +10,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, TimerAction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -38,9 +38,16 @@ def generate_launch_description():
              remappings=[('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', '/cmd_vel')]),
         Node(package='nav2_bt_navigator', executable='bt_navigator', output='screen', parameters=common),
         Node(package='nav2_waypoint_follower', executable='waypoint_follower', output='screen', parameters=common),
+    ]
+    # The lifecycle managers start a few seconds after the nodes they manage. When everything starts in the same instant on a
+    # slow or busy PC, the first "configure" reply can get lost (DDS discovery not finished) and Nav2 then waits forever.
+    managers = TimerAction(period=5.0, actions=[
         Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_navigation', output='screen',
              parameters=[{'use_sim_time': sim_time, 'autostart': True, 'node_names': NAV_NODES}]),
-    ]
+        Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_localization', output='screen',
+             condition=UnlessCondition(slam),
+             parameters=[{'use_sim_time': sim_time, 'autostart': True, 'node_names': ['map_server', 'amcl']}]),
+    ])
     slam_toolbox = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('slam_toolbox'), 'launch', 'online_async_launch.py')),
         launch_arguments={'slam_params_file': os.path.join(share, 'config', 'slam_toolbox.yaml'), 'use_sim_time': sim_time}.items(),
@@ -49,8 +56,6 @@ def generate_launch_description():
     localization = GroupAction(condition=UnlessCondition(slam), actions=[
         Node(package='nav2_map_server', executable='map_server', output='screen', parameters=[params, {'use_sim_time': sim_time, 'yaml_filename': LaunchConfiguration('map')}]),
         Node(package='nav2_amcl', executable='amcl', output='screen', parameters=common),
-        Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_localization', output='screen',
-             parameters=[{'use_sim_time': sim_time, 'autostart': True, 'node_names': ['map_server', 'amcl']}]),
     ])
     rviz = Node(package='rviz2', executable='rviz2', output='screen', condition=IfCondition(LaunchConfiguration('rviz')),
                 arguments=['-d', os.path.join(share, 'rviz', 'navigation.rviz')], parameters=[{'use_sim_time': sim_time}])
@@ -60,5 +65,5 @@ def generate_launch_description():
         DeclareLaunchArgument('map', default_value=''),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('params_file', default_value=os.path.join(share, 'config', 'nav2_params.yaml')),
-        slam_toolbox, localization, *nav, rviz,
+        slam_toolbox, localization, *nav, managers, rviz,
     ])

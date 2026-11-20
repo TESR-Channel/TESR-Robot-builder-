@@ -84,7 +84,7 @@
       : { left: 'left_wheel_joint', right: 'right_wheel_joint' });
     const hs = dr.track / 2, hb = (dr.wheelbase || 0.4) / 2;
     const at = { left: [0, hs], right: [0, -hs], front_left: [hb, hs], front_right: [hb, -hs], rear_left: [-hb, hs], rear_right: [-hb, -hs] };
-    return Object.entries(joints).map(([k, joint]) => ({ key: k, joint, link: joint.replace(/_joint$/, '_link'), x: r4(at[k][0]), y: r4(at[k][1]), left: at[k][1] > 0 }));
+    return Object.entries(joints).map(([k, joint]) => ({ key: k, joint, link: joint.replace(/_joint$/, ''), x: r4(at[k][0]), y: r4(at[k][1]), left: at[k][1] > 0 }));
   }
   function casterSpots(state) {
     if (state.drive.type !== 'differential') return [];
@@ -416,15 +416,19 @@
       out.push(jointXml(w.joint, 'continuous', 'base_link', w.link, [w.x, w.y, 0], [0, 0, 0], '0 1 0'));
     });
     dv.casters.forEach((k, i) => {
-      const cr = dv.casterR, name = `caster_${i + 1}_link`;
+      const cr = dv.casterR, name = `caster_${i}`;
       out.push(linkXml(name, { visuals: [{ geom: { type: 'sphere', radius: cr }, mat: 'caster' }], collisions: [{ geom: { type: 'sphere', radius: cr } }], mass: 0.2, inert: inSph(0.2, cr) }));
-      out.push(jointXml(`caster_${i + 1}_joint`, 'fixed', 'base_link', name, [k.x, k.y, -r + cr], [0, 0, 0]));
+      out.push(jointXml(`caster_${i}_joint`, 'fixed', 'base_link', name, [k.x, k.y, -r + cr], [0, 0, 0]));
     });
     dv.sensors.forEach((s) => {
       const g = sensorGeom(s), mass = (s.rec && s.rec.mass_kg) || 0.05, mat = s.category === 'lidar' ? 'lidar' : /camera/.test(s.category) ? 'camera' : 'imu';
       const inert = g.type === 'cylinder' ? inCyl(mass, g.radius, g.length, 'z') : inBox(mass, g.box);
       out.push(linkXml(s.frame, { visuals: [{ geom: g, mat }], collisions: [{ geom: g }], mass, inert }));
       out.push(jointXml(`${s.id}_joint`, 'fixed', 'base_link', s.frame, s.pos, [0, 0, s.yaw]));
+      if (/camera/.test(s.category)) {
+        out.push(`  <link name="${s.frame}_optical"/>`);
+        out.push(jointXml(`${s.id}_optical_joint`, 'fixed', s.frame, `${s.frame}_optical`, [0, 0, 0], [-Math.PI / 2, 0, -Math.PI / 2]));
+      }
     });
     (state.parts || []).forEach((p, i) => {
       const name = `part_${i + 1}_link`, g = partGeom(p, pkg), box = p.size || [0.1, 0.1, 0.1], mass = Math.max(0.01, Number(p.mass) || 0.2);
@@ -435,7 +439,7 @@
 
     if (opts.gazebo !== false) {
       dv.wheels.forEach((w) => out.push(`  <gazebo reference="${w.link}"><mu1>1.0</mu1><mu2>1.0</mu2></gazebo>`));
-      dv.casters.forEach((k, i) => out.push(`  <gazebo reference="caster_${i + 1}_link"><mu1>0.0</mu1><mu2>0.0</mu2></gazebo>`));
+      dv.casters.forEach((k, i) => out.push(`  <gazebo reference="caster_${i}"><mu1>0.0</mu1><mu2>0.0</mu2></gazebo>`));
       dv.sensors.forEach((s) => {
         const sen = (s.rec && s.rec.sensor) || {};
         if (s.category === 'lidar') {
@@ -473,6 +477,24 @@
     }
     out.push('</robot>');
     return out.join('\n') + '\n';
+  }
+
+  // ------------------------------------------------------------------ TF tree (what `ros2 run tf2_tools view_frames` will show)
+  // Every frame of the exported robot: name, parent, pose in the parent (xyz in metres, rpy in radians) and what it is.
+  function frames(state, registry, dv) {
+    dv = dv || derive(state, registry);
+    const r = dv.r, F = [];
+    const add = (name, parent, xyz, rpy, kind, note) => F.push({ name, parent, xyz: xyz.map(r4), rpy: rpy.map(r4), kind, note: note || '' });
+    add('base_footprint', null, [0, 0, 0], [0, 0, 0], 'base', 'พื้นใต้กลางหุ่น · Nav2 ใช้ frame นี้');
+    add('base_link', 'base_footprint', [0, 0, r], [0, 0, 0], 'base', 'กลางหุ่นที่ระดับเพลาล้อ');
+    dv.wheels.forEach((w) => add(w.link, 'base_link', [w.x, w.y, 0], [0, 0, 0], 'wheel', 'ล้อขับ (หมุนรอบแกน Y)'));
+    dv.casters.forEach((k, i) => add(`caster_${i}`, 'base_link', [k.x, k.y, -r + dv.casterR], [0, 0, 0], 'caster', 'ล้อประคอง'));
+    dv.sensors.forEach((s) => {
+      add(s.frame, 'base_link', s.pos, [0, 0, s.yaw || 0], s.category === 'lidar' ? 'lidar' : /camera/.test(s.category) ? 'camera' : 'imu', `${s.id} · ${(s.rec && s.rec.name) || s.hw}`);
+      if (/camera/.test(s.category)) add(`${s.frame}_optical`, s.frame, [0, 0, 0], [-Math.PI / 2, 0, -Math.PI / 2], 'optical', 'แกนภาพของกล้อง (Z ชี้ไปข้างหน้า)');
+    });
+    (state.parts || []).forEach((p, i) => add(`part_${i + 1}_link`, 'base_link', p.pos || [0, 0, 0], [0, 0, p.yaw || 0], 'part', 'ชิ้นส่วนเสริม'));
+    return F;
   }
 
   // ------------------------------------------------------------------ ROS 2 Jazzy package
@@ -677,7 +699,7 @@ ${topics}
   }
 
   const api = { BLUEPRINTS, CHASSIS_COLORS, isExternal, applyBlueprint, autoResolve, derive, placeLayout, assignIds, chassisZ, rimPoint, wheelSpots, casterSpots, casterRadius,
-    toYaml, toUrdf, rosPackage, bridgeArgs, voltMatch, uid, r4 };
+    toYaml, toUrdf, frames, rosPackage, bridgeArgs, voltMatch, uid, r4 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR_GARAGE = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

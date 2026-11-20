@@ -52,6 +52,10 @@
       <h2>ภาพรวมหุ่น</h2>
       <div id="overview"></div>
       <div id="warnings"></div>
+      <div class="quick-ex">
+        <button type="button" id="quickLayers" title="ดูแกนของล้อ LiDAR กล้อง ซ้อนบนโมเดล 3D">🧭 ดูแกน TF</button>
+        <button type="button" id="quickUrdf" title="ไฟล์ .urdf ไฟล์เดียว เปิดใน RViz หรือโปรแกรมอื่นได้">⬇ URDF</button>
+      </div>
       <details class="adv" id="advStats"><summary>ค่าคำนวณละเอียด</summary><div id="stats"></div><div class="numgrid" id="numbers"></div></details>
       <details class="adv" id="advBom"><summary id="bomSum">รายการอุปกรณ์</summary><div id="bomMini"></div></details>
       <details class="adv" id="advFiles"><summary>ดาวน์โหลดไฟล์ / เซฟงาน</summary>
@@ -70,7 +74,7 @@
     <div class="foot cta-stack" style="display:grid">
       <button class="quiet" id="exSummary">ข้ามไปขั้น 3 · สรุป &amp; ราคา →</button>
       <a class="quiet" href="./play.html" id="toPlay">🎮 ลองขับ / เล่นเกมกับหุ่นตัวนี้</a>
-      <button class="quiet" id="exBuild" hidden>④ ส่งออก ROS 2</button>
+      <button class="quiet" id="exBuild">🚀 ส่งออกไปรันใน Gazebo + RViz →</button>
     </div>
   </aside>
 </main>
@@ -80,6 +84,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="./garage-core.js"></script>
 <script type="module" src="./garage.js"></script>
+<script type="module" src="./garage-layers.js"></script>
 <script type="module" src="./garage-ux.js"></script>
 <script src="./nav.js"></script>
 <script src="./i18n.js"></script>
