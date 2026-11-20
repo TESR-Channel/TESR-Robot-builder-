@@ -93,8 +93,9 @@
     return lay.map(([fx, fy]) => { const [x, y] = rimPoint(state, fx, fy, inset); return { x: r4(x), y: r4(y) }; });
   }
   function casterRadius(state) {
-    const r = state.drive.wheelDiameter / 2;
-    return r4(clamp(Math.min(r * 0.5, state.chassis.clearance / 2 + 0.01), 0.01, 0.05));
+    // same rule as the engine (calc/geometry.py caster_radius), so the caster frames here equal the exported workspace
+    const r = state.drive.wheelDiameter / 2, cl = state.chassis.clearance;
+    return r4(Math.max(0.01, Math.min(r / 2, cl > 0 ? cl : r / 2)));
   }
 
   // Place sensors of one kind using a named layout (LIDAR_LAYOUTS / CAMERA_LAYOUTS from app.js).
