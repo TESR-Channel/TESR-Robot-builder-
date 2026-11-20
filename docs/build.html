@@ -74,7 +74,7 @@
   .cmd { border:1px solid #23232b; border-radius:10px; background:#08080b; margin:8px 0; overflow:hidden; }
   .cmd .t { display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:linear-gradient(90deg, rgba(139,0,0,.35), transparent); font-size:12.5px; }
   .cmd .t b { font-family:'Chakra Petch'; letter-spacing:.4px; } .cmd.hl { border-color:rgba(201,168,76,.55); box-shadow:0 0 24px rgba(201,168,76,.12); }
-  .cmd .t button { padding:2px 10px; font-size:11.5px; background:#1c1c22; }
+  .cmd .t { gap:8px; } .cmd .t button { padding:2px 10px; font-size:11.5px; background:#1c1c22; white-space:nowrap; flex:none; }
   .cmd pre { margin:0; border:none; border-radius:0; background:transparent; color:#d7e3c8; font-size:12px; white-space:pre-wrap; word-break:break-all; }
   .cmd pre::before { content:'$ '; color:var(--gold); }
   .dl { width:100%; font-family:'Chakra Petch'; font-size:16px; padding:14px; border-radius:10px; margin-top:6px; }
@@ -88,6 +88,25 @@
   .kpi { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; margin-top:10px; }
   .kpi div { background:#0d0d11; border:1px solid var(--line); border-radius:8px; padding:8px 10px; } .kpi b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:15px; } .kpi span { color:var(--muted); font-size:11.5px; }
   .empty { color:var(--muted); font-size:12.5px; padding:10px 0; }
+  .fields { display:grid; grid-template-columns:repeat(auto-fill, minmax(158px, 1fr)); gap:10px; }
+  .field { display:grid; gap:6px; text-align:left; padding:8px; border:1px solid var(--line); border-radius:12px; background:#0d0d11; color:var(--text); cursor:pointer; }
+  .field:hover { border-color:var(--gold-2); filter:none; }
+  .field.sel { border-color:var(--gold); background:#1a1712; box-shadow:0 0 22px rgba(201,168,76,.14); }
+  .field canvas { width:100%; aspect-ratio:3 / 2; border-radius:8px; background:#101014; display:block; }
+  .field b { font-family:'Chakra Petch'; font-size:13.5px; } .field span { font-size:11.5px; color:var(--muted); }
+  .field.sel b::after { content:' ✓'; color:var(--gold); }
+  .field span.fit { color:var(--muted); } .field span.fit.ok { color:#6fcf97; } .field span.fit.tight { color:#f2c94c; } .field span.fit.blocked { color:#ff6b5e; }
+  .tip.warn { border-left-color:var(--warn); }
+  .fmode { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; } @media (max-width:700px) { .fmode { grid-template-columns:1fr; } }
+  .fmode label { display:grid; grid-template-columns:20px 1fr; gap:2px 8px; align-items:start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#0d0d11; cursor:pointer; }
+  .fmode label.on { border-color:var(--gold); background:#1a1712; }
+  .fmode label b { font-family:'Chakra Petch'; font-size:14px; } .fmode label span { grid-column:2; font-size:12px; color:var(--muted); }
+  .howto { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:12px; } @media (max-width:700px) { .howto { grid-template-columns:1fr; } }
+  .howto div { border:1px solid var(--line); border-radius:10px; background:#0d0d11; padding:8px 12px; font-size:12.5px; color:var(--muted); }
+  .howto b { display:block; font-family:'Chakra Petch'; color:var(--gold); font-size:13.5px; }
+  .tip { border-left:3px solid var(--gold); background:#0d0d11; border-radius:6px; padding:8px 12px; margin:8px 0; font-size:12.8px; line-height:1.6; }
+  .need { font-size:12.5px; color:var(--muted); margin:0 0 8px; line-height:1.6; } .need b { color:var(--text); }
+  details.morecmd summary { cursor:pointer; color:var(--gold-2); font-size:12.8px; margin-top:10px; }
   #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(80px); background:linear-gradient(90deg, #8B0000, #b3171b); padding:10px 20px; border-radius:24px; transition:.35s; z-index:20; box-shadow:0 10px 40px rgba(179,23,27,.5); }
   #toast.on { transform:translateX(-50%); }
   #burst { position:fixed; inset:0; pointer-events:none; z-index:15; }
@@ -103,19 +122,30 @@
 <main class="mc">
   <section class="sci hero">
     <div>
-      <div class="k">MISSION CONTROL · STEP 3</div>
+      <div class="k">ขั้นที่ 4 · ส่งออกไปรันใน ROS 2</div>
       <h1>สร้าง <span id="heroName">ROS 2 workspace</span></h1>
-      <div class="sub" id="heroSub">หุ่นจาก Garage → ตรวจ 16 กฎวิศวกรรม → ได้ 5 packages พร้อมจำลอง ทำแผนที่ และนำทางเองใน Gazebo</div>
+      <div class="sub" id="heroSub">เลือกสนาม → กดสร้าง → ดาวน์โหลด แล้วรัน 2 คำสั่ง หุ่นของคุณจะวิ่งใน Gazebo และ RViz ได้ทันที</div>
       <div class="chips"><span>ROS 2 Jazzy</span><span>Gazebo Harmonic</span><span>ros2_control</span><span>Nav2 · MPPI</span><span>slam_toolbox</span><span>RViz2</span></div>
     </div>
-    <button class="go" id="generate" disabled>🚀 สร้าง WORKSPACE<small>ตรวจ + สร้าง + เตรียมคำสั่งรัน</small></button>
+    <button class="go" id="generate" disabled>🚀 สร้างไฟล์ ROS 2<small>ตรวจหุ่น + สร้าง + เตรียมคำสั่งรัน</small></button>
+  </section>
+
+  <section class="sci" id="fieldBox">
+    <h2>① เลือกสนามทดสอบ <small>หุ่นจะวิ่งในสนามนี้ ทั้งใน Gazebo และ RViz</small></h2>
+    <div class="fields" id="fields"></div>
+    <div class="fmode" id="fmode">
+      <label><input type="radio" name="fmode" value="map"><b>🗺 ใช้แผนที่สำเร็จรูป</b><span>เปิดมาแล้วสั่งหุ่นไปจุดหมายได้ทันที — แนะนำสำหรับมือใหม่</span></label>
+      <label><input type="radio" name="fmode" value="slam"><b>🧭 ให้หุ่นทำแผนที่เอง</b><span>หุ่นสำรวจและวาดแผนที่ไปพร้อมกับวิ่ง (SLAM)</span></label>
+    </div>
+    <p class="empty" style="padding:10px 0 0">อยากได้สนามของตัวเอง? <a href="./arena.html" style="color:var(--gold)">🧱 ออกแบบสนาม</a> แล้วกลับมาเลือก “สนามของฉัน” · เปลี่ยนสนามหรือโหมดได้อีกตอนรัน</p>
   </section>
 
   <section class="sci">
+    <h2>② ตรวจและสร้าง <small>ทำในเบราว์เซอร์ของคุณ ไม่มีข้อมูลส่งออกไปไหน</small></h2>
     <div class="pipe" id="pipe">
       <div class="stage" data-s="engine"><div class="node">🐍</div><b>ENGINE</b><span>Python ในเบราว์เซอร์</span></div>
       <div class="stage" data-s="schema"><div class="node">📐</div><b>SCHEMA</b><span>robot.yaml ถูกโครงสร้าง</span></div>
-      <div class="stage" data-s="rules"><div class="node">🛡️</div><b>16 RULES</b><span>ไฟฟ้า · กลไก · TF · Nav · ปลอดภัย</span></div>
+      <div class="stage" data-s="rules"><div class="node">🛡️</div><b>RULES</b><span>ไฟฟ้า · กลไก · TF · Nav · ปลอดภัย</span></div>
       <div class="stage" data-s="gen"><div class="node">🧬</div><b>GENERATE</b><span>5 ROS 2 packages</span></div>
       <div class="stage" data-s="ready"><div class="node">🏁</div><b>READY</b><span>จำลอง · แผนที่ · นำทาง</span></div>
     </div>
@@ -126,15 +156,15 @@
 
   <div class="g3">
     <section class="sci">
-      <h2>ผลตรวจ <small>16 engineering rules</small></h2>
+      <h2>ผลตรวจหุ่น <small id="ruleCount">กฎวิศวกรรม</small></h2>
       <div id="report"><p class="empty">กด 🚀 เพื่อตรวจ — ระบบใช้ engine เดียวกับ CLI และ CI</p></div>
     </section>
     <section class="sci">
-      <h2>Packages <small>สร้างจาก robot.yaml ของคุณ</small></h2>
+      <h2>ไฟล์ที่ได้ <small>ROS 2 packages ของหุ่นคุณ</small></h2>
       <div class="pkgs" id="pkgs">
         <div class="pkg" data-p="description"><div class="ico">🤖</div><div><b>description</b><div>URDF/Xacro · hardware:=mock | sim | real · ros2_control</div></div><div class="n">—</div></div>
         <div class="pkg" data-p="control"><div class="ico">🎛️</div><div><b>control</b><div>controllers.yaml · diff / mecanum controller</div></div><div class="n">—</div></div>
-        <div class="pkg" data-p="gazebo"><div class="ico">🌍</div><div><b>gazebo</b><div>TESR arena · sensors · ros_gz bridge</div></div><div class="n">—</div></div>
+        <div class="pkg" data-p="gazebo"><div class="ico">🌍</div><div><b>gazebo</b><div>สนามจำลอง · sensors · ros_gz bridge</div></div><div class="n">—</div></div>
         <div class="pkg" data-p="navigation"><div class="ico">🧭</div><div><b>navigation</b><div>Nav2 MPPI + Smac · slam_toolbox · RViz</div></div><div class="n">—</div></div>
         <div class="pkg" data-p="bringup"><div class="ico">🚀</div><div><b>bringup</b><div>sim.launch.py · robot.launch.py</div></div><div class="n">—</div></div>
       </div>
@@ -142,7 +172,8 @@
       <p class="empty" id="zipNote"></p>
     </section>
     <section class="sci">
-      <h2>Launch pad <small>คัดลอกไปวางใน terminal</small></h2>
+      <h2>③ รันบนเครื่องของคุณ <small>คัดลอกไปวางใน Terminal</small></h2>
+      <p class="need">ต้องมี <b>Ubuntu 24.04 + ROS 2 Jazzy</b> (Windows ใช้ WSL2 ได้) · ยังไม่มี? ดูวิธีติดตั้งในคู่มือ</p>
       <p class="empty" style="padding:0 0 6px"><a href="./guide.html" style="color:var(--gold)"><span class="i18n-th">📘 คู่มือเต็มทีละขั้น — เตรียมเครื่อง · build · จำลอง · หุ่นจริง · ปรับแต่ง · แก้ปัญหา →</span><span class="i18n-en">📘 Full step-by-step guide — setup · build · simulate · real robot · tuning · troubleshooting →</span></a></p>
       <div id="launch"><p class="empty">สร้าง workspace ก่อน แล้วคำสั่งรันของหุ่นคุณจะขึ้นที่นี่</p></div>
     </section>
@@ -177,6 +208,7 @@
 <footer class="tesr">TESR Co., Ltd. · engine เดียวกับ CLI/CI รันใน Pyodide · ไม่มีข้อมูลออกจากเบราว์เซอร์</footer>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="./model-core.js"></script>
+<script src="./arena-export.js"></script>
 <script type="module" src="./build.js"></script>
 <script src="./i18n.js"></script>
 <script src="./nav.js"></script>

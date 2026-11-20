@@ -2,15 +2,19 @@
 """Gazebo Harmonic simulation of {{ d.meta.name }}.
 
     ros2 launch {{ pkg }} sim.launch.py                 # robot in the TESR arena
+    ros2 launch {{ pkg }} sim.launch.py gui:=false      # no Gazebo window (CI, SSH, slow PCs) — sensors still render
+    ros2 launch {{ pkg }} sim.launch.py rtf:=0.5        # run the simulation at half speed on a slow PC
     ros2 launch {{ r.package("bringup") }} sim.launch.py      # + SLAM + Nav2 + RViz (recommended)
 
 Drive: {{ 'gz_ros2_control + ' + p.controller_type if p.sim_drive == 'ros2_control' else "Gazebo MecanumDrive (kinematic)" }} · command topic /cmd_vel (TwistStamped)
 """
 import os
+import re
+import tempfile
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import AppendEnvironmentVariable, DeclareLaunchArgument, IncludeLaunchDescription{% if p.sim_drive == 'ros2_control' %}, RegisterEventHandler{% endif %}
+from launch.actions import AppendEnvironmentVariable, DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction{% if p.sim_drive == 'ros2_control' %}, RegisterEventHandler{% endif %}
 
 {% if p.sim_drive == 'ros2_control' %}
 from launch.event_handlers import OnProcessExit
@@ -21,17 +25,41 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def _world_at_speed(path, rtf):
+    """Copy of the world with another real-time factor (a slow PC keeps up when the simulation runs slower)."""
+    with open(path, encoding='utf-8') as f:
+        sdf = f.read()
+    tag = f'<real_time_factor>{rtf}</real_time_factor>'
+    if '<real_time_factor>' in sdf:
+        sdf = re.sub(r'<real_time_factor>[^<]*</real_time_factor>', tag, sdf, count=1)
+    else:
+        physics = '<physics name="tesr_rtf" type="ignored"><max_step_size>0.001</max_step_size>' + tag + '</physics>'
+        sdf = re.sub(r'(<world\b[^>]*>)', lambda m: m.group(1) + '\n    ' + physics, sdf, count=1)
+    out = os.path.join(tempfile.gettempdir(), f'tesr_rtf_{rtf}_{os.path.basename(path)}')
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(sdf)
+    return out
+
+
+def _gazebo(context):
+    world = LaunchConfiguration('world').perform(context)
+    rtf = float(LaunchConfiguration('rtf').perform(context))
+    if abs(rtf - 1.0) > 1e-6:
+        world = _world_at_speed(world, rtf)
+    # gui:=true → Gazebo window · gui:=false → server only, sensors rendered off-screen (CI, SSH, low-spec PCs)
+    headless = LaunchConfiguration('gui').perform(context).strip().lower() in ('false', '0', 'no', 'off')
+    gz_args = ('-r -s --headless-rendering -v 1 ' if headless else '-r -v 1 ') + world
+    gz_launch = os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
+    return [IncludeLaunchDescription(PythonLaunchDescriptionSource(gz_launch),
+                                     launch_arguments={'gz_args': gz_args, 'on_exit_shutdown': 'true'}.items())]
+
+
 def generate_launch_description():
     description = get_package_share_directory('{{ r.package("description") }}')
     share = get_package_share_directory('{{ pkg }}')
-    world = LaunchConfiguration('world')
     robot_description = ParameterValue(
         Command(['xacro ', os.path.join(description, 'urdf', 'robot.urdf.xacro'), ' hardware:=sim']), value_type=str)
 
-    gz_sim = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ['-r -v 1 ', world], 'on_exit_shutdown': 'true'}.items(),
-    )
     spawn = Node(
         package='ros_gz_sim', executable='create', output='screen',
         arguments=['-topic', 'robot_description', '-name', '{{ d.meta.name }}',
@@ -42,8 +70,10 @@ def generate_launch_description():
         DeclareLaunchArgument('x', default_value='-4.5'),
         DeclareLaunchArgument('y', default_value='0.0'),
         DeclareLaunchArgument('yaw', default_value='0.0'),
+        DeclareLaunchArgument('gui', default_value='true', description='false = run Gazebo without its window'),
+        DeclareLaunchArgument('rtf', default_value='1.0', description='real-time factor: 0.5 = half speed for a slow PC'),
         AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', os.path.dirname(description)),
-        gz_sim,
+        OpaqueFunction(function=_gazebo),
         Node(package='robot_state_publisher', executable='robot_state_publisher', output='screen',
              parameters=[{'robot_description': robot_description, 'use_sim_time': True}]),
         spawn,

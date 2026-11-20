@@ -65,3 +65,29 @@ def test_package_files_parse(garage, tmp_path):
 
 def test_kuro_x_diagonal_lidars_cover_360(garage):
     assert garage["amr_300"]["coverage"] == 1.0 and garage["amr_300"]["sensors"][:2] == ["lidar_1", "lidar_2"]
+
+
+def test_tf_frames_shown_in_the_garage_equal_the_engine_urdf(garage, tmp_path):
+    """The layer panel (docs/garage-layers.js) draws garage-core.js frames(); the workspace comes from the Python engine.
+    Same names, same parents, same poses — what the user sees in the Garage is what RViz shows."""
+    xacro = pytest.importorskip("xacro")
+    for key, g in garage.items():
+        name = next(p for p in g["files"] if p.endswith(".robot.yaml"))
+        res = build_from_yaml(g["files"][name], name, str(ROOT / "registry"))
+        ws = tmp_path / key
+        for p, c in res["files"].items():
+            (ws / p).parent.mkdir(parents=True, exist_ok=True)
+            (ws / p).write_text(c, encoding="utf-8")
+        desc = next((ws / "src").glob("*_description"))
+        root = ET.fromstring(xacro.process_file(str(desc / "urdf" / "robot.urdf.xacro")).toxml())
+        engine = {}
+        for j in root.findall("joint"):
+            o = j.find("origin")
+            nums = lambda a: [float(v) for v in (o.get(a) if o is not None and o.get(a) else "0 0 0").split()]
+            engine[j.find("child").get("link")] = (j.find("parent").get("link"), nums("xyz"), nums("rpy"))
+        shown = {f["name"]: (f["parent"], f["xyz"], f["rpy"]) for f in g["frames"] if f["parent"]}
+        assert set(shown) == set(engine), (key, sorted(set(shown) ^ set(engine)))
+        for frame, (parent, xyz, rpy) in shown.items():
+            e_parent, e_xyz, e_rpy = engine[frame]
+            assert parent == e_parent, (key, frame, parent, e_parent)
+            assert all(abs(a - b) < 2e-3 for a, b in zip(xyz + rpy, e_xyz + e_rpy)), (key, frame, xyz, rpy, e_xyz, e_rpy)

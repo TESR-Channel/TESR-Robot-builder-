@@ -16,7 +16,7 @@ function openGuide() {
       <div class="s"><div class="n">1</div><b>ออกแบบ</b><span>เลือกแบบ แล้วกด “ถัดไป” ทีละขั้น</span></div>
       <div class="s"><div class="n">2</div><b>ทดสอบ &amp; เกม</b><span>ลองขับหรือเล่นภารกิจ (ไม่บังคับ)</span></div>
       <div class="s"><div class="n">3</div><b>สรุป &amp; ราคา</b><span>สเปกและใบเสนอราคาพร้อมพิมพ์</span></div>
-      <div class="s"><div class="n">4</div><b>ส่งออก ROS 2</b><span>ไฟล์ workspace พร้อม colcon build</span></div>
+      <div class="s"><div class="n">4</div><b>ส่งออก ROS 2</b><span>เลือกสนาม แล้วรัน 2 คำสั่ง หุ่นวิ่งใน Gazebo + RViz</span></div>
     </div>
     <div class="row"><button class="primary" data-g="start">เริ่มออกแบบ →</button></div></div>`;
   document.body.appendChild(d);

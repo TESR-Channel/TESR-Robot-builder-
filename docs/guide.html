@@ -49,6 +49,7 @@
     <div class="toc">
       <a href="#files"><span class="th">0 · ไฟล์ไหนใช้ทำอะไร</span><span class="en">0 · Which file is for what</span></a>
       <a href="#prep"><span class="th">1 · เตรียมเครื่อง</span><span class="en">1 · Prepare the PC</span></a>
+      <a href="#quick"><span class="th">⚡ ทางลัด 2 คำสั่ง</span><span class="en">⚡ 2-command shortcut</span></a>
       <a href="#build"><span class="th">2 · Build workspace</span><span class="en">2 · Build the workspace</span></a>
       <a href="#sim"><span class="th">3 · จำลอง + นำทาง</span><span class="en">3 · Simulate + navigate</span></a>
       <a href="#map"><span class="th">4 · บันทึกแผนที่</span><span class="en">4 · Save the map</span></a>
@@ -58,6 +59,24 @@
       <a href="#contact"><span class="th">ติดต่อ TESR</span><span class="en">Contact TESR</span></a>
     </div>
   </div>
+
+  <section class="s" id="quick">
+    <h2><span class="n">⚡</span><span class="th">ทางลัด — 2 คำสั่ง หุ่นวิ่งใน Gazebo + RViz</span><span class="en">Shortcut — 2 commands and the robot drives in Gazebo + RViz</span></h2>
+    <p class="th">ไฟล์ <code>{N}_ws.zip</code> จากขั้น ④ มีสคริปต์ 2 ตัวและสนามที่คุณเลือกมาให้แล้ว (ต้องมี Ubuntu 24.04 + ROS 2 Jazzy):</p>
+    <p class="en"><code>{N}_ws.zip</code> from step ④ already contains two scripts and the field you chose (needs Ubuntu 24.04 + ROS 2 Jazzy):</p>
+    <div class="code"><pre>cd ~ && unzip -o ~/Downloads/{N}_ws.zip && cd {N}_ws && bash setup.sh
+bash run_sim.sh</pre></div>
+    <ul class="th"><li><code>setup.sh</code> — ครั้งแรกครั้งเดียว: ติดตั้งสิ่งที่ต้องใช้ ดึง driver และ build</li>
+      <li><code>run_sim.sh</code> — เปิด Gazebo + RViz + Nav2 ในสนามที่เลือก · ใน RViz กด <b>2D Goal Pose</b> แล้วคลิก-ลากบนแผนที่</li>
+      <li><code>bash run_sim.sh slam</code> ให้หุ่นทำแผนที่เอง · <code>bash run_sim.sh map</code> ใช้แผนที่สำเร็จรูป · เครื่องช้าเติม <code>rtf:=0.5</code> · ไม่เปิดหน้าต่าง Gazebo เติม <code>gui:=false</code></li>
+      <li>อยากเห็นแกนของทุก frame ใน RViz: ติ๊ก <b>TF</b> ในรายการ Displays — ชื่อ frame ตรงกับปุ่ม 🧭 เลเยอร์ / TF ในหน้า ① ออกแบบ</li></ul>
+    <ul class="en"><li><code>setup.sh</code> — first time only: installs what is needed, fetches drivers and builds</li>
+      <li><code>run_sim.sh</code> — starts Gazebo + RViz + Nav2 in the chosen field · in RViz press <b>2D Goal Pose</b> and click-drag on the map</li>
+      <li><code>bash run_sim.sh slam</code> lets the robot map by itself · <code>bash run_sim.sh map</code> uses the ready-made map · slow PC: add <code>rtf:=0.5</code> · no Gazebo window: add <code>gui:=false</code></li>
+      <li>To see the axes of every frame in RViz, tick <b>TF</b> in the Displays list — the frame names match the 🧭 Layers / TF button on the ① Design page</li></ul>
+    <p class="th">ส่วนที่ 1–7 ด้านล่างคือวิธีทำเองทีละขั้น (สิ่งที่สคริปต์ทำให้) และการใช้กับหุ่นจริง</p>
+    <p class="en">Sections 1–7 below are the same steps by hand (what the scripts do for you) and the real-robot setup.</p>
+  </section>
 
   <section class="s" id="files">
     <h2><span class="n">0</span><span class="th">ไฟล์ไหนใช้ทำอะไร</span><span class="en">Which file is for what</span></h2>
@@ -185,6 +204,7 @@ ros2 launch {P}_bringup robot.launch.py hardware:=real nav:=true</pre></div>
       <tr><td><code>Package '{P}_bringup' not found</code></td><td><span class="th">ยังไม่ได้ source — รัน <code>source ~/{N}_ws/install/setup.bash</code></span><span class="en">Not sourced — run <code>source ~/{N}_ws/install/setup.bash</code></span></td></tr>
       <tr><td><span class="th">rosdep หาแพ็กเกจไม่เจอ</span><span class="en">rosdep cannot resolve a key</span></td><td><span class="th">รัน <code>sudo apt update && rosdep update</code> แล้วลองใหม่</span><span class="en">Run <code>sudo apt update && rosdep update</code> and retry</span></td></tr>
       <tr><td><span class="th">Gazebo ดำ / กระตุก (VM, WSL)</span><span class="en">Gazebo black / laggy (VM, WSL)</span></td><td><code>export LIBGL_ALWAYS_SOFTWARE=1</code> <span class="th">แล้ว launch ใหม่</span><span class="en">then relaunch</span></td></tr>
+      <tr><td><span class="th">หุ่นวิ่งวนเป็นวงกลม / ไปไม่ถึงจุดหมาย</span><span class="en">Robot drives in circles / never reaches the goal</span></td><td><span class="th">เครื่องคำนวณไม่ทัน — เติม <code>rtf:=0.5</code> (เครื่องช้ามาก <code>rtf:=0.25</code>) ให้เวลาจำลองเดินช้าลง หรือ <code>gui:=false</code> ปิดหน้าต่าง Gazebo</span><span class="en">The PC cannot keep up — add <code>rtf:=0.5</code> (<code>rtf:=0.25</code> on a very slow PC) to slow the simulation down, or <code>gui:=false</code> to close the Gazebo window</span></td></tr>
       <tr><td><span class="th">RViz ไม่มีแผนที่</span><span class="en">No map in RViz</span></td><td><span class="th">ตรวจ LiDAR: <code>ros2 topic echo /scan --once</code> · ตั้ง Fixed Frame เป็น <code>map</code></span><span class="en">Check the LiDAR: <code>ros2 topic echo /scan --once</code> · set Fixed Frame to <code>map</code></span></td></tr>
       <tr><td><span class="th">หุ่นไม่ขยับ</span><span class="en">Robot does not move</span></td><td><code>ros2 control list_controllers</code> <span class="th">— ต้องเป็น <b>active</b> ทุกตัว · หุ่นจริง: ตรวจสาย/พอร์ตมอเตอร์ไดรเวอร์ และปุ่ม E-stop</span><span class="en">— all must be <b>active</b> · real robot: check the motor-driver cable/port and the E-stop</span></td></tr>
     </table>
