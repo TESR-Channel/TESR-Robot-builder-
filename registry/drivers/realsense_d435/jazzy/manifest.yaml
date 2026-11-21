@@ -1,0 +1,8 @@
+hw: realsense_d435
+distro: jazzy
+package: realsense2_camera
+apt: [ros-jazzy-realsense2-camera]
+node: realsense2_camera_node
+params: {pointcloud.enable: true, align_depth.enable: true, enable_gyro: false, enable_accel: false}
+topics: {main: /camera/camera/depth/color/points, depth: /camera/camera/depth/image_rect_raw, color: /camera/camera/color/image_raw}
+frame: camera_link

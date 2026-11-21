@@ -8,9 +8,18 @@
     ros2 launch {{ pkg }} robot.launch.py hardware:=real        # real motor driver ({{ p.real_plugin or 'no ros2_control plugin in the registry yet' }})
 {% endif %}
     ros2 launch {{ pkg }} robot.launch.py hardware:=real nav:=true   # + slam_toolbox + Nav2 + RViz
+{% if p.real_params.port is defined or p.real_sensors %}
 
-Sensor drivers ({{ r.hardware|map(attribute='driver_package')|select|unique|join(', ') or 'none' }}) are started by their own
-packages; their topics must match: {{ p.scan_topics|join(', ') or 'no LiDAR' }}.
+Ports on the real robot (USB adapters get ttyUSB0, ttyUSB1 … in the order they are plugged in — `ls -l /dev/serial/by-id` shows which is which):
+{% if p.real_params.port is defined %}
+    motor_port:={{ p.real_params.port }}
+{% endif %}
+{% for s in p.real_sensors %}{% for a in s.arg_params %}
+    {{ a[0] }}:={{ a[2] or "''" }}
+{% endfor %}{% endfor %}
+{% endif %}
+
+With hardware:=real the sensor drivers start too: {{ p.real_sensors|map(attribute='package')|unique|join(', ') or 'none with a checked launch setup' }}.
 """
 import os
 
@@ -19,41 +28,66 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-{% if d.drive.base == 'external' %}
 from launch.substitutions import Command, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-{% else %}
-from launch.substitutions import LaunchConfiguration
+
+
+def sensor_drivers(real):
+    """Sensor driver nodes, started only with hardware:=real (simulation has its own sensors)."""
+    return [
+{% for s in p.real_sensors %}
+        Node(package='{{ s.package }}', executable='{{ s.executable }}', name='{{ s.id }}', namespace='/', output='screen', condition=IfCondition(real),
+             parameters=[{{ s.params_src }},
+                         { {% for a in s.arg_params %}'{{ a[1] }}': ParameterValue(LaunchConfiguration('{{ a[0] }}'), value_type=str), {% endfor %}}]{% if s.remaps %},
+             remappings=[{% for a, b in s.remaps %}('{{ a }}', '{{ b }}'), {% endfor %}]{% endif %}),
+{% if s.static_tf %}
+        Node(package='tf2_ros', executable='static_transform_publisher', condition=IfCondition(real),
+             arguments=['--frame-id', '{{ s.static_tf[0] }}', '--child-frame-id', '{{ s.static_tf[1] }}']),
 {% endif %}
+{% endfor %}
+    ]
 
 
 def generate_launch_description():
     navigation = os.path.join(get_package_share_directory('{{ r.package("navigation") }}'), 'launch', 'navigation.launch.py')
+    real = PythonExpression(["'", LaunchConfiguration('hardware'), "' == 'real'"])
+    arguments = [
+        DeclareLaunchArgument('hardware', default_value='mock', description='mock | real'),
+        DeclareLaunchArgument('nav', default_value='false', description='start slam_toolbox + Nav2 + RViz'),
+{% for s in p.real_sensors %}{% for a in s.arg_params %}
+        DeclareLaunchArgument('{{ a[0] }}', default_value='{{ a[2] }}', description={{ a[3]|tojson }}),
+{% endfor %}{% endfor %}
+    ]
 {% if d.drive.base == 'external' %}
     # Existing AGV: its PLC drives the motors. hardware:=mock → bridge in dry_run (no PLC), hardware:=real → Modbus TCP.
     description = get_package_share_directory('{{ r.package("description") }}')
     robot_description = ParameterValue(Command(['xacro ', os.path.join(description, 'urdf', 'robot.urdf.xacro'), ' hardware:=mock']), value_type=str)
     bridge_cfg = os.path.join(get_package_share_directory('{{ r.package("base_bridge") }}'), 'config', 'plc_bridge.yaml')
     mode = PythonExpression(["'modbus_tcp' if '", LaunchConfiguration('hardware'), "' == 'real' else 'dry_run'"])
-    return LaunchDescription([
-        DeclareLaunchArgument('hardware', default_value='mock', description='mock (dry run, no PLC) | real (Modbus TCP to the PLC)'),
-        DeclareLaunchArgument('nav', default_value='false', description='start slam_toolbox + Nav2 + RViz'),
+    return LaunchDescription(arguments + [
         Node(package='robot_state_publisher', executable='robot_state_publisher', output='screen',
              parameters=[{'robot_description': robot_description}]),
         Node(package='joint_state_publisher', executable='joint_state_publisher', output='screen'),  # AGV wheels: fixed TF only
         Node(package='{{ r.package("base_bridge") }}', executable='plc_bridge', output='screen', parameters=[bridge_cfg, {'mode': mode}]),
         IncludeLaunchDescription(PythonLaunchDescriptionSource(navigation), condition=IfCondition(LaunchConfiguration('nav')),
                                  launch_arguments={'use_sim_time': 'false'}.items()),
-    ])
+    ] + sensor_drivers(real))
 {% else %}
     control = os.path.join(get_package_share_directory('{{ r.package("control") }}'), 'launch', 'control.launch.py')
-    return LaunchDescription([
-        DeclareLaunchArgument('hardware', default_value='mock', description='mock | real'),
-        DeclareLaunchArgument('nav', default_value='false', description='start slam_toolbox + Nav2 + RViz'),
-        IncludeLaunchDescription(PythonLaunchDescriptionSource(control),
-                                 launch_arguments={'hardware': LaunchConfiguration('hardware')}.items()),
+{% if p.real_params.port is defined %}
+    arguments += [
+        DeclareLaunchArgument('motor_port', default_value='{{ p.real_params.port }}', description='serial port of the RS485 adapter to the motor driver'),
+        DeclareLaunchArgument('motor_baud', default_value='{{ p.real_params.baud | default(115200) }}', description='motor driver baud rate'),
+    ]
+    control_args = {'hardware': LaunchConfiguration('hardware'), 'motor_port': LaunchConfiguration('motor_port'),
+                    'motor_baud': LaunchConfiguration('motor_baud')}
+{% else %}
+    control_args = {'hardware': LaunchConfiguration('hardware')}
+{% endif %}
+    return LaunchDescription(arguments + [
+        IncludeLaunchDescription(PythonLaunchDescriptionSource(control), launch_arguments=control_args.items()),
         IncludeLaunchDescription(PythonLaunchDescriptionSource(navigation), condition=IfCondition(LaunchConfiguration('nav')),
                                  launch_arguments={'use_sim_time': 'false'}.items()),
-    ])
+    ] + sensor_drivers(real))
 {% endif %}

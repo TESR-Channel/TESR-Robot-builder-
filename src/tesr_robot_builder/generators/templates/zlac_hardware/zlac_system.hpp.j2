@@ -1,0 +1,59 @@
+// {{ header }}
+// ros2_control SystemInterface for ZLTECH ZLAC8015D-family dual-channel hub servo drivers (RS485, Modbus RTU, velocity mode).
+#pragma once
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "hardware_interface/system_interface.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/state.hpp"
+#include "tesr_zlac_hardware/modbus_rtu.hpp"
+
+namespace tesr_zlac_hardware
+{
+
+class ZlacSystem : public hardware_interface::SystemInterface
+{
+public:
+  RCLCPP_SHARED_PTR_DEFINITIONS(ZlacSystem)
+
+  CallbackReturn on_init(const hardware_interface::HardwareInfo & info) override;
+  CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
+
+  std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
+  std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
+
+  hardware_interface::return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
+  hardware_interface::return_type write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
+
+private:
+  struct Wheel
+  {
+    std::string joint;
+    int node_id = 1;
+    int channel = 0;  // 0 = left (L registers), 1 = right (R registers)
+    double sign = 1.0;
+    double cmd = 0.0, pos = 0.0, vel = 0.0;
+    int32_t counts0 = 0;
+    bool have_counts0 = false;
+  };
+  bool setup_driver(int id);
+  void report_faults(int id, uint16_t left, uint16_t right);
+
+  ModbusRtu bus_;
+  std::vector<Wheel> wheels_;
+  std::vector<int> nodes_;  // driver node ids in use
+  std::string port_ = "/dev/ttyUSB0";
+  int baud_ = 115200, timeout_ms_ = 30, accel_ms_ = 300, decel_ms_ = 300, watchdog_ms_ = 500, max_rpm_ = 300;
+  int max_comm_errors_ = 10, comm_errors_ = 0;
+  double counts_per_rev_ = 0.0;  // 0 = integrate the measured speed (no encoder resolution needed)
+  rclcpp::Logger log_ = rclcpp::get_logger("ZlacSystem");
+  rclcpp::Clock clock_{RCL_STEADY_TIME};
+};
+
+}  // namespace tesr_zlac_hardware

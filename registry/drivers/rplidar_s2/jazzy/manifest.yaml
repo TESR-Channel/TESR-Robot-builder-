@@ -1,7 +1,12 @@
 hw: rplidar_s2
 distro: jazzy
-package: rplidar_ros
-apt: [ros-jazzy-rplidar-ros]
-node: rplidar_node
+package: sllidar_ros2
+apt: []
+pip: []
+node: sllidar_node
+launch: sllidar_s2_launch.py
+params: {channel_type: serial, serial_port: /dev/ttyUSB0, serial_baudrate: 1000000, frame_id: laser, inverted: false, angle_compensate: true, scan_mode: DenseBoost}
+source: {type: git, url: https://github.com/Slamtec/sllidar_ros2.git, version: main}
 topics: {main: /scan}
 frame: laser
+notes: Official Slamtec ROS 2 driver, built from source (drivers.repos) - the apt rplidar_ros 2.1.0 ships SDK 1.12, older than the S2. Parameters from its sllidar_s2_launch.py.

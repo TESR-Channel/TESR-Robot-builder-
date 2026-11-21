@@ -1,0 +1,20 @@
+id: zltech_zllg65asm500
+category: motor
+name: ZLTECH ZLLG65ASM500 hub servo motor 6.5" (48 V, 500 W, 200 kg per pair)
+manufacturer: ZLTECH (Shenzhen Zhongling Technology)
+mass_kg: 4.0  # TODO weight not published — estimate between the 6.5" 250 W (2.95 kg) and the 8" 800 W (4.85 kg)
+dims_m: [0.17, 0.06, 0.17]  # TODO tyre width from the installation drawing (0.06 m assumed)
+electrical: {voltage_v: 48, typical_w: 500, peak_w: 1500, rated_a: 7, peak_a: 21}
+interfaces: [hall, encoder, brake]
+motor: {rated_torque_nm: 10.0, peak_torque_nm: 30.0, rated_rpm: 260, max_rpm: 360, encoder_lines: 4096, pole_pairs: 15}
+hub:  # wheel and motor in one part: fixes the wheel diameter, gear ratio 1:1, no separate wheel in the BOM
+  diameter_m: 0.17  # TODO confirm against the installation drawing
+  width_m: 0.06  # TODO from the installation drawing
+  load_kg_pair: 200
+  tire: PU
+  protection: IP65
+compatible_drivers: [zltech_zlac8015d, zltech_zlac8030d, zltech_zlac8015, zltech_zlac8030l]
+verified: false
+sources: ["aifitlab.com ZHONGLING (ZLTECH) product spec table, Nov 2026", "TESR Shop listing (name: voltage, current, power, load per two motors)"]
+catalog_ref: tesrshop
+notes: Direct-drive hub servo motor with encoder and electric brake, driven by a ZLAC servo driver over RS485 (Modbus RTU). Torque/speed/current from the ZLTECH spec table; tyre width not published.

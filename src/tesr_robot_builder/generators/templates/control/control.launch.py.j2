@@ -22,7 +22,8 @@ def generate_launch_description():
     controllers = os.path.join(get_package_share_directory('{{ pkg }}'), 'config', 'controllers.yaml')
     hardware = LaunchConfiguration('hardware')
     robot_description = ParameterValue(
-        Command(['xacro ', os.path.join(description, 'urdf', 'robot.urdf.xacro'), ' hardware:=', hardware]), value_type=str)
+        Command(['xacro ', os.path.join(description, 'urdf', 'robot.urdf.xacro'), ' hardware:=', hardware{% if p.real_params.port is defined %},
+                 ' motor_port:=', LaunchConfiguration('motor_port'), ' motor_baud:=', LaunchConfiguration('motor_baud'){% endif %}]), value_type=str)
 
     control_node = Node(
         package='controller_manager', executable='ros2_control_node', output='screen',
@@ -39,6 +40,10 @@ def generate_launch_description():
     ]
     return LaunchDescription([
         DeclareLaunchArgument('hardware', default_value='mock', description='mock | real'),
+{% if p.real_params.port is defined %}
+        DeclareLaunchArgument('motor_port', default_value='{{ p.real_params.port }}', description='serial port of the RS485 adapter to the motor driver'),
+        DeclareLaunchArgument('motor_baud', default_value='{{ p.real_params.baud | default(115200) }}', description='motor driver baud rate'),
+{% endif %}
         Node(package='robot_state_publisher', executable='robot_state_publisher', output='screen',
              parameters=[{'robot_description': robot_description}]),
         control_node,

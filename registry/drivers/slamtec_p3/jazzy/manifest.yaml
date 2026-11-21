@@ -2,7 +2,7 @@ hw: slamtec_p3
 distro: jazzy
 package: rplidar_ros
 apt: [ros-jazzy-rplidar-ros]
-node: rplidar_node
+node: rplidar_composition
 topics: {main: /scan}
 frame: laser
 launch_template: null

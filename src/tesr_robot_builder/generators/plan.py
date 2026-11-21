@@ -16,6 +16,91 @@ def _ns(plugin: str) -> str:
     return plugin.replace("/", "::")
 
 
+# Sensor drivers robot.launch.py starts on the real robot (packages whose parameters TESR has checked).
+LAUNCHABLE = {"sllidar_ros2", "rplidar_ros", "realsense2_camera"}
+
+
+def _serial_lidars(r) -> list:
+    return [h for h in r.hardware if h.category == "lidar" and h.driver_package in LAUNCHABLE
+            and (h.driver_params or {}).get("channel_type", "serial") == "serial"]
+
+
+def _real_params(r) -> dict:
+    """Driver-wide hardware parameters for the ros2_control tag (everything except the per-wheel mapping).
+    The motor port defaults to the next /dev/ttyUSB after the serial LiDARs (USB adapters enumerate in plug-in order)."""
+    hp = dict(r.drive_hw_params or {})
+    insts = [h for h in r.definition.hardware if h.hw == r.definition.drive.motor.driver]
+    if hp.get("port") == "/dev/ttyUSB0" and not any("port" in (h.options or {}) for h in insts):
+        hp["port"] = f"/dev/ttyUSB{len(_serial_lidars(r))}"
+    skip = {"node_ids", "invert_left", "invert_right"}
+    return {k: (str(v).lower() if isinstance(v, bool) else v) for k, v in hp.items() if k not in skip}
+
+
+@dataclass
+class RealSensor:
+    """A sensor driver node for hardware:=real, with the launch arguments a user may need to change."""
+    id: str
+    package: str
+    executable: str
+    params: dict
+    arg_params: list  # [(launch arg, parameter name, default, description)]
+    remaps: list
+    static_tf: tuple | None = None  # (parent, child) identity transform when the driver names its own frame
+
+    @property
+    def params_src(self) -> str:
+        """The fixed parameters as Python source for the launch file."""
+        return "{" + ", ".join(f"{k!r}: {v!r}" for k, v in self.params.items()) + "}"
+
+
+def _real_sensors(r, lidars) -> list:
+    out = []
+    topics = {s.id: s.topic for s in lidars}
+    tty = 0
+    for h in r.hardware:
+        if h.driver_package not in LAUNCHABLE or not h.driver_node or not h.frame:
+            continue
+        prm = dict(h.driver_params or {})
+        args = []
+        if h.category == "lidar" and not prm:
+            continue  # no checked parameters (baud rate, mode) in the registry yet: the user starts this driver
+        if h.category == "lidar":
+            prm["frame_id"] = h.frame
+            if prm.get("channel_type", "serial") == "serial":
+                port = h.options.get("port") or f"/dev/ttyUSB{tty}"
+                tty += 1
+                prm.pop("serial_port", None)
+                args.append((f"{h.id}_port", "serial_port", port, f"serial port of {h.name}"))
+            elif prm.get("channel_type") == "udp":
+                ip = h.options.get("ip") or prm.pop("udp_ip", "192.168.11.2")
+                prm.pop("udp_ip", None)
+                args.append((f"{h.id}_ip", "udp_ip", ip, f"IP address of {h.name}"))
+            out.append(RealSensor(h.id, h.driver_package, h.driver_node, prm, args, [("scan", topics.get(h.id, "/scan"))]))
+        elif h.category in ("depth_camera", "rgb_camera"):
+            name = h.frame[:-5] if h.frame.endswith("_link") else h.frame
+            prm.update({"camera_name": name, "publish_tf": True})  # node name = instance id → topics /<id>/color/…
+            args.append((f"{h.id}_serial", "serial_no", str(h.options.get("serial_no", "")), f"serial number of {h.name} (empty = the first camera found)"))
+            out.append(RealSensor(h.id, h.driver_package, h.driver_node, prm, args, [],
+                                  None if h.frame.endswith("_link") else (h.frame, f"{name}_link")))
+    return out
+
+
+def _real_joint_params(r) -> dict:
+    """Which driver node and channel turns each wheel. A dual-channel driver takes a left/right pair:
+    differential → node 1 (left, right); mecanum → node 1 (front pair), node 2 (rear pair)."""
+    hp = r.drive_hw_params or {}
+    if not hp:
+        return {}
+    nodes = list(hp.get("node_ids") or [1])
+    inv = {"left": bool(hp.get("invert_left", False)), "right": bool(hp.get("invert_right", True))}
+    out = {}
+    for key, joint in r.controller_joints.items():
+        side = "right" if key.endswith("right") else "left"
+        k = 1 if key.startswith("rear") else 0
+        out[joint] = {"node_id": nodes[min(k, len(nodes) - 1)], "channel": side, "invert": str(inv[side]).lower()}
+    return out
+
+
 @dataclass
 class SensorPlan:
     id: str
@@ -51,6 +136,9 @@ class Plan:
     a_max: float
     alpha_max: float
     lidars: list[SensorPlan] = field(default_factory=list)
+    real_params: dict = field(default_factory=dict)  # <hardware><param> of the real driver (port & baud become xacro args)
+    real_joint_params: dict = field(default_factory=dict)  # joint -> {node_id, channel, invert}
+    real_sensors: list = field(default_factory=list)  # sensor driver nodes for hardware:=real
     cameras: list[SensorPlan] = field(default_factory=list)
     imus: list[SensorPlan] = field(default_factory=list)
     footprint: str = ""
@@ -131,6 +219,9 @@ def build_plan(r: ResolvedRobot) -> Plan:
         controller_type=r.controller,
         controller_cmd_topic="/drive_controller/reference" if mecanum else "/drive_controller/cmd_vel",
         real_plugin=r.drive_hw_plugin,
+        real_params=_real_params(r),
+        real_joint_params=_real_joint_params(r),
+        real_sensors=_real_sensors(r, lidars),
         v_max=m.v_max,
         w_max=m.w_max,
         a_max=m.a_max,

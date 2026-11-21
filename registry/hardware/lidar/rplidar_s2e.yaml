@@ -1,0 +1,23 @@
+id: rplidar_s2e
+category: lidar
+name: Slamtec RPLIDAR S2E (2D ToF, 30 m, Ethernet)
+manufacturer: Slamtec
+mass_kg: 0.19
+dims_m: [0.077, 0.077, 0.0389]
+electrical: {voltage_v: 12, typical_w: 2.4, peak_w: 3.0}
+interfaces: [ethernet]
+sensor:
+  type: lidar_2d
+  range_m: 30
+  min_range_m: 0.05
+  fov_deg: 360
+  rate_hz: 10
+  rate_range_hz: [8, 15]
+  sample_rate_hz: 32000
+  technology: tof
+  environment: indoor_outdoor
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+sources: ["Slamtec product spec pages / datasheets (via resellers), Nov 2026", "Slamtec/sllidar_ros2 launch defaults"]
+catalog_ref: tesrshop
+notes: Ethernet UDP — the computer needs a static IP on the LiDAR subnet (192.168.11.x).

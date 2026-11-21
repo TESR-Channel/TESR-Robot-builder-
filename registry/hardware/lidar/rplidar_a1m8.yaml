@@ -1,0 +1,23 @@
+id: rplidar_a1m8
+category: lidar
+name: Slamtec RPLIDAR A1M8 (2D triangulation, 12 m)
+manufacturer: Slamtec
+mass_kg: 0.17  # TODO confirm mass and size with the A1M8 datasheet
+dims_m: [0.0968, 0.0703, 0.055]
+electrical: {voltage_v: 5, typical_w: 2.5, peak_w: 3.5}  # TODO confirm current draw with the datasheet
+interfaces: [uart, usb2]
+sensor:
+  type: lidar_2d
+  range_m: 12
+  min_range_m: 0.15
+  fov_deg: 360
+  rate_hz: 5.5
+  rate_range_hz: [5, 10]
+  sample_rate_hz: 8000
+  technology: triangulation
+  environment: indoor
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+sources: ["Slamtec product spec pages / datasheets (via resellers), Nov 2026", "Slamtec/sllidar_ros2 launch defaults"]
+catalog_ref: tesrshop
+notes: USB serial adapter included.

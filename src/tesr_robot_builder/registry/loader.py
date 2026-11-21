@@ -36,8 +36,18 @@ DRIVER_CATEGORIES = {"lidar", "depth_camera", "rgb_camera", "imu", "motor_driver
 class Electrical(BaseModel):
     model_config = ConfigDict(extra="forbid")
     voltage_v: float = Field(gt=0)
+    voltage_range_v: list[float] | None = Field(None, min_length=2, max_length=2, description="[min, max] for parts that run on several bus voltages")
     typical_w: float = Field(ge=0)
     peak_w: float = Field(ge=0)
+    rated_a: float | None = Field(None, ge=0)
+    peak_a: float | None = Field(None, ge=0)
+
+    def accepts(self, volts: float) -> bool:
+        """True when this part can be fed directly from ``volts`` (its rating, or anywhere inside its range)."""
+        if self.voltage_range_v:
+            lo, hi = self.voltage_range_v
+            return lo - 0.5 <= volts <= hi + 0.5
+        return abs(self.voltage_v - volts) < 0.5
 
 
 class SensorSpec(BaseModel):

@@ -43,18 +43,31 @@ Modbus TCP and publishes `/odom` from its speed feedback — set the PLC IP / re
 and give the register map in its README to the PLC programmer. Without `hardware:=real` the bridge runs a dry run (no PLC).
 {% else %}
 Motor driver plugin: `{{ p.real_plugin or 'not in the registry yet — mock hardware is used' }}`.
+{% if r.drive_hw_generated == 'zlac_hardware' %}
+It is generated into `src/tesr_zlac_hardware` — check the ZLAC driver first with
+`python3 src/tesr_zlac_hardware/tools/zlac_check.py {{ p.real_params.port }}` (see its README; robot lifted for `--spin`).
+{% endif %}
+{% endif %}
+{% if p.real_params.port is defined or p.real_sensors %}
+
+With `hardware:=real` the launch also starts {{ p.real_sensors|map(attribute='package')|unique|join(', ') or 'no sensor drivers' }}.
+USB adapters get `ttyUSB0`, `ttyUSB1` … in the order they are plugged in — check with `ls -l /dev/serial/by-id/`,
+add yourself to the `dialout` group once (`sudo usermod -aG dialout $USER`, then log in again), and pass the ports:
+```bash
+ros2 launch {{ pkg }} robot.launch.py hardware:=real{% if p.real_params.port is defined %} motor_port:={{ p.real_params.port }}{% endif %}{% for s in p.real_sensors %}{% for a in s.arg_params %}{% if a[2] %} {{ a[0] }}:={{ a[2] }}{% endif %}{% endfor %}{% endfor %}
+
+```
 {% endif %}
 
 {% set driver_pkgs = r.hardware|selectattr('category', 'ne', 'comm')|map(attribute='driver_package')|select|unique|join(', ') %}
-{% set launches = r.hardware|selectattr('driver_launch')|list %}
-{% if launches %}
-Start the sensor drivers so they publish {{ p.scan_topics|join(', ') or 'their topics' }}:
-{% for h in launches %}
-- `{{ h.id }}`: `ros2 launch {{ h.driver_package }} {{ h.driver_launch }}`
+{% set started = p.real_sensors|map(attribute='id')|list %}
+{% set others = r.hardware|selectattr('driver_package')|selectattr('category', 'in', ['lidar', 'depth_camera', 'rgb_camera', 'imu'])|rejectattr('id', 'in', started)|list %}
+{% if others %}
+Not started by `robot.launch.py` — start these with their own launch files, in the frames of `urdf/sensors.xacro`:
+{% for h in others %}
+- `{{ h.id }}` ({{ h.name }}, frame `{{ h.frame }}`): {% if h.driver_launch %}`ros2 launch {{ h.driver_package }} {{ h.driver_launch }}`{% else %}package `{{ h.driver_package }}`{% endif %}
+
 {% endfor %}
-{% else %}
-`robot.launch.py` does not start the sensor drivers ({{ driver_pkgs or 'none in the registry yet' }}). Start each driver with its own
-launch file so it publishes {{ p.scan_topics|join(', ') or 'its topics' }} in the frames of this URDF — the frame names are in `urdf/sensors.xacro`.
 {% endif %}
 
 ## Slow computer?

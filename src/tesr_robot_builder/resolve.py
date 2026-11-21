@@ -64,6 +64,9 @@ class ResolvedHardware(BaseModel):
     driver_apt: list[str]
     driver_source: dict[str, Any] | None = None  # git checkout for drivers that are not on apt (written to drivers.repos)
     driver_launch: str | None = None  # the driver's own launch file, e.g. sllidar_c1_launch.py
+    driver_node: str | None = None  # executable started by robot.launch.py on the real robot
+    driver_params: dict[str, Any] = {}  # node parameters from the registry manifest (ports, baud rate, scan mode …)
+    options: dict[str, Any] = {}  # per-instance overrides from the robot definition (port, node_id …)
     topic: str | None
     sensor: dict[str, Any] | None
 
@@ -99,6 +102,8 @@ class ResolvedRobot(BaseModel):
     footprint: list[list[float]]
     lidar_range: float | None
     drive_hw_plugin: str | None = None  # ros2_control SystemInterface of the real motor driver (registry driver manifest)
+    drive_hw_params: dict[str, Any] = {}  # its hardware parameters (port, baud, node ids …), manifest defaults + instance options
+    drive_hw_generated: str | None = None  # generator that writes the plugin package into the workspace (e.g. zlac_hardware)
     capabilities: dict[str, Any]
     versions: dict[str, str]
 
@@ -116,6 +121,18 @@ def _require_hw(reg: Registry, hw_id: str, what: str) -> HardwareRecord:
     if rec is None:
         raise ResolveError(f"{what}: hardware id '{hw_id}' is not in the registry")
     return rec
+
+
+def _drive_hw_params(d: RobotDefinition, drv: DriverManifest | None) -> dict[str, Any]:
+    """Motor-driver parameters: manifest defaults, then the first driver instance's options; node ids from every instance."""
+    if not drv or not drv.ros2_control_plugin:
+        return {}
+    params = dict(getattr(drv, "params", None) or {})
+    insts = [h for h in d.hardware if h.hw == d.drive.motor.driver]
+    if insts:
+        params.update({k: v for k, v in (insts[0].options or {}).items() if k != "node_id"})
+        params["node_ids"] = [int((h.options or {}).get("node_id", i + 1)) for i, h in enumerate(insts)]
+    return params
 
 
 def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
@@ -147,6 +164,9 @@ def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
                 driver_apt=(drv.apt if drv else []),
                 driver_source=(getattr(drv, "source", None) if drv else None),
                 driver_launch=(getattr(drv, "launch", None) if drv else None),
+                driver_node=(drv.node if drv else None),
+                driver_params=dict(getattr(drv, "params", None) or {}) if drv else {},
+                options=dict(inst.options or {}),
                 topic=(drv.topics.get("main") if drv and drv.topics else (rec.ros.topic if rec.ros else None)),
                 sensor=sensor,
             )
@@ -261,6 +281,8 @@ def resolve(defn: RobotDefinition, reg: Registry) -> ResolvedRobot:
         footprint=g.footprint_polygon(dims.length, dims.width, margin),
         lidar_range=lidar_range,
         drive_hw_plugin=(drive_drv.ros2_control_plugin if drive_drv else None),
+        drive_hw_params=_drive_hw_params(d, drive_drv),
+        drive_hw_generated=(getattr(drive_drv, "generated", None) if drive_drv and drive_drv.ros2_control_plugin else None),
         capabilities=capabilities,
         versions={
             "generator": __version__,
