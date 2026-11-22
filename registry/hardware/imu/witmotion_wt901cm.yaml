@@ -1,0 +1,23 @@
+id: witmotion_wt901cm
+category: imu
+name: WitMotion WT901CM 9-axis IMU (accel + gyro + compass, inclinometer)
+manufacturer: WitMotion
+mass_kg: 0.02  # WT901C family ≈ 20 g
+dims_m: [0.051, 0.036, 0.015]  # WT901C enclosure 51 x 36 x 15 mm
+electrical: {voltage_v: 5, typical_w: 0.1, peak_w: 0.15}  # < 25 mA (WT901C datasheet); TTL version runs on 3.3–5 V
+interfaces: [uart]  # TTL serial, to the computer through a USB-TTL adapter
+sensor:
+  type: imu
+  rate_hz: 100  # configurable 0.2–200 Hz (factory default 10 Hz — raise it with the WitMotion tool)
+  rate_range_hz: [0.2, 200]
+  axes: 9
+  accel_range_g: 16
+  gyro_range_dps: 2000
+  angle_accuracy_deg: 0.05  # static X/Y; 0.1° dynamic
+  outputs: [acceleration, angular_velocity, angle, quaternion, magnetic_field]
+ros: {default_frame: imu_link, topic: /imu, msg: sensor_msgs/msg/Imu}
+verified: false
+sources: ["TESR Shop SR00128 (www.tesrshop.com/product/11000571270000690): WT901CM 9-axis, pre-order 15-20 days, 1,650 THB",
+          "WitMotion WT901C datasheet (TTL/RS232/RS485 family): < 25 mA, 4800–230400 baud (default 9600), 0.2–200 Hz, ±16 g, ±2000 °/s, 0.05° static, 51 x 36 x 15 mm, ≈ 20 g"]
+catalog_ref: tesrshop
+notes: TESR Shop IMU. Specs from the WT901C family datasheet — confirm the exact CM variant (interface, voltage) on the unit. ROS 2 driver witmotion_ros (ros2 branch, built from source with its Qt serial submodule).

@@ -1,6 +1,6 @@
 {
- "generator": "0.6.1",
- "registry_hash": "9899a766f81d",
+ "generator": "0.6.2",
+ "registry_hash": "eee897394302",
  "raw_url": "https://raw.githubusercontent.com/TESR-Channel/TESR-Robot-builder-/main/",
  "files": [
   "examples/agv_retrofit.robot.yaml",
@@ -31,6 +31,7 @@
   "registry/drivers/tesr_imu/jazzy/manifest.yaml",
   "registry/drivers/tesr_md200/jazzy/manifest.yaml",
   "registry/drivers/tesr_md400/jazzy/manifest.yaml",
+  "registry/drivers/witmotion_wt901cm/jazzy/manifest.yaml",
   "registry/drivers/zltech_zlac8015/jazzy/manifest.yaml",
   "registry/drivers/zltech_zlac8015d/jazzy/manifest.yaml",
   "registry/drivers/zltech_zlac8030d/jazzy/manifest.yaml",
@@ -53,6 +54,7 @@
   "registry/hardware/compute/x86_pc.yaml",
   "registry/hardware/encoder/tesr_md400_encoder.yaml",
   "registry/hardware/imu/tesr_imu.yaml",
+  "registry/hardware/imu/witmotion_wt901cm.yaml",
   "registry/hardware/lidar/ld19.yaml",
   "registry/hardware/lidar/rplidar_a1m8.yaml",
   "registry/hardware/lidar/rplidar_a2m12.yaml",

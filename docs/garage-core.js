@@ -26,28 +26,28 @@
       mission: { application: 'amr', envType: 'factory', floor: 'concrete', payload: 300, vMax: 1.0, aMax: 0.5, wMax: 1.0, runtimeH: 8, slopeDeg: 5, minAisle: 1.2, cogOffsetZ: 0.25 },
       chassis: { shape: 'box', length: 1.0, width: 0.7, height: 0.35, clearance: 0.05, color: 'gunmetal' },
       drive: { type: 'differential', wheelDiameter: 0.16, wheelWidth: 0.05, track: 0.6, wheelbase: 0.4, gearRatio: 20, casterLayout: 'corners4', driverCount: 1 },
-      compute: 'x86_pc', sensors: { lidar: ['slamtec_s3', 'diag2'], depth_camera: ['realsense_d455', 'front1'], imu: 'tesr_imu' }, estop: true,
+      compute: 'x86_pc', sensors: { lidar: ['slamtec_s3', 'diag2'], depth_camera: ['realsense_d455', 'front1'], imu: 'witmotion_wt901cm' }, estop: true,
     },
     service_60: {
       label: 'หุ่นบริการ 60 kg', icon: '🏥', desc: 'ส่งของในโรงพยาบาล/สำนักงาน · ตัวถังกลม เลี้ยวในที่แคบ', name: 'service_robot_60', prefix: 'tesr_service',
       mission: { application: 'service', envType: 'hospital', floor: 'tile', payload: 60, vMax: 0.8, aMax: 0.5, wMax: 1.2, runtimeH: 10, slopeDeg: 3, minAisle: 1.0, cogOffsetZ: 0.3 },
       chassis: { shape: 'round', length: 0.52, width: 0.52, height: 0.45, clearance: 0.04, color: 'white' },
       drive: { type: 'differential', wheelDiameter: 0.15, wheelWidth: 0.04, track: 0.42, wheelbase: 0.3, gearRatio: 15, casterLayout: 'front_rear', driverCount: 1 },
-      compute: 'rpi5', sensors: { lidar: ['slamtec_c1', 'front1'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
+      compute: 'rpi5', sensors: { lidar: ['slamtec_c1', 'front1'], depth_camera: ['realsense_d435i', 'front1'], imu: 'witmotion_wt901cm' }, estop: true,
     },
     edu_small: {
       label: 'หุ่นเรียน IRON-X class', icon: '🎓', desc: 'หุ่นเล็กสำหรับ TESR Academy · 12 V · ราคาประหยัด', name: 'edu_robot', prefix: 'edu_robot',
       mission: { application: 'research', envType: 'laboratory', floor: 'tile', payload: 2, vMax: 0.5, aMax: 0.5, wMax: 1.5, runtimeH: 2, slopeDeg: 3, minAisle: 0, cogOffsetZ: 0.05 },
       chassis: { shape: 'box', length: 0.26, width: 0.24, height: 0.1, clearance: 0.02, color: 'crimson' },
       drive: { type: 'differential', wheelDiameter: 0.1, wheelWidth: 0.03, track: 0.2, wheelbase: 0.2, gearRatio: 10, casterLayout: 'rear1', driverCount: 1 },
-      compute: 'rpi5', sensors: { lidar: ['slamtec_c1', 'front1'], imu: 'tesr_imu' }, estop: false,
+      compute: 'rpi5', sensors: { lidar: ['slamtec_c1', 'front1'], imu: 'witmotion_wt901cm' }, estop: false,
     },
     mecanum_30: {
       label: 'Mecanum 30 kg', icon: '🧭', desc: 'เคลื่อนที่ทุกทิศ สไลด์ข้างได้ · งานวิจัย/แลป', name: 'mecanum_demo', prefix: 'mecanum_demo',
       mission: { application: 'research', envType: 'laboratory', floor: 'epoxy', payload: 30, vMax: 1.0, aMax: 0.8, wMax: 1.5, runtimeH: 4, slopeDeg: 2, minAisle: 1.0, cogOffsetZ: 0.15 },
       chassis: { shape: 'box', length: 0.6, width: 0.5, height: 0.25, clearance: 0.05, color: 'carbon' },
       drive: { type: 'mecanum', wheelDiameter: 0.152, wheelWidth: 0.05, track: 0.44, wheelbase: 0.4, gearRatio: 15, casterLayout: 'front_rear', driverCount: 2 },
-      compute: 'x86_pc', sensors: { lidar: ['slamtec_c1', 'fr2'], depth_camera: ['realsense_d435i', 'front1'], imu: 'tesr_imu' }, estop: true,
+      compute: 'x86_pc', sensors: { lidar: ['slamtec_c1', 'fr2'], depth_camera: ['realsense_d435i', 'front1'], imu: 'witmotion_wt901cm' }, estop: true,
     },
     // Brain kit for an existing AGV (AGV → AMR): computer + LiDAR + IMU only — the AGV's PLC keeps driving the motors.
     // The body/wheel sizes describe the customer's AGV so the footprint, costmap and LiDAR placement come out right.
@@ -56,7 +56,7 @@
       mission: { application: 'amr', envType: 'factory', floor: 'concrete', payload: 500, vMax: 1.0, aMax: 0.4, wMax: 0.8, runtimeH: 8, slopeDeg: 3, minAisle: 1.4, cogOffsetZ: 0.3 },
       chassis: { shape: 'box', length: 1.2, width: 0.8, height: 0.35, clearance: 0.05, color: 'gold' },
       drive: { type: 'differential', base: 'external', wheelDiameter: 0.2, wheelWidth: 0.06, track: 0.7, wheelbase: 0.5, gearRatio: 1, casterLayout: 'corners4', driverCount: 1 },
-      busV: 24, compute: 'jetson_orin_nano', sensors: { lidar: ['slamtec_s3', 'diag2'], imu: 'tesr_imu' }, estop: true,
+      busV: 24, compute: 'jetson_orin_nano', sensors: { lidar: ['slamtec_s3', 'diag2'], imu: 'witmotion_wt901cm' }, estop: true,
     },
   };
   // drive.base 'external' = an existing AGV whose PLC drives the motors; ROS 2 talks to the PLC (generated base_bridge package)
@@ -181,7 +181,7 @@
     const hasPlugin = (id) => (registry.drivers || []).some((d) => d.hw === id && d.ros2_control_plugin);
     const all = t.byCategory(registry, 'motor_driver').filter((h) => (h.motor_driver?.motor_family === 'zltech_hub') === !!(m && m.hub));
     const pref = (m && m.compatible_drivers) || [];
-    const rank = (h) => [pref.includes(h.id) ? pref.indexOf(h.id) : 99, t.voltOk(h, busV) ? 0 : 1, hasPlugin(h.id) ? 0 : 1, h.manufacturer === 'TESR' ? 0 : 1];
+    const rank = (h) => [pref.includes(h.id) ? pref.indexOf(h.id) : 99, t.voltOk(h, busV) ? 0 : 1, hasPlugin(h.id) ? 0 : 1, h.catalog_ref === 'tesrshop' || h.manufacturer === 'TESR' ? 0 : 1];
     return all.map((h) => ({ hw: h, voltOk: t.voltOk(h, busV), plugin: hasPlugin(h.id), r: rank(h) }))
       .sort((a, b) => a.r[1] - b.r[1] || a.r[0] - b.r[0] || a.r[2] - b.r[2] || a.r[3] - b.r[3]);
   }
@@ -197,7 +197,7 @@
     const dv = derive(state, registry, []);
     if (!u.motor || !state.drive.motor) {
       const ms = t.recommendMotors(registry, busV, dv.dt, (h) => dtWithMotor(state, registry, h), state.drive.type);
-      const best = ms.find((m) => m.fits && m.voltOk) || ms.find((m) => m.voltOk) || ms[0];
+      const best = ms.find((m) => m.fits && m.voltOk && sold(m.hw)) || ms.find((m) => m.fits && m.voltOk) || ms.find((m) => m.voltOk) || ms[0];
       state.drive.motor = best ? best.hw.id : null;
     }
     applyHub(state, registry);
@@ -215,6 +215,16 @@
     }
     if (!state.compute) state.compute = (t.byCategory(registry, 'compute')[0] || {}).id || null;
   }
+  // parts TESR Shop sells (registry catalog_ref: tesrshop) win over generic ones whenever they fit
+  const sold = (h) => !!h && h.catalog_ref === 'tesrshop';
+  // the TESR Shop hub motor that would carry this robot at bus voltage v (null: none fits)
+  function shopHubAt(state, registry, v) {
+    if (isExternal(state) || state.drive.type !== 'differential') return null;
+    const s2 = JSON.parse(JSON.stringify(state)); s2.power.busV = v;
+    const ms = T().recommendMotors(registry, v, derive(s2, registry, []).dt, (h) => dtWithMotor(s2, registry, h), 'differential');
+    const m = ms.find((x) => x.fits && x.voltOk && x.hw.hub && sold(x.hw));
+    return m ? m.hw : null;
+  }
   function autoResolve(state, registry) {
     state.user = state.user || {};
     for (let k = 0; k < 4; k++) {
@@ -225,6 +235,12 @@
       state.power.busV = sv;
     }
     pickParts(state, registry);
+    // no shop motor at this voltage, but one fits at another → move to that voltage (only when the user has not fixed it)
+    const cur = T().byId(registry)[state.drive.motor];
+    if (!state.user.busV && !state.user.motor && cur && !sold(cur)) {
+      const v = [24, 48, 12].find((x) => x !== state.power.busV && shopHubAt(state, registry, x));
+      if (v) { state.power.busV = v; pickParts(state, registry); }
+    }
     return state;
   }
 
@@ -311,6 +327,15 @@
     if (driver && !t.voltOk(driver, busV)) push('warn', `ไดรเวอร์เป็น ${t.volt(driver)} V แต่ระบบไฟ ${busV} V — ใส่ DC-DC หรือเลือกไดรเวอร์ ${busV} V`);
     if (!ext && motor && motor.hub && motor.hub.load_kg_pair && totalMass > motor.hub.load_kg_pair * nDrive / 2)
       push('err', `หุ่น + ของ ${fmt(totalMass, 0)} kg เกินพิกัดล้อฮับ ${motor.hub.load_kg_pair} kg ต่อคู่ — เลือกมอเตอร์ฮับรุ่นใหญ่ขึ้นหรือลดน้ำหนัก`);
+    if (!ext && motor && motor.catalog_ref !== 'tesrshop') {
+      const hubs = t.byCategory(registry, 'motor').filter((h) => h.hub && h.catalog_ref === 'tesrshop');
+      const atBus = hubs.filter((h) => voltMatch(t.volt(h), busV)).map((h) => h.hub.load_kg_pair || 0);
+      const maxAll = Math.max(0, ...hubs.map((h) => h.hub.load_kg_pair || 0));
+      const why = dr.type !== 'differential' ? 'มอเตอร์ฮับใช้กับ Differential เท่านั้น'
+        : atBus.length && totalMass > Math.max(...atBus) ? `หุ่น ${fmt(totalMass, 0)} kg เกินพิกัดมอเตอร์ฮับ ${busV} V ที่ร้านมี (สูงสุด ${Math.max(...atBus)} kg ต่อคู่${maxAll > Math.max(...atBus) ? ` · ที่ 48 V ได้ถึง ${maxAll} kg` : ''})`
+          : 'เลือกมอเตอร์นี้เอง';
+      push('warn', `มอเตอร์ ${motor.name} ยังไม่มีขายใน TESR Shop (ราคา: สอบถาม) — ${why}`);
+    }
     if (!ext && driver && driver.motor_driver?.channels && driver.motor_driver.channels * dr.driverCount < nDrive)
       push('err', `ไดรเวอร์ ${driver.motor_driver.channels} ช่อง × ${dr.driverCount} ตัว ไม่พอสำหรับ ${nDrive} ล้อ`);
     if (!ext && driver && !(registry.drivers || []).some((x) => x.hw === driver.id && x.ros2_control_plugin))

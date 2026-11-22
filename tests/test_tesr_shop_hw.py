@@ -67,7 +67,7 @@ def test_hub_bom_has_no_separate_wheel(registry):
 
 
 @pytest.mark.parametrize("hw", ["zltech_zllg80asm250", "zltech_zlac8015d", "rplidar_s2", "rplidar_a1m8", "slamtec_lpx_t1", "tesr_camera_3d",
-                                "realsense_d435", "realsense_d415"])
+                                "realsense_d435", "realsense_d415", "witmotion_wt901cm"])
 def test_shop_parts_have_prices(hw):
     cat = Catalog.load(ROOT / "catalog" / "products.csv")
     rows = [p for p in cat.products if p.hardware_ref == hw]
@@ -99,3 +99,20 @@ def test_real_robot_output(registry, tmp_path):
 def test_mock_robot_has_no_zlac_package(registry, warehouse, tmp_path):
     generate(ROOT / "examples" / "warehouse_amr_300.robot.yaml", tmp_path / "ws", registry=registry)
     assert not (tmp_path / "ws" / "src" / "tesr_zlac_hardware").exists()
+
+
+def test_wt901cm_imu_is_built_from_source(registry, tmp_path):
+    data = yaml.safe_load((ROOT / "examples" / "service_hub_amr.robot.yaml").read_text())
+    for h in data["hardware"]:
+        if h.get("hw") == "tesr_imu":
+            h["hw"] = "witmotion_wt901cm"
+    if not any(h.get("hw") == "witmotion_wt901cm" for h in data["hardware"]):
+        data["hardware"].append({"id": "imu", "hw": "witmotion_wt901cm", "frame": "imu_link", "parent": "base_link", "xyz": [0, 0, 0.1], "rpy": [0, 0, 0]})
+    defn = RobotDefinition.model_validate(data)
+    rep = run_rules(RuleContext(defn=defn, resolved=resolve(defn, registry), registry=registry))
+    assert rep.ok, [f.message for f in rep.errors]
+    p = tmp_path / "r.robot.yaml"
+    p.write_text(yaml.safe_dump(data))
+    generate(p, tmp_path / "ws", registry=registry)
+    repos = (tmp_path / "ws" / "drivers.repos").read_text()
+    assert "witmotion_IMU_ros.git" in repos and "version: ros2" in repos and "--recursive" in repos

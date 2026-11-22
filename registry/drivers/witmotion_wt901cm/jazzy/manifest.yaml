@@ -1,0 +1,16 @@
+hw: witmotion_wt901cm
+distro: jazzy
+package: witmotion_ros
+apt: [qtbase5-dev, libqt5serialport5-dev]
+pip: []
+node: witmotion_ros_node
+launch: wt901.launch.py
+params: {port: ttyUSB0, baud_rate: 9600, imu_publisher.frame_id: imu_link, imu_publisher.topic_name: /imu}
+source: {type: git, url: https://github.com/ElettraSciComp/witmotion_IMU_ros.git, version: ros2}
+topics: {main: /imu}
+frame: imu_link
+notes: >-
+  witmotion_ros, ros2 branch (marked work in progress upstream), built from source; it pulls the witmotion-uart-qt
+  library as a git submodule, so import with `vcs import --recursive src < drivers.repos`. Its config/wt901.yml uses
+  115200 baud and port name without /dev (ttyUSB0); a new WT901C ships at 9600 baud — set baud_rate to match the unit.
+  Not started by robot.launch.py: run `ros2 launch witmotion_ros wt901.launch.py` after editing the config.

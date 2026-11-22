@@ -291,7 +291,7 @@ if ! command -v colcon >/dev/null || ! command -v rosdep >/dev/null${repos ? ' |
   $SUDO apt-get update && $SUDO apt-get install -y python3-colcon-common-extensions python3-rosdep python3-vcstool || { echo "❌ ติดตั้งเครื่องมือ build ไม่สำเร็จ"; exit 1; }
 fi
 ${repos ? `echo "② ดึง driver ที่ไม่มีใน apt (drivers.repos)"
-vcs import --skip-existing src < drivers.repos || echo "⚠️ ดึง driver บางตัวไม่สำเร็จ — การจำลองยังรันได้ ส่วนหุ่นจริงต้องแก้ก่อน"
+vcs import --recursive --skip-existing src < drivers.repos || echo "⚠️ ดึง driver บางตัวไม่สำเร็จ — การจำลองยังรันได้ ส่วนหุ่นจริงต้องแก้ก่อน"
 ` : ''}echo "③ ติดตั้ง package ที่ workspace นี้ต้องใช้ (Gazebo, Nav2, slam_toolbox, RViz …) — ครั้งแรกใช้เวลาหลายนาที"
 [ -d /etc/ros/rosdep/sources.list.d ] || $SUDO rosdep init
 rosdep update --rosdistro jazzy || echo "⚠️ rosdep update ไม่สำเร็จ — ตรวจอินเทอร์เน็ต"
@@ -489,7 +489,7 @@ ${tfRows ? `\n## ผัง TF ของหุ่นตัวนี้\nชื่
 ## ทำเองทีละขั้น (สิ่งที่ setup.sh และ run_sim.sh ทำให้)
 \`\`\`bash
 source /opt/ros/jazzy/setup.bash
-${repos ? 'vcs import src < drivers.repos\n' : ''}rosdep install --from-paths src -y --ignore-src
+${repos ? 'vcs import --recursive src < drivers.repos\n' : ''}rosdep install --from-paths src -y --ignore-src
 colcon build --symlink-install
 source install/setup.bash
 ros2 launch ${prefix}_bringup sim.launch.py world:=${share}/worlds/${a.name}.sdf x:=0 y:=0 yaw:=0${field.mode === 'map' ? ` slam:=false map:=${share}/maps/${a.name}.yaml` : ''}

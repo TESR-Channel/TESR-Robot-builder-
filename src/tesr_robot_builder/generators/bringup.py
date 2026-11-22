@@ -32,7 +32,7 @@ class BringupGenerator:
 
 
 def drivers_repos(r, header: str = "") -> str:
-    """vcstool file for sensor/motor drivers that are not on apt: `vcs import src < drivers.repos`."""
+    """vcstool file for sensor/motor drivers that are not on apt: `vcs import --recursive src < drivers.repos`."""
     seen: dict[str, dict] = {}
     for h in r.hardware:
         src = h.driver_source
@@ -40,7 +40,7 @@ def drivers_repos(r, header: str = "") -> str:
             seen.setdefault(h.driver_package, src)
     if not seen:
         return ""
-    lines = ([f"# {header}"] if header else []) + ["# Drivers built from source - import them next to the generated packages:", "#   vcs import src < drivers.repos", "repositories:"]
+    lines = ([f"# {header}"] if header else []) + ["# Drivers built from source - import them next to the generated packages:", "#   vcs import --recursive src < drivers.repos", "repositories:"]
     for pkg, src in sorted(seen.items()):
         lines += [f"  {pkg}:", f"    type: {src.get('type', 'git')}", f"    url: {src['url']}", f"    version: {src.get('version', 'main')}"]
     return "\n".join(lines) + "\n"

@@ -21,6 +21,7 @@ sku,hardware_ref,category,name_th,name_en,brand,price_thb,unit,stock_status,lead
 11000571270000647,realsense_d455,depth_camera,,Intel RealSense Depth Camera D455,Intel,22850,piece,,,https://www.tesrshop.com/product/11000571270000647,,,"depth 87°×58°, 6 m, USB 3, IMU",,,,2026-11-21
 11000571270000647-F,realsense_d455,depth_camera,,Intel RealSense Depth Camera D455F (IR-pass filter),Intel,23000,piece,,,https://www.tesrshop.com/product/11000571270000647,,,"D455 with IR-pass filter, IMU",,,Same TESR Shop page as the D455 (variant D455F),2026-11-21
 ,tesr_imu,imu,,"TESR IMU module (9-axis, UART)",TESR,,piece,,,,,,"100 Hz; 5 V, 0.2/0.3 W",,,"Placeholder for the IMU used on IRON-X (quaternion output, mount_rpy calibration in imu_tf.yaml).",
+11000571270000690,witmotion_wt901cm,imu,เซนเซอร์ IMU 9 แกน WitMotion WT901CM (มุมเอียง ไจโร เข็มทิศ),WitMotion WT901CM 9-axis IMU (accelerometer + gyro + compass),WitMotion,1650,piece,preorder,20,https://www.tesrshop.com/product/11000571270000690,https://ft.lnwfile.com/2fja6u.png,,"9-axis, ±16 g, ±2000 °/s, 0.05° static, 0.2–200 Hz, TTL serial",,"differential,mecanum","TESR Shop code SR00128, pre-order 15-20 days. ROS 2 driver: witmotion_ros (ros2 branch, from source).",2026-11-22
 ,lifepo4_24v_50ah,battery,,LiFePO4 24 V 50 Ah,generic,,piece,,,,,,"25.6 V 50 Ah, 50 A max",,,,
 ,lifepo4_48v_40ah,battery,,LiFePO4 48 V 40 Ah,generic,,piece,,,,,,"51.2 V 40 Ah, 60 A max",,,,
 ,liion_12v_20ah,battery,,Li-ion 12 V 20 Ah pack,generic,,piece,,,,,,"11.1 V 20 Ah, 20 A max",,,,
