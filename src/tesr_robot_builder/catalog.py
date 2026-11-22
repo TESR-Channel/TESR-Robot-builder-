@@ -201,7 +201,9 @@ def bill_of_materials(resolved: ResolvedRobot, registry, catalog: Catalog | None
 
     add(d.target.compute, 1, "compute")
     add(d.drive.motor.hw, d.drive.motor.count, "motor")
-    wheel = wheel_for(registry, d.drive.type, d.drive.wheels.diameter_m)
+    motor = registry.hw(d.drive.motor.hw)
+    hub = bool(motor and motor.model_dump().get("hub"))  # hub motor = wheel included
+    wheel = None if hub else wheel_for(registry, d.drive.type, d.drive.wheels.diameter_m)
     if wheel is not None:
         per_set = int((wheel.model_dump().get("wheel") or {}).get("per_set") or 1)
         add(wheel.id, max(1, -(-d.drive.motor.count // per_set)), "wheel")

@@ -1,0 +1,7 @@
+hw: zltech_zlac8015
+distro: jazzy
+package: tesr_zlac_hardware
+apt: [ros-jazzy-ros2-control, ros-jazzy-ros2-controllers]
+ros2_control_plugin: null
+topics: {main: /joint_states}
+notes: Single-channel register map not implemented yet — the export runs this driver with mock hardware. Use the dual-channel ZLAC8015D for a ready-to-run robot.

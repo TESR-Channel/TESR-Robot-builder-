@@ -526,13 +526,13 @@ const slider = (path, label, min, max, step, unit = '') => {
 };
 const seg = (act, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 function specOf(h) {
-  if (h.motor) return `${h.motor.rated_torque_nm} N·m · ${h.motor.rated_rpm} rpm · ${h.electrical?.peak_w ?? '?'} W`;
+  if (h.motor) return `${h.hub ? `ล้อฮับ Ø${Math.round(h.hub.diameter_m * 1000)} mm · ${h.hub.load_kg_pair} kg/คู่ · ` : ''}${h.motor.rated_torque_nm} N·m · ${h.motor.rated_rpm} rpm · ${h.electrical?.typical_w ?? '?'} W`;
   if (h.battery) return `${h.battery.nominal_v} V · ${h.battery.capacity_ah} Ah · ${h.battery.max_discharge_a} A · ${h.mass_kg} kg`;
   if (h.sensor && h.sensor.type === 'lidar_2d') return `ระยะ ${h.sensor.range_m} m · ${h.sensor.fov_deg}° · ${h.sensor.rate_hz} Hz`;
   if (h.sensor && h.sensor.type === 'depth_camera') return `ระยะ ${h.sensor.range_m} m · FOV ${h.sensor.fov_deg}° · ${h.sensor.rate_hz} fps`;
   if (h.sensor && h.sensor.type === 'imu') return `${h.sensor.rate_hz} Hz · ${(h.interfaces || []).join('/')}`;
   if (h.compute) return `${h.compute.arch} · RAM ${h.compute.ram_gb} GB · USB3 ×${h.compute.usb3_ports}`;
-  if (h.category === 'motor_driver') return `${volt(h)} V · ${(h.interfaces || []).join(' / ')}`;
+  if (h.category === 'motor_driver') return `${h.electrical?.voltage_range_v ? h.electrical.voltage_range_v.join('–') : volt(h)} V · ${(h.interfaces || []).join(' / ')}${h.motor_driver?.channels ? ` · ${h.motor_driver.channels} ช่อง` : ''}`;
   return h.manufacturer || '';
 }
 function shopChip(id, name) {
@@ -589,15 +589,19 @@ function renderTab() {
       h += '<h2>ระบบขับ</h2>'
         + `<div class="pcard ${s.drive.type === 'differential' ? 'on' : ''}" data-act="drive" data-v="differential"><div class="ico">🛞</div><div><b>Differential 2 ล้อขับ</b><div class="spec">เลี้ยวด้วยความเร็วล้อต่างกัน · ทนทาน ราคาประหยัด</div></div></div>`
         + `<div class="pcard ${s.drive.type === 'mecanum' ? 'on' : ''}" data-act="drive" data-v="mecanum"><div class="ico">🧭</div><div><b>Mecanum 4 ล้อ</b><div class="spec">สไลด์ข้าง/หมุนอยู่กับที่ · พื้นเรียบเท่านั้น</div></div></div>`;
-      h += '<h2>ล้อ</h2>' + slider('drive.wheelDiameter', 'เส้นผ่านศูนย์กลางล้อ', 0.06, 0.4, 0.005, 'm') + slider('drive.track', 'ระยะห่างล้อซ้าย-ขวา', 0.1, 1.5, 0.01, 'm')
+      const hubM = T.byId(registry)[s.drive.motor], hub = hubM && hubM.hub;
+      h += '<h2>ล้อ</h2>' + (hub
+        ? `<div class="callout">🛞 ล้อมาพร้อมมอเตอร์ฮับ ${esc(hubM.name.replace(/ hub servo motor.*$/, ''))} · Ø${fmt(hub.diameter_m * 1000, 0)} mm · ขับตรง 1:1 · รับน้ำหนัก ${hub.load_kg_pair} kg ต่อคู่ — เปลี่ยนขนาดล้อได้โดยเลือกมอเตอร์ฮับรุ่นอื่น</div>`
+        : slider('drive.wheelDiameter', 'เส้นผ่านศูนย์กลางล้อ', 0.06, 0.4, 0.005, 'm'))
+        + slider('drive.track', 'ระยะห่างล้อซ้าย-ขวา', 0.1, 1.5, 0.01, 'm')
         + (s.drive.type === 'mecanum' ? slider('drive.wheelbase', 'ระยะล้อหน้า-หลัง', 0.1, 1.5, 0.01, 'm') : '');
-      const motors = T.recommendMotors(registry, busV, dv.dt);
+      const motors = G.motorOptions(s, registry);
       const mcard = (m) => card(m.hw, { act: 'pick', slot: 'motor', on: s.drive.motor === m.hw.id, chips: vChip(volt(m.hw), busV) + (m.fits ? '<span class="ok">แรงพอ</span>' : '<span class="err">แรงไม่พอ</span>') });
       const cur = motors.find((m) => m.hw.id === s.drive.motor);
       h += `<h2>มอเตอร์${autoTag('motor')}</h2>` + (cur ? mcard(cur) : '<p class="note">ยังไม่มีมอเตอร์ที่แรงพอ — ลองลดน้ำหนักหรือความเร็ว</p>');
       h += adv('drive', 'ขั้นสูง: เปลี่ยนมอเตอร์ · เกียร์ · หน้ากว้างล้อ · ล้อประคอง',
         '<h2>มอเตอร์ทั้งหมด</h2>' + motors.map(mcard).join('')
-        + slider('drive.gearRatio', 'อัตราทดเกียร์', 1, 60, 1, ':1') + slider('drive.wheelWidth', 'หน้ากว้างล้อ', 0.02, 0.12, 0.005, 'm')
+        + (hub ? '' : slider('drive.gearRatio', 'อัตราทดเกียร์', 1, 60, 1, ':1') + slider('drive.wheelWidth', 'หน้ากว้างล้อ', 0.02, 0.12, 0.005, 'm'))
         + (s.drive.type === 'differential' ? '<h2>ล้อประคอง</h2>' + seg('caster', [['front_rear', 'หน้า+หลัง'], ['corners4', '4 มุม'], ['rear1', 'หลัง 1'], ['front1', 'หน้า 1']], s.drive.casterLayout) : ''));
     }
   } else if (tab === 'sensors') {
@@ -625,7 +629,9 @@ function renderTab() {
       h += `<h2>แบตเตอรี่${autoTag('battery')}</h2>` + (curB ? bcard(curB) : '<p class="note">ยังไม่ได้เลือก</p>') + estop;
       h += adv('power', 'ขั้นสูง: เปลี่ยนแบตเตอรี่ · ไดรเวอร์มอเตอร์',
         '<h2>แบตเตอรี่ทั้งหมด</h2>' + bats.map(bcard).join('')
-        + `<h2>ไดรเวอร์มอเตอร์${autoTag('driver')}</h2>` + byCat('motor_driver').map((d) => card(d, { act: 'pick', slot: 'driver', on: s.drive.driver === d.id, chips: vChip(volt(d), busV) })).join(''));
+        + `<h2>ไดรเวอร์มอเตอร์${autoTag('driver')}</h2>` + G.driverOptions(s, registry).map((o) => card(o.hw, { act: 'pick', slot: 'driver', on: s.drive.driver === o.hw.id,
+          chips: (o.voltOk ? '<span class="ok">ไฟตรง</span>' : vChip(volt(o.hw), busV)) + (o.plugin ? '<span class="ok">พร้อม ROS 2</span>' : '<span class="warn">ยังไม่มีไดรเวอร์ ROS 2</span>')
+            + (o.hw.motor_driver?.channels ? `<span>${o.hw.motor_driver.channels} ล้อ/ตัว ×${s.drive.driverCount}</span>` : '') })).join(''));
     }
   } else if (tab === 'brain') {
     const usb3 = dv.sensors.filter((x) => (x.rec?.interfaces || []).includes('usb3')).length;

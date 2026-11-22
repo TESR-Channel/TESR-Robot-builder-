@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# {{ header }}
+"""Check a ZLAC8015D-family hub motor driver before running ROS — no ROS needed.
+
+    python3 zlac_check.py /dev/ttyUSB1              # find drivers (node 1–8) and print their status
+    python3 zlac_check.py /dev/ttyUSB1 --spin 20    # turn both wheels at 20 rpm for 3 s (lift the robot first!)
+
+Needs python3-serial (sudo apt install python3-serial). The user must be in the dialout group.
+"""
+import argparse
+import struct
+import sys
+import time
+
+try:
+    import serial
+except ImportError:
+    sys.exit('python3-serial is missing:  sudo apt install python3-serial')
+
+FAULTS = {0x0001: 'over-voltage', 0x0002: 'under-voltage', 0x0004: 'over-current', 0x0008: 'overload',
+          0x0010: 'current following error', 0x0020: 'position following error', 0x0040: 'speed following error',
+          0x0080: 'reference voltage error', 0x0100: 'EEPROM error', 0x0200: 'Hall sensor error', 0x0400: 'motor over-temperature'}
+
+
+def crc16(data: bytes) -> bytes:
+    crc = 0xFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return struct.pack('<H', crc)
+
+
+class Bus:
+    def __init__(self, port, baud, timeout=0.1):
+        self.s = serial.Serial(port, baud, bytesize=8, parity='N', stopbits=1, timeout=timeout)
+
+    def _tx(self, frame: bytes, n: int) -> bytes:
+        frame += crc16(frame)
+        self.s.reset_input_buffer()
+        self.s.write(frame)
+        r = self.s.read(n)
+        if len(r) >= 5 and r[1] & 0x80:
+            raise IOError(f'modbus exception {r[2]}')
+        if len(r) != n or crc16(r[:-2]) != r[-2:]:
+            raise IOError('no answer' if not r else 'bad reply')
+        return r
+
+    def read(self, node, addr, count):
+        r = self._tx(struct.pack('>BBHH', node, 3, addr, count), 5 + 2 * count)
+        return list(struct.unpack('>' + 'H' * count, r[3:3 + 2 * count]))
+
+    def write(self, node, addr, value):
+        self._tx(struct.pack('>BBHH', node, 6, addr, value & 0xFFFF), 8)
+
+    def write_many(self, node, addr, values):
+        body = struct.pack('>BBHHB', node, 0x10, addr, len(values), 2 * len(values)) + b''.join(struct.pack('>H', v & 0xFFFF) for v in values)
+        self._tx(body, 8)
+
+
+def status(bus, node):
+    st = bus.read(node, 0x20A5, 8)
+    s16 = lambda v: v - 0x10000 if v & 0x8000 else v
+    s32 = lambda hi, lo: struct.unpack('>i', struct.pack('>HH', hi, lo))[0]
+    out = {}
+    for side, f, hi, lo, v in (('left', st[0], st[2], st[3], st[6]), ('right', st[1], st[4], st[5], st[7])):
+        out[side] = dict(fault=f, fault_text=', '.join(t for b, t in FAULTS.items() if f & b) or 'ok', counts=s32(hi, lo), rpm=s16(v) / 10.0)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('port')
+    ap.add_argument('--baud', type=int, default=115200)
+    ap.add_argument('--nodes', default='1-8', help='node ids to look for, e.g. 1-8 or 1,2')
+    ap.add_argument('--spin', type=int, default=0, help='rpm for a 3 s test turn of both wheels (robot lifted!)')
+    a = ap.parse_args()
+    lo, _, hi = a.nodes.partition('-')
+    nodes = range(int(lo), int(hi) + 1) if hi else [int(x) for x in a.nodes.split(',')]
+    bus = Bus(a.port, a.baud)
+    found = []
+    for n in nodes:
+        try:
+            st = status(bus, n)
+        except IOError:
+            continue
+        found.append(n)
+        print(f'node {n}: ' + ' | '.join(f"{k} {v['fault_text']} {v['rpm']:+.1f} rpm {v['counts']} counts" for k, v in st.items()))
+    if not found:
+        sys.exit(f'no ZLAC driver answered on {a.port} at {a.baud} baud — check power, A/B wires, node id, baud rate')
+    if a.spin:
+        if input(f'Spin node(s) {found}: left +{a.spin} rpm, right -{a.spin} rpm (robot forward) for 3 s? Lift the robot first. [y/N] ').strip().lower() != 'y':
+            return
+        for n in found:
+            bus.write(n, 0x200E, 0x06)
+            bus.write(n, 0x200D, 3)
+            bus.write_many(n, 0x2080, [300, 300, 300, 300])
+            bus.write(n, 0x200E, 0x08)
+            bus.write_many(n, 0x2088, [a.spin, -a.spin])  # right motor is mounted mirrored (invert_right)
+        t0 = time.time()
+        while time.time() - t0 < 3:
+            for n in found:
+                st = status(bus, n)
+                print(f"node {n}: left {st['left']['rpm']:+.1f} rpm  right {st['right']['rpm']:+.1f} rpm")
+            time.sleep(0.5)
+        for n in found:
+            bus.write_many(n, 0x2088, [0, 0])
+            bus.write(n, 0x200E, 0x07)
+        print('stopped. Both wheels should have rolled the robot forward (right motor reversed, as invert: true does).\n'
+              'If a wheel went backwards, flip its <param name="invert"> in the description package ros2_control.xacro.')
+
+
+if __name__ == '__main__':
+    main()

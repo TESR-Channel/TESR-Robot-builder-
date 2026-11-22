@@ -1,0 +1,23 @@
+id: rplidar_s1
+category: lidar
+name: Slamtec RPLIDAR S1 (2D ToF, 40 m)
+manufacturer: Slamtec
+mass_kg: 0.105
+dims_m: [0.0555, 0.0555, 0.051]
+electrical: {voltage_v: 5, typical_w: 2.5, peak_w: 3.5}  # TODO confirm current draw with the datasheet
+interfaces: [uart, usb2]
+sensor:
+  type: lidar_2d
+  range_m: 40
+  min_range_m: 0.1
+  fov_deg: 360
+  rate_hz: 10
+  rate_range_hz: [8, 15]
+  sample_rate_hz: 9200
+  technology: tof
+  environment: indoor_outdoor
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+sources: ["Slamtec product spec pages / datasheets (via resellers), Nov 2026", "Slamtec/sllidar_ros2 launch defaults"]
+catalog_ref: tesrshop
+notes: USB serial adapter included.

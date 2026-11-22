@@ -20,6 +20,15 @@
       </xacro:if>
       <xacro:if value="${hardware == 'real'}">
         <plugin>{{ p.real_plugin or 'mock_components/GenericSystem' }}</plugin>
+{% for k, v in p.real_params.items() %}
+{% if k == 'port' %}
+        <param name="port">$(arg motor_port)</param>
+{% elif k == 'baud' %}
+        <param name="baud">$(arg motor_baud)</param>
+{% else %}
+        <param name="{{ k }}">{{ v }}</param>
+{% endif %}
+{% endfor %}
       </xacro:if>
     </hardware>
 {% for key, joint in p.wheel_joints.items() %}
@@ -30,6 +39,14 @@
       </command_interface>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
+{% if p.real_joint_params[joint] is defined %}
+      <xacro:if value="${hardware == 'real'}">
+        <!-- motor driver node {{ p.real_joint_params[joint].node_id }}, {{ p.real_joint_params[joint].channel }} channel -->
+        <param name="node_id">{{ p.real_joint_params[joint].node_id }}</param>
+        <param name="channel">{{ p.real_joint_params[joint].channel }}</param>
+        <param name="invert">{{ p.real_joint_params[joint].invert }}</param>
+      </xacro:if>
+{% endif %}
     </joint>
 {% endfor %}
   </ros2_control>

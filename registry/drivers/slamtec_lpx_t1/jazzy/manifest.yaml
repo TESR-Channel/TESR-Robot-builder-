@@ -1,0 +1,11 @@
+hw: slamtec_lpx_t1
+distro: jazzy
+package: sllidar_ros2
+apt: []
+pip: []
+node: sllidar_node
+params: {channel_type: udp, frame_id: laser, angle_compensate: true, udp_ip: 192.168.11.2, udp_port: 8089, scan_mode: Sensitivity}
+source: {type: git, url: https://github.com/Slamtec/sllidar_ros2.git, version: main}
+topics: {main: /scan}
+frame: laser
+notes: Official Slamtec ROS 2 driver, built from source (drivers.repos). Parameters from its launch file for this model.

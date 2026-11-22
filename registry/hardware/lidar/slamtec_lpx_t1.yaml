@@ -1,0 +1,23 @@
+id: slamtec_lpx_t1
+category: lidar
+name: Slamtec LPX-T1 (2D ToF, 40 m, 270°, Ethernet)
+manufacturer: Slamtec
+mass_kg: 0.264
+dims_m: [0.06, 0.073, 0.085]
+electrical: {voltage_v: 24, typical_w: 5.0, peak_w: 8.0}  # TODO confirm current draw with the datasheet
+interfaces: [ethernet]
+sensor:
+  type: lidar_2d
+  range_m: 40
+  min_range_m: 0.05
+  fov_deg: 270
+  rate_hz: 20
+  rate_range_hz: [20, 40]
+  sample_rate_hz: 60000
+  technology: tof
+  environment: indoor_outdoor
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+sources: ["Slamtec product spec pages / datasheets (via resellers), Nov 2026", "Slamtec/sllidar_ros2 launch defaults"]
+catalog_ref: tesrshop
+notes: "Ethernet UDP — the computer needs a static IP on the LiDAR subnet (192.168.11.x). 270° field of view: mount it facing forward."

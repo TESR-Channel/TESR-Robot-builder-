@@ -39,9 +39,9 @@ def test_c1_workspace_has_repos_world_arg_and_500_rays(registry, tmp_path):
     for arg in ("'world'", "'x'", "'y'", "'yaw'"):
         assert f"DeclareLaunchArgument({arg}" in sim
     readme = (out / "src" / f"{prefix}_bringup" / "README.md").read_text()
-    assert "vcs import src < drivers.repos" in readme and "sllidar_c1_launch.py" in readme
+    assert "vcs import src < drivers.repos" in readme and "launch also starts sllidar_ros2" in readme
 
 
 def test_apt_only_robot_has_no_repos_file(registry, tmp_path):
-    _, out = _robot_with(tmp_path, registry, "rplidar_s2")
+    _, out = _robot_with(tmp_path, registry, "slamtec_p3")  # apt rplidar_ros
     assert not (out / "drivers.repos").exists()

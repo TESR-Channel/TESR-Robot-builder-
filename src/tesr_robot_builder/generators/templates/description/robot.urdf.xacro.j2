@@ -5,6 +5,11 @@
   <!-- hardware:=mock (default, no robot needed) | sim (Gazebo Harmonic) | real ({{ p.real_plugin or "no ros2_control driver in registry yet" }}) -->
   <xacro:arg name="hardware" default="mock"/>
   <xacro:property name="hardware" value="$(arg hardware)"/>
+{% if p.real_params.port is defined %}
+  <!-- real motor driver connection — override with  motor_port:=/dev/ttyUSB1  motor_baud:=115200 -->
+  <xacro:arg name="motor_port" default="{{ p.real_params.port }}"/>
+  <xacro:arg name="motor_baud" default="{{ p.real_params.baud | default(115200) }}"/>
+{% endif %}
 
   <!-- Resolved geometry — every value below is traceable to robot.lock.yaml -->
   <xacro:property name="wheel_radius"     value="{{ r.wheel_radius|f4 }}"/>

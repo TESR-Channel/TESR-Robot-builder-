@@ -153,6 +153,39 @@
     return autoResolve(state, registry);
   }
 
+  // A hub motor is the wheel: its size and direct drive (1:1) replace the wheel sliders
+  function applyHub(state, registry) {
+    const m = T().byId(registry)[state.drive.motor], dr = state.drive;
+    if (!m || !m.hub || isExternal(state)) {  // back to the robot's own wheel after a hub motor
+      if (dr.ownWheel) { Object.assign(dr, dr.ownWheel); delete dr.ownWheel; }
+      return;
+    }
+    if (!dr.ownWheel) dr.ownWheel = { wheelDiameter: dr.wheelDiameter, wheelWidth: dr.wheelWidth, gearRatio: dr.gearRatio };
+    state.drive.wheelDiameter = m.hub.diameter_m;
+    state.drive.wheelWidth = m.hub.width_m || state.drive.wheelWidth;
+    state.drive.gearRatio = 1;
+  }
+  // drivetrain of the current robot if it used this motor (hub motors at their own wheel size)
+  function dtWithMotor(state, registry, h) {
+    const s2 = JSON.parse(JSON.stringify(state));
+    s2.drive.motor = h.id; applyHub(s2, registry);
+    return derive(s2, registry, []).dt;
+  }
+  function motorOptions(state, registry) {
+    const dv = derive(state, registry, []);
+    return T().recommendMotors(registry, state.power.busV, dv.dt, (h) => dtWithMotor(state, registry, h), state.drive.type);
+  }
+  // drivers that suit the motor: the motor's own list first (hub motors), never a hub-only driver on a geared motor
+  function driverOptions(state, registry) {
+    const t = T(), ids = t.byId(registry), m = ids[state.drive.motor], busV = state.power.busV;
+    const hasPlugin = (id) => (registry.drivers || []).some((d) => d.hw === id && d.ros2_control_plugin);
+    const all = t.byCategory(registry, 'motor_driver').filter((h) => (h.motor_driver?.motor_family === 'zltech_hub') === !!(m && m.hub));
+    const pref = (m && m.compatible_drivers) || [];
+    const rank = (h) => [pref.includes(h.id) ? pref.indexOf(h.id) : 99, t.voltOk(h, busV) ? 0 : 1, hasPlugin(h.id) ? 0 : 1, h.manufacturer === 'TESR' ? 0 : 1];
+    return all.map((h) => ({ hw: h, voltOk: t.voltOk(h, busV), plugin: hasPlugin(h.id), r: rank(h) }))
+      .sort((a, b) => a.r[1] - b.r[1] || a.r[0] - b.r[0] || a.r[2] - b.r[2] || a.r[3] - b.r[3]);
+  }
+
   // Parts the player has not picked by hand follow the sizing (like auto-equip in a game)
   function pickParts(state, registry) {
     const t = T(), busV = state.power.busV, u = state.user || (state.user = {});
@@ -163,15 +196,18 @@
     }
     const dv = derive(state, registry, []);
     if (!u.motor || !state.drive.motor) {
-      const ms = t.recommendMotors(registry, busV, dv.dt);
+      const ms = t.recommendMotors(registry, busV, dv.dt, (h) => dtWithMotor(state, registry, h), state.drive.type);
       const best = ms.find((m) => m.fits && m.voltOk) || ms.find((m) => m.voltOk) || ms[0];
       state.drive.motor = best ? best.hw.id : null;
     }
-    if (!u.driver || !state.drive.driver) {
-      const ds = t.byCategory(registry, 'motor_driver');
-      const best = ds.find((h) => voltMatch(t.volt(h), busV) && h.manufacturer === 'TESR') || ds.find((h) => voltMatch(t.volt(h), busV)) || ds[0];
-      state.drive.driver = best ? best.id : null;
+    applyHub(state, registry);
+    const drvOk = (id) => driverOptions(state, registry).some((o) => o.hw.id === id);
+    if (!u.driver || !state.drive.driver || !drvOk(state.drive.driver)) {
+      const best = driverOptions(state, registry)[0];
+      state.drive.driver = best ? best.hw.id : null;
     }
+    const ch = (t.byId(registry)[state.drive.driver] || {}).motor_driver?.channels;
+    if (ch) state.drive.driverCount = Math.max(1, Math.ceil((state.drive.type === 'mecanum' ? 4 : 2) / ch));
     if (!u.battery || !state.power.battery) {
       const bs = t.recommendBatteries(registry, busV, dv.pw);
       const best = bs.find((b) => b.fits) || bs.find((b) => voltMatch(b.hw.battery?.nominal_v ?? t.volt(b.hw), busV)) || bs[0];
@@ -252,7 +288,7 @@
     add(state.compute, 1, 'compute');
     if (!ext) {
       add(dr.motor, nDrive, 'motor'); add(dr.driver, dr.driverCount, 'motor driver');
-      const wheel = t.wheelFor(registry, dr.type, dr.wheelDiameter);
+      const wheel = motor && motor.hub ? null : t.wheelFor(registry, dr.type, dr.wheelDiameter);  // a hub motor is the wheel
       if (wheel) add(wheel.id, Math.ceil(nDrive / (wheel.wheel?.per_set || 1)), 'wheel');
     }
     sensors.forEach((s) => add(s.hw, 1, s.category));
@@ -272,7 +308,13 @@
     else if (!motor) push('err', 'ยังไม่ได้เลือกมอเตอร์');
     else if (!motorOk) push('err', `มอเตอร์ ${motor.name} แรงไม่พอ — ต้องการ ≥ ${fmt(dt.requiredMotorRatedTorque, 2)} N·m ที่ ${fmt(dt.motorRpm, 0)} rpm: เพิ่มอัตราทด ลดความเร็ว หรือเลือกมอเตอร์ใหญ่ขึ้น`);
     if (!ext && motor && !voltMatch(t.volt(motor), busV)) push('warn', `มอเตอร์เป็น ${t.volt(motor)} V แต่ระบบไฟ ${busV} V — ต้องมีไดรเวอร์ที่จ่าย ${t.volt(motor)} V ให้มอเตอร์`);
-    if (driver && !voltMatch(t.volt(driver), busV)) push('warn', `ไดรเวอร์เป็น ${t.volt(driver)} V แต่ระบบไฟ ${busV} V — ใส่ DC-DC หรือเลือกไดรเวอร์ ${busV} V`);
+    if (driver && !t.voltOk(driver, busV)) push('warn', `ไดรเวอร์เป็น ${t.volt(driver)} V แต่ระบบไฟ ${busV} V — ใส่ DC-DC หรือเลือกไดรเวอร์ ${busV} V`);
+    if (!ext && motor && motor.hub && motor.hub.load_kg_pair && totalMass > motor.hub.load_kg_pair * nDrive / 2)
+      push('err', `หุ่น + ของ ${fmt(totalMass, 0)} kg เกินพิกัดล้อฮับ ${motor.hub.load_kg_pair} kg ต่อคู่ — เลือกมอเตอร์ฮับรุ่นใหญ่ขึ้นหรือลดน้ำหนัก`);
+    if (!ext && driver && driver.motor_driver?.channels && driver.motor_driver.channels * dr.driverCount < nDrive)
+      push('err', `ไดรเวอร์ ${driver.motor_driver.channels} ช่อง × ${dr.driverCount} ตัว ไม่พอสำหรับ ${nDrive} ล้อ`);
+    if (!ext && driver && !(registry.drivers || []).some((x) => x.hw === driver.id && x.ros2_control_plugin))
+      push('warn', `${driver.name} ยังไม่มีไดรเวอร์ ROS 2 สำหรับหุ่นจริง — ไฟล์ที่ส่งออกใช้ได้ในการจำลอง ส่วนหุ่นจริงจะเป็น mock`);
     if (battery && packV && !voltMatch(packV, busV)) push('warn', `แบต ${nominal} V ×${series} = ${fmt(packV)} V ไม่ตรงระบบไฟ ${busV} V — ต้องมี DC-DC ระหว่างแบตกับ bus`);
     else if (battery && series > 1) push('ok', `แบต ${nominal} V ต่ออนุกรม ${series} ก้อน = ${fmt(packV)} V${parallel > 1 ? ` · ต่อขนาน ${parallel} ชุด` : ''} (BOM คิด ${series * parallel} ก้อน)`);
     if (!ext && battery && runtimeAch < m.runtimeH * 0.95) push('warn', `ใช้งานได้ประมาณ ${fmt(runtimeAch)} h จากเป้า ${m.runtimeH} h — เลือกแบตความจุสูงขึ้น`);
@@ -700,7 +742,7 @@ ${topics}
   }
 
   const api = { BLUEPRINTS, CHASSIS_COLORS, isExternal, applyBlueprint, autoResolve, derive, placeLayout, assignIds, chassisZ, rimPoint, wheelSpots, casterSpots, casterRadius,
-    toYaml, toUrdf, frames, rosPackage, bridgeArgs, voltMatch, uid, r4 };
+    toYaml, toUrdf, frames, rosPackage, bridgeArgs, voltMatch, uid, r4, applyHub, motorOptions, driverOptions };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR_GARAGE = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

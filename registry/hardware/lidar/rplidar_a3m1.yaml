@@ -1,0 +1,23 @@
+id: rplidar_a3m1
+category: lidar
+name: Slamtec RPLIDAR A3M1 (2D triangulation, 25 m)
+manufacturer: Slamtec
+mass_kg: 0.19
+dims_m: [0.076, 0.076, 0.041]
+electrical: {voltage_v: 5, typical_w: 2.25, peak_w: 3.0}
+interfaces: [uart, usb2]
+sensor:
+  type: lidar_2d
+  range_m: 25
+  min_range_m: 0.2
+  fov_deg: 360
+  rate_hz: 10
+  rate_range_hz: [5, 15]
+  sample_rate_hz: 16000
+  technology: triangulation
+  environment: indoor_outdoor
+ros: {default_frame: laser, topic: /scan, msg: sensor_msgs/msg/LaserScan}
+verified: false
+sources: ["Slamtec product spec pages / datasheets (via resellers), Nov 2026", "Slamtec/sllidar_ros2 launch defaults"]
+catalog_ref: tesrshop
+notes: USB serial adapter included.

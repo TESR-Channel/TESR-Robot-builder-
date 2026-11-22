@@ -29,6 +29,7 @@ from . import control as _control  # noqa: F401
 from . import description as _description  # noqa: F401
 from . import navigation as _navigation  # noqa: F401
 from . import simulation as _simulation  # noqa: F401
+from . import zlac_hardware as _zlac_hardware  # noqa: F401
 from .base import GenContext, GeneratedFile, all_generators
 
 MANIFEST = ".tesr/manifest.json"

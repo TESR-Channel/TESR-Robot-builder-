@@ -157,6 +157,9 @@
   const byCategory = (registry, cat) => registry.hardware.filter((h) => h.category === cat);
   const volt = (h) => (h.electrical ? h.electrical.voltage_v : null);
   const voltMatch = (v, busV) => v == null || Math.abs(v - busV) / busV <= 0.12;
+  // parts with a voltage range (e.g. ZLAC drivers 24–48 V) run straight from any bus inside it
+  const voltOk = (h, busV) => { const r = h && h.electrical && h.electrical.voltage_range_v; return r ? busV >= r[0] - 0.5 && busV <= r[1] + 0.5 : voltMatch(volt(h), busV); };
+  const isHub = (h) => !!(h && h.hub && h.hub.diameter_m);
 
   function motorFits(rec, res) {
     const m = rec.motor || {};
@@ -167,9 +170,13 @@
     return voltMatch(b.nominal_v ?? volt(rec), busV) && (b.capacity_ah ?? 0) >= pw.capacityAh && (b.max_discharge_a ?? 0) >= pw.peakCurrentA;
   }
 
-  function recommendMotors(registry, busV, res) {
-    return byCategory(registry, 'motor').map((h) => ({ hw: h, voltOk: voltMatch(volt(h), busV), fits: motorFits(h, res) }))
-      .sort((a, b) => (b.fits && b.voltOk) - (a.fits && a.voltOk) || (a.hw.motor?.rated_torque_nm ?? 0) - (b.hw.motor?.rated_torque_nm ?? 0));
+  // resFor(h): drivetrain result for a hub motor at its own wheel size (gear 1:1); geared motors use res
+  // hub motors are standard wheels with a load rating per pair: only for 2-wheel differential drives
+  function recommendMotors(registry, busV, res, resFor, driveType = 'differential') {
+    const hubFits = (h) => { const r = resFor ? resFor(h) : res; return motorFits(h, r) && (!h.hub.load_kg_pair || r.totalMass <= h.hub.load_kg_pair); };
+    return byCategory(registry, 'motor').filter((h) => !isHub(h) || driveType === 'differential')
+      .map((h) => ({ hw: h, voltOk: voltMatch(volt(h), busV), fits: isHub(h) ? hubFits(h) : motorFits(h, res) }))
+      .sort((a, b) => (b.fits && b.voltOk) - (a.fits && a.voltOk) || isHub(b.hw) - isHub(a.hw) || (a.hw.motor?.rated_torque_nm ?? 0) - (b.hw.motor?.rated_torque_nm ?? 0));
   }
   function recommendBatteries(registry, busV, pw) {
     return byCategory(registry, 'battery').map((h) => ({ hw: h, fits: batteryFits(h, busV, pw) }))
@@ -188,7 +195,7 @@
   }
   function railsNeeded(registry, busV, devices) {
     // devices: registry records; returns [{v, hw|null}] for each voltage other than the bus
-    const need = [...new Set(devices.map(volt).filter((v) => v != null && !voltMatch(v, busV)))].sort((a, b) => a - b);
+    const need = [...new Set(devices.filter((h) => !voltOk(h, busV)).map(volt).filter((v) => v != null))].sort((a, b) => a - b);
     return need.map((v) => {
       const dcdc = byCategory(registry, 'power_supply').find((h) => voltMatch(volt(h), busV) && Math.abs((h.power_supply?.output_v ?? -1) - v) < 0.5);
       return { v, hw: dcdc ? dcdc.id : null };
@@ -254,7 +261,7 @@
     const ids = byId(registry), qty = new Map(), role = new Map();
     const add = (id, n, what) => { if (!id) return; qty.set(id, (qty.get(id) || 0) + n); if (!role.has(id)) role.set(id, what); };
     add(d.compute, 1, 'compute'); add(d.motor, d.drive === 'mecanum' ? 4 : 2, 'motor'); add(d.driver, d.driverCount, 'motor driver');
-    const wheel = wheelFor(registry, d.drive, d.wheelDiameter);
+    const wheel = isHub(byId(registry)[d.motor]) ? null : wheelFor(registry, d.drive, d.wheelDiameter);
     if (wheel) { const per = Number(wheel.wheel?.per_set || 1); add(wheel.id, Math.max(1, Math.ceil((d.drive === 'mecanum' ? 4 : 2) / per)), 'wheel'); }
     add(d.lidar, d.lidarCount || 1, 'LiDAR'); add(d.imu, 1, 'IMU'); add(d.camera, d.cameraCount || 1, 'camera'); if (d.estop) add('generic_estop', 1, 'E-stop');
     add(d.battery, (d.batterySeries || 1) * (d.batteryParallel || 1), 'battery'); d.rails.forEach((rl) => add(rl.hw, 1, `${rl.v} V rail`));
@@ -276,7 +283,7 @@
   }
 
   const api = { sizeDrivetrain, sizeBattery, navSizing, estimateRobotMass, tipping, parseCsv, parseCatalog, catalogUrl, sheetCsvUrl,
-    productsFor, motorFits, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, suggestBusV, ROLLING_RESISTANCE, CATEGORY_TH, LIDAR_LAYOUTS, CAMERA_LAYOUTS, CASTER_LAYOUTS, sensorSpots };
+    productsFor, motorFits, voltOk, isHub, batteryFits, recommendMotors, recommendBatteries, railsNeeded, wheelFor, buildDefinition, billOfMaterials, bomCsv, byId, byCategory, volt, suggestBusV, ROLLING_RESISTANCE, CATEGORY_TH, LIDAR_LAYOUTS, CAMERA_LAYOUTS, CASTER_LAYOUTS, sensorSpots };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR = api;

@@ -1,0 +1,9 @@
+hw: zltech_zlac8015d
+distro: jazzy
+package: tesr_zlac_hardware
+apt: [ros-jazzy-ros2-control, ros-jazzy-ros2-controllers]
+ros2_control_plugin: tesr_zlac_hardware/ZlacSystem
+generated: zlac_hardware  # the package is written into every exported workspace that uses this driver
+params: {port: /dev/ttyUSB0, baud: 115200, node_ids: [1], accel_ms: 300, decel_ms: 300, watchdog_ms: 500, invert_left: false, invert_right: true}
+topics: {main: /joint_states}
+notes: TESR ros2_control SystemInterface over RS485 Modbus RTU (velocity mode, registers 0x200D/0x200E/0x2088/0x20A5–0x20AC). One node id per driver; two channels (left/right) per driver.

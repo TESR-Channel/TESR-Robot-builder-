@@ -1,0 +1,20 @@
+id: zltech_zlac8015
+category: motor_driver
+name: ZLTECH ZLAC8015 single-channel hub servo driver (24–48 V, 15–30 A)
+manufacturer: ZLTECH (Shenzhen Zhongling Technology)
+mass_kg: 0.5  # TODO confirm with the datasheet
+dims_m: [0.15, 0.1, 0.04]  # TODO confirm with the drawing
+electrical: {voltage_v: 48, voltage_range_v: [24, 48], typical_w: 5, peak_w: 15}
+interfaces: [rs485, can]
+motor_driver:
+  channels: 1
+  rated_a: 15
+  peak_a: 30
+  protocol: modbus_rtu
+  default_baud: 115200
+  default_node_id: 1
+  motor_family: zltech_hub  # drives ZLTECH hub servo motors only
+verified: false
+sources: ["TESR Shop listing", "ZLAC8015D RS485 Communication Instruction V1.04 (Shenzhen Zhongling Technology)"]
+catalog_ref: tesrshop
+notes: Single-channel servo driver (one per wheel). Its RS485 register map is not in the TESR driver yet — use the dual-channel ZLAC8015D for a ready-to-run export.

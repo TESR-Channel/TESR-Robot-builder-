@@ -1,0 +1,41 @@
+schema_version: 1
+# Service AMR on TESR Shop parts: ZLTECH 8" hub motors + ZLAC8015D (RS485) + RPLIDAR S2 + RealSense D435.
+# hardware:=real runs the generated tesr_zlac_hardware plugin, sllidar_ros2 and realsense2_camera.
+meta: {name: service_hub_amr, package_prefix: hubamr, created_by: anon, description: Hub-motor service AMR built from TESR Shop parts, tags: [service, tesr-shop]}
+target: {ros_distro: jazzy, os: ubuntu-24.04, compute: rpi5, arch: arm64, deployment: native}
+requirements:
+  application: service
+  environment: {type: laboratory, indoor: true, floor: tile, max_slope_deg: 3}
+  payload: {max_kg: 30, dims_m: [0.4, 0.4, 0.3], cog_offset_m: [0, 0, 0.1]}
+  motion: {v_max: 1.0, a_max: 0.5, w_max: 1.5}
+  runtime_h: 4
+mechanical:
+  dims_m: {length: 0.6, width: 0.5, height: 0.3, ground_clearance: 0.05}
+  mass_kg: {robot: auto, total: auto}
+drive:
+  type: differential
+  wheels: {diameter_m: 0.2, width_m: 0.06, separation_m: 0.45}
+  casters:
+    - {xyz: [0.22, 0.0, 0.0]}
+    - {xyz: [-0.22, 0.0, 0.0]}
+  motor: {hw: zltech_zllg80asm250, count: 2, gear_ratio: 1, driver: zltech_zlac8015d}
+hardware:
+  - {id: lidar, hw: rplidar_s2, frame: laser, parent: base_link, xyz: [0.2, 0, 0.3], rpy: [0, 0, 0]}
+  - {id: camera, hw: realsense_d435, frame: camera_link, parent: base_link, xyz: [0.28, 0, 0.25], rpy: [0, 0, 0]}
+  - {id: motor_driver, hw: zltech_zlac8015d}
+  - {id: estop, hw: generic_estop, io: DI1}
+power:
+  battery: {hw: liion_24v_30ah}
+  bus_v: 24
+  rails:
+    - {v: 5, hw: dcdc_24_5}
+io:
+  DI: {1: estop}
+comms: [dds]
+ros:
+  control: {stack: ros2_control, controller: auto}
+  localization: {slam: slam_toolbox, amcl: true, ekf: auto}
+  navigation: {profile: indoor_amr, planner: auto, controller: auto, costmap: auto, safety_margin_m: 0.05, features: [manual, slam, nav]}
+  perception: {depth_to_costmap: false}
+sim: {engine: gz_harmonic, world: empty, renderer: ogre1}
+integrations: {node_red: false, studio_pro: false}

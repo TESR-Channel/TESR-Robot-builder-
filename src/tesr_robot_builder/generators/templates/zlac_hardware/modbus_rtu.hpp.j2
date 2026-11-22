@@ -1,0 +1,35 @@
+// {{ header }}
+// Minimal Modbus RTU master over a serial port (RS485 adapter). No external library: termios + poll.
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace tesr_zlac_hardware
+{
+
+class ModbusRtu
+{
+public:
+  ~ModbusRtu();
+  // baud: 9600 19200 38400 57600 115200 230400. Returns false and fills error() on failure.
+  bool open(const std::string & port, int baud, int timeout_ms);
+  void close();
+  bool is_open() const {return fd_ >= 0;}
+  const std::string & error() const {return error_;}
+
+  bool read_holding(uint8_t id, uint16_t addr, uint16_t count, std::vector<uint16_t> & out);  // function 0x03
+  bool write_single(uint8_t id, uint16_t addr, uint16_t value);                               // function 0x06
+  bool write_multiple(uint8_t id, uint16_t addr, const std::vector<uint16_t> & values);         // function 0x10
+
+  static uint16_t crc16(const uint8_t * data, size_t len);
+
+private:
+  bool transact(const std::vector<uint8_t> & request, size_t expected_len, std::vector<uint8_t> & reply);
+  int fd_ = -1;
+  int timeout_ms_ = 50;
+  std::string error_;
+};
+
+}  // namespace tesr_zlac_hardware

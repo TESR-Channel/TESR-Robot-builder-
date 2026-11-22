@@ -162,6 +162,54 @@ def tipping(ctx: RuleContext) -> list[Finding]:
     return []
 
 
+@register("R-MECH-005", "mechanical", "hub motors set the wheel size, the gear ratio and the load per pair")
+def hub_motor_fit(ctx: RuleContext) -> list[Finding]:
+    d = ctx.defn
+    rec = ctx.registry.hw(d.drive.motor.hw)
+    hub = (rec.model_dump().get("hub") if rec else None) or {}
+    if not hub:
+        return []
+    out = []
+    dia = float(hub.get("diameter_m") or 0)
+    if dia and abs(d.drive.wheels.diameter_m - dia) / dia > 0.05:
+        out.append(Finding("R-MECH-005", "mechanical", "ERROR",
+                           f"{rec.id} is a {dia * 1000:.0f} mm hub wheel but drive.wheels.diameter_m is {d.drive.wheels.diameter_m} m",
+                           path="drive.wheels.diameter_m", suggestion=f"set drive.wheels.diameter_m: {dia}"))
+    if abs(d.drive.motor.gear_ratio - 1.0) > 1e-6:
+        out.append(Finding("R-MECH-005", "mechanical", "ERROR", f"{rec.id} is direct drive but gear_ratio is {d.drive.motor.gear_ratio}",
+                           path="drive.motor.gear_ratio", suggestion="set drive.motor.gear_ratio: 1"))
+    pair = float(hub.get("load_kg_pair") or 0)
+    if pair:
+        rating = pair * d.drive.motor.count / 2
+        if ctx.resolved.total_mass > rating:
+            out.append(Finding("R-MECH-005", "mechanical", "WARN",
+                               f"robot + payload {ctx.resolved.total_mass:.0f} kg exceeds the {rec.id} load rating ({pair:g} kg per pair → {rating:g} kg)",
+                               path="drive.motor.hw", suggestion="pick a bigger hub motor or lower the payload"))
+    return out
+
+
+@register("R-HW-005", "hardware", "motor drivers have enough channels for the driven wheels")
+def driver_channels(ctx: RuleContext) -> list[Finding]:
+    d = ctx.defn
+    rec = ctx.registry.hw(d.drive.motor.driver)
+    md = (rec.model_dump().get("motor_driver") if rec else None) or {}
+    ch = int(md.get("channels") or 0)
+    if not ch:
+        return []
+    n = sum(1 for h in d.hardware if h.hw == d.drive.motor.driver) or 1
+    if n * ch < d.drive.motor.count:
+        need = -(-d.drive.motor.count // ch)
+        return [Finding("R-HW-005", "hardware", "ERROR",
+                        f"{d.drive.motor.count} driven wheels need {need} × {rec.id} ({ch} channel{'s' if ch > 1 else ''} each), found {n}",
+                        path="hardware", suggestion=f"list {need} motor_driver instances with hw: {rec.id}")]
+    fam = md.get("motor_family")
+    mrec = ctx.registry.hw(d.drive.motor.hw)
+    if fam == "zltech_hub" and mrec and not (mrec.model_dump().get("hub")):
+        return [Finding("R-HW-005", "hardware", "ERROR", f"{rec.id} drives ZLTECH hub servo motors only, not {mrec.id}",
+                        path="drive.motor.driver", suggestion="pick a ZLTECH hub motor or another driver")]
+    return []
+
+
 # ------------------------------------------------------------------- navigation
 @register("R-NAV-001", "navigation", "a 2D LiDAR is present when SLAM or navigation is requested")
 def lidar_for_nav(ctx: RuleContext) -> list[Finding]:
@@ -225,7 +273,7 @@ def voltages_match(ctx: RuleContext) -> list[Finding]:
     out = []
     for h in ctx.resolved.hardware:
         rec = ctx.registry.hw(h.hw)
-        if rec and rec.electrical and not any(abs(rec.electrical.voltage_v - r) < 0.5 for r in rails):
+        if rec and rec.electrical and not any(rec.electrical.accepts(r) for r in rails):
             out.append(Finding("R-PWR-001", "power", "ERROR", f"{h.id} needs {rec.electrical.voltage_v} V but no rail supplies it", path="power.rails",
                                suggestion=f"add a {rec.electrical.voltage_v} V rail (DC-DC) to power.rails"))
     return out
