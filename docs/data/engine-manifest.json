@@ -1,6 +1,6 @@
 {
  "generator": "0.1.0",
- "registry_hash": "fc3db3e524a0",
+ "registry_hash": "9899a766f81d",
  "raw_url": "https://raw.githubusercontent.com/TESR-Channel/TESR-Robot-builder-/main/",
  "files": [
   "examples/agv_retrofit.robot.yaml",
@@ -27,6 +27,7 @@
   "registry/drivers/slamtec_lpx_t1/jazzy/manifest.yaml",
   "registry/drivers/slamtec_p3/jazzy/manifest.yaml",
   "registry/drivers/slamtec_s3/jazzy/manifest.yaml",
+  "registry/drivers/tesr_camera_3d/jazzy/manifest.yaml",
   "registry/drivers/tesr_imu/jazzy/manifest.yaml",
   "registry/drivers/tesr_md200/jazzy/manifest.yaml",
   "registry/drivers/tesr_md400/jazzy/manifest.yaml",
@@ -43,6 +44,7 @@
   "registry/hardware/camera/realsense_d435.yaml",
   "registry/hardware/camera/realsense_d435i.yaml",
   "registry/hardware/camera/realsense_d455.yaml",
+  "registry/hardware/camera/tesr_camera_3d.yaml",
   "registry/hardware/comm/agv_existing_base.yaml",
   "registry/hardware/comm/plc_modbus_bridge.yaml",
   "registry/hardware/compute/jetson_orin_nano.yaml",

@@ -66,7 +66,7 @@ def test_hub_bom_has_no_separate_wheel(registry):
     assert not any(line.category == "wheel" for line in bom)
 
 
-@pytest.mark.parametrize("hw", ["zltech_zllg80asm250", "zltech_zlac8015d", "rplidar_s2", "rplidar_a1m8", "slamtec_lpx_t1",
+@pytest.mark.parametrize("hw", ["zltech_zllg80asm250", "zltech_zlac8015d", "rplidar_s2", "rplidar_a1m8", "slamtec_lpx_t1", "tesr_camera_3d",
                                 "realsense_d435", "realsense_d415"])
 def test_shop_parts_have_prices(hw):
     cat = Catalog.load(ROOT / "catalog" / "products.csv")

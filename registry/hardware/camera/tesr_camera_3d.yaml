@@ -1,0 +1,14 @@
+id: tesr_camera_3d
+category: depth_camera
+name: Camera 3D By TESR (Intel RealSense D415 module)
+manufacturer: TESR
+mass_kg: 0.11
+dims_m: [0.1095, 0.0315, 0.0195]
+electrical: {voltage_v: 5, typical_w: 2.5, peak_w: 4}
+interfaces: [usb3]
+sensor: {type: depth_camera, range_m: 10, min_range_m: 0.3, fov_deg: 65, vfov_deg: 40, rate_hz: 30, imu: false}
+ros: {default_frame: camera_link, topic: /camera/depth/color/points, msg: sensor_msgs/msg/PointCloud2}
+verified: false
+sources: ["TESR Shop CA00007 (www.tesrshop.com/product/11000571270000496): D415 module, depth 1280x720, RGB 1920x1080, 110 g, 19.5 x 109.5 x 31.5 mm, USB-C", "optics as realsense_d415 (Intel D400 datasheet)"]
+catalog_ref: tesrshop
+notes: TESR camera built on the Intel RealSense D415 module, with stand and 1 m USB-C cable; same ROS 2 driver (realsense2_camera). Mass and size from the TESR Shop listing.
