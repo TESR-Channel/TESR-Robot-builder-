@@ -32,7 +32,7 @@
   .stat { margin:5px 0; } .stat .row { display:flex; justify-content:space-between; font-size:12px; } .stat b { font-family:'Chakra Petch'; }
   .bar { height:7px; background:#e5e1d8; border-radius:4px; overflow:hidden; } .bar i { display:block; height:100%; background:linear-gradient(90deg, #8B0000, #C9A84C); }
   .kv { width:100%; border-collapse:collapse; } .kv td { padding:5px 6px; border-bottom:1px solid #e5e1d8; vertical-align:top; } .kv td:first-child { color:#6d6a63; width:42%; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px 24px; } .grid2 > * { min-width:0; } .kv { table-layout:fixed; } .kv td { overflow-wrap:break-word; } table.kv td:last-child { white-space:normal; }
   .grid2 h3 { font-size:12.5px; margin:10px 0 4px; color:#1b1b1f; }
   table.t { width:100%; border-collapse:collapse; font-size:12.5px; }
   table.t th { text-align:left; background:#1b1b1f; color:#fff; padding:6px; font-weight:600; }
