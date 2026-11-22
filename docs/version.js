@@ -6,7 +6,7 @@ window.TESR_RB = {
   version: '0.6.1',
   date: '2026-11-22',
   releases: [
-    ['0.6.1', '2026-11-22', 'แสดงเลขเวอร์ชันทุกหน้า + หน้าต่าง “มีอะไรใหม่”', 'Version number on every page + “What’s new” window'],
+    ['0.6.1', '2026-11-22', 'อุปกรณ์ TESR Shop: hub motor, ZLAC driver, Camera 3D By TESR · แสดงเลขเวอร์ชันทุกหน้า + หน้าต่าง “มีอะไรใหม่”', 'TESR Shop parts: hub motors, ZLAC drivers, Camera 3D By TESR · version number on every page + “What’s new” window'],
     ['0.6.0', '2026-11-20', 'ส่งออกสำหรับมือใหม่: ชั้น TF, เลือกสนาม, รัน Gazebo + RViz ด้วยคำสั่งเดียว', 'Beginner export: TF layers, field picker, one-command Gazebo + RViz'],
     ['0.5.0', '2026-10-17', 'หน้าออกแบบแบบทีละขั้น (7 ขั้น) · แยกหน้า ทดสอบ & เกม · เมนู 4 ขั้นทุกหน้า', 'Step-by-step design (7 steps) · separate Test & play page · 4-step menu on every page'],
     ['0.4.0', '2026-10-07', 'LiDAR Slamtec S3/C1 · ตัวออกแบบสนาม + ArUco · Jetson Orin Nano / Xavier NX · ชุดสมอง AGV → AMR ผ่าน PLC · คู่มือไฟล์ · ช่องทางติดต่อในใบเสนอราคา', 'Slamtec S3/C1 · arena editor + ArUco · Jetson Orin Nano / Xavier NX · AGV → AMR brain kit via PLC · file guide · contacts on the quotation'],
