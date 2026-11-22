@@ -139,8 +139,24 @@ function pkgFacts(res) {
   };
 }
 
+// Real-robot driver packages written next to the robot's own (e.g. tesr_zlac_hardware for ZLTECH hub motors)
+function driverCards(res) {
+  const box = $('pkgs');
+  box.querySelectorAll('.pkg.drv').forEach((el) => el.remove());
+  const own = `${res.summary.prefix}_`;
+  const drv = [...new Set(Object.keys(res.files).filter((p) => p.startsWith('src/') && !p.startsWith(`src/${own}`)).map((p) => p.split('/')[1]))];
+  for (const d of drv) {
+    const n = Object.keys(res.files).filter((p) => p.startsWith(`src/${d}/`)).length;
+    const what = d === 'tesr_zlac_hardware'
+      ? '<span class="i18n-th">ไดรเวอร์มอเตอร์หุ่นจริง · ZLAC RS485 · ใช้เมื่อ hardware:=real</span><span class="i18n-en">real motor driver · ZLAC RS485 · used with hardware:=real</span>'
+      : 'driver';
+    box.insertAdjacentHTML('beforeend', `<div class="pkg drv" data-p="${esc(d)}"><div class="ico">⚙️</div><div><b>${esc(d)}</b><div>${what}</div></div><div class="n">${n} ไฟล์</div></div>`);
+  }
+}
+
 async function renderPackages(res) {
   const facts = pkgFacts(res);
+  driverCards(res);
   for (const el of document.querySelectorAll('.pkg')) {
     const k = el.dataset.p, fx = facts[k];
     if (fx) { el.querySelector('.n').textContent = fx[0]; el.querySelector(':scope > div:nth-child(2) > div').innerHTML = fx[1]; }
@@ -370,7 +386,7 @@ function renderFiles(res) {
     $('preview').textContent = typeof body === 'string' ? body : `(ไฟล์ไบนารี ${body.length} bytes)`;
     $('preview').classList.remove('muted');
   }));
-  $('zipNote').textContent = `${paths.length} ไฟล์ · ${res.summary.packages.length + 1} packages · สนาม ${currentArena().name} · มี setup.sh และ run_sim.sh`;
+  $('zipNote').textContent = `${paths.length} ไฟล์ · ${new Set(Object.keys(res.files).filter((q) => q.startsWith('src/')).map((q) => q.split('/')[1])).size + 1} packages · สนาม ${currentArena().name} · มี setup.sh และ run_sim.sh`;
 }
 
 function extrasFromProject() {
