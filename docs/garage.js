@@ -395,7 +395,7 @@ function select(u) {
   selectedUid = u;
   const o = u && objectByUid(u);
   if (o && !flags.drive) tc.attach(o); else tc.detach();
-  updateSelBox(); renderInspector(); if (tab === 'sensors' || tab === 'chassis') renderTab();
+  updateSelBox(); renderInspector(); if (tab === 'sensors' || tab === 'chassis' || tab === 'check') renderTab();
 }
 function rotateSel(d) { const it = selectedUid && findItem(selectedUid); if (!it) return; const y = (it.yaw || 0) + d; it.yaw = Math.round(Math.atan2(Math.sin(y), Math.cos(y)) * 1e4) / 1e4; changed(false); }
 function deleteSel() {
@@ -500,6 +500,7 @@ const STEPS = [
   { id: 'sensors', icon: '📡', t: 'เซนเซอร์', d: 'LiDAR สำหรับทำแผนที่และหลบสิ่งกีดขวาง' },
   { id: 'power', icon: '🔋', t: 'ไฟ & แบตเตอรี่', d: 'แรงดันระบบและแบตเตอรี่ — ระบบแนะนำให้' },
   { id: 'brain', icon: '🧠', t: 'คอมพิวเตอร์', d: 'สมองของหุ่นที่รัน ROS 2 Jazzy' },
+  { id: 'check', icon: '✅', t: 'ตรวจองค์ประกอบ', d: 'หุ่นต้องมีครบทุกส่วน — ซื้อจาก TESR Shop หรือกด “มีแล้ว / จัดหาเอง” ถ้าครบจึงไปออกใบเสนอราคาได้' },
 ];
 const STEP_KEY = 'tesr_rb_step';
 try { const v = localStorage.getItem(STEP_KEY); if (STEPS.some((x) => x.id === v)) tab = v; } catch (_) { /* ignore */ }
@@ -507,7 +508,10 @@ const openAdv = new Set();
 const tabBody = $('tabBody');
 const stepIdx = () => Math.max(0, STEPS.findIndex((x) => x.id === tab));
 function goStep(i) {
-  if (i >= STEPS.length) { $('exSummary').click(); return; }
+  if (i >= STEPS.length) {
+    if (!dv.complete) { tab = 'check'; renderTab(); banner(`องค์ประกอบยังไม่ครบ ${dv.missingComps.length} ส่วน — แก้ให้ครบก่อนออกใบเสนอราคา`); return; }
+    $('exSummary').click(); return;
+  }
   tab = STEPS[Math.max(0, i)].id;
   try { localStorage.setItem(STEP_KEY, tab); } catch (_) { /* ignore */ }
   renderTab(); tabBody.scrollTop = 0;
@@ -548,6 +552,36 @@ function card(h, { act, slot, on, chips = '', go = '' }) {
 const vChip = (v, busV) => (v == null ? '' : G.voltMatch(v, busV) ? `<span class="ok">${v} V ✓</span>` : `<span class="warn">${v} V</span>`);
 const autoTag = (slot) => (state.user[slot] ? ` <button class="mini ghost" data-act="auto" data-slot="${slot}">↺ ให้ระบบเลือก</button>` : ' <span class="note">· ระบบเลือกให้</span>');
 
+// ---- component checklist (step 8): every part present, from TESR Shop or brought by the customer
+const CK = {
+  tesr: ['✅', 'ck-ok', 'ซื้อจาก TESR'], own: ['✅', 'ck-own', 'ลูกค้ามีแล้ว / จัดหาเอง'], agv: ['✅', 'ck-own', 'ของรถ AGV เดิม'],
+  build: ['✅', 'ck-own', 'ลูกค้าสร้างเอง (มีแนวทางในใบสรุป)'], na: ['➖', 'ck-na', 'ไม่ต้องใช้'], none: ['➖', 'ck-na', 'ไม่ได้ใส่ (ไม่บังคับ)'],
+  rec: ['💡', 'ck-rec', 'แนะนำ (ไม่บังคับ)'], missing: ['❌', 'ck-miss', 'ยังไม่มี — ต้องเลือก'],
+};
+function checklistHtml(d) {
+  const req = d.checklist.filter((c) => c.req && c.status !== 'na'), done = req.filter((c) => c.status !== 'missing').length;
+  let h = `<div class="ck-sum ${d.complete ? 'ok' : 'bad'}"><b>${d.complete ? '✅ องค์ประกอบครบ' : `❌ ยังขาด ${d.missingComps.length} ส่วน`}</b><span>${done} / ${req.length} ส่วนที่ต้องมี</span></div>`;
+  h += d.checklist.map((c) => {
+    const [ic, cls, label] = CK[c.status] || CK.none;
+    const stepIdxOf = STEPS.findIndex((x) => x.id === c.step);
+    const canOwn = ['tesr', 'own'].includes(c.status), canAdd = c.status === 'missing' || c.status === 'rec';
+    const parts = c.parts.length ? c.parts.map(esc).join('<br>') : `<span class="muted">${c.why || label}</span>`;
+    const priceSum = c.lines.reduce((a, l) => a + (l.lineTotal || 0), 0), unpriced = c.status === 'tesr' && c.lines.some((l) => l.unitPrice == null);
+    const chip = c.status === 'tesr' ? (priceSum ? `<span class="price">${fmt(priceSum, 0)} ฿</span>` : '') + (unpriced ? '<span class="warn">สอบถามราคา</span>' : '') : '';
+    return `<div class="ck ${cls}"><div class="ck-ic">${ic}</div><div class="ck-main">
+        <div class="ck-top"><b>${esc(c.th)}</b><span class="ck-lab">${label}</span></div>
+        <div class="ck-parts">${parts}</div>${chip ? `<div class="chips">${chip}</div>` : ''}
+        ${c.status === 'own' ? `<input class="ck-note" data-note="${c.id}" value="${esc(c.note)}" placeholder="รุ่น/ยี่ห้อของลูกค้า (ถ้ามี)">` : ''}
+        <div class="ck-act">
+          ${canOwn ? `<div class="seg"><button data-act="supply" data-v="${c.id}:tesr" class="${c.status === 'tesr' ? 'on' : ''}">🛒 ซื้อจาก TESR</button><button data-act="supply" data-v="${c.id}:own" class="${c.status === 'own' ? 'on' : ''}">🧰 มีแล้ว / จัดหาเอง</button></div>` : ''}
+          ${canAdd && c.id !== 'power' ? `<button class="mini" data-act="addComp" data-v="${c.id}">➕ ใส่ให้${G.DEFAULT_PART[c.id] ? ` (${esc((T.byId(registry)[G.DEFAULT_PART[c.id]] || {}).name || '').split(' ').slice(0, 3).join(' ')})` : ''}</button>` : ''}
+          ${c.status === 'missing' && c.id !== 'estop' && G.DEFAULT_PART[c.id] ? `<button class="mini" data-act="addComp" data-v="${c.id}:own">🧰 มีแล้ว (ใช้รุ่นนี้คำนวณ)</button>` : ''}
+          ${stepIdxOf >= 0 && !['agv', 'build', 'na'].includes(c.status) ? `<button class="mini ghost" data-act="gostep" data-v="${stepIdxOf}">แก้ในขั้น ${stepIdxOf + 1} →</button>` : ''}
+        </div></div></div>`;
+  }).join('');
+  h += '<p class="note">“มีแล้ว / จัดหาเอง” = อุปกรณ์ยังอยู่ในแบบ (ใช้คำนวณ URDF และ ROS 2) แต่ใบเสนอราคาไม่คิดราคา · ถ้าของลูกค้าเป็นรุ่นอื่น ให้เลือกรุ่นที่ใกล้ที่สุดแล้วระบุรุ่นจริงในช่องหมายเหตุ</p>';
+  return h;
+}
 function renderTab() {
   const s = state, busV = s.power.busV, byCat = (c) => T.byCategory(registry, c), i = stepIdx(), st = STEPS[i];
   // header: progress + title
@@ -555,7 +589,9 @@ function renderTab() {
     <div class="wz-count">ขั้นที่ ${i + 1} จาก ${STEPS.length}</div><div class="wz-title">${st.icon} ${st.t}</div><p class="wz-desc">${st.d}</p>`;
   const nx = STEPS[i + 1];
   $('wzFoot').innerHTML = (i > 0 ? '<button class="back" data-go="-1">← ย้อนกลับ</button>' : '')
-    + `<button class="primary next" data-go="1">${nx ? `ถัดไป: ${nx.t} →` : '✓ เสร็จ — ไปสรุป & ราคา →'}</button>`;
+    + (nx ? `<button class="primary next" data-go="1">ถัดไป: ${nx.t} →</button>`
+      : dv.complete ? '<button class="primary next" data-go="1">✓ ครบแล้ว — ไปสรุป & ราคา →</button>'
+        : `<button class="primary next locked" data-go="1" title="แก้ให้ครบก่อน">🔒 ยังขาด ${dv.missingComps.length} ส่วน</button>`);
 
   let h = '';
   if (tab === 'start') {
@@ -642,6 +678,8 @@ function renderTab() {
       return card(c, { act: 'pick', slot: 'compute', on: s.compute === c.id, chips: chip });
     }).join('');
     h += '<p class="note">ทุกเครื่องรัน ROS 2 Jazzy · Jetson ใช้ JetPack (Ubuntu 22.04/20.04) จึงรัน Jazzy ใน Docker — คำสั่งติดตั้งอยู่ใน README ที่ส่งออก</p>';
+  } else if (tab === 'check') {
+    h += checklistHtml(dv);
   }
   tabBody.innerHTML = h;
 }
@@ -658,6 +696,11 @@ tabBody.addEventListener('input', (e) => {
   changed(true);
 });
 tabBody.addEventListener('change', (e) => { if (e.target.dataset.bind) renderTab(); });
+$('overview').addEventListener('click', (e) => { if (e.target.closest('[data-gocheck]')) goStep(STEPS.findIndex((x) => x.id === 'check')); });
+tabBody.addEventListener('input', (e) => {
+  const c = e.target.dataset && e.target.dataset.note; if (!c) return;
+  state.ownNote = state.ownNote || {}; state.ownNote[c] = e.target.value.slice(0, 80); refresh();
+});
 tabBody.addEventListener('click', (e) => {
   if (e.target.closest('a')) return;
   const a = e.target.closest('[data-act]'); if (!a) return;
@@ -676,6 +719,9 @@ tabBody.addEventListener('click', (e) => {
   else if (act === 'auto') { s.user[slot] = false; changed(true); }
   else if (act === 'volt') { if (v === 'auto') s.user.busV = false; else { s.power.busV = Number(v); s.user.busV = true; } changed(true); }
   else if (act === 'estop') { s.estop = !s.estop; changed(true); }
+  else if (act === 'supply') { const [c, how] = v.split(':'); s.own = s.own || {}; if (how === 'own') s.own[c] = true; else delete s.own[c]; changed(false); }
+  else if (act === 'addComp') { const [c, how] = v.split(':'); G.addComponent(s, registry, c); if (how === 'own') { s.own = s.own || {}; s.own[c] = true; } changed(true); }
+  else if (act === 'gostep') { goStep(Number(v)); return; }
   else if (act === 'mount') { startMount({ kind: 'sensor', hw: id, category: slot }); return; }
   else if (act === 'lidarLayout') {
     const hw = (s.sensors.find((x) => x.category === 'lidar') || {}).hw || T.byCategory(registry, 'lidar')[0].id;
@@ -745,13 +791,15 @@ function renderHud() {
       <div><b>${fmt(dv.totalMass, 0)} kg</b><span>น้ำหนักรวม</span></div>
       <div><b>${m.vMax} m/s</b><span>ความเร็วสูงสุด</span></div>
       <div><b>${ext ? 'แบตรถ' : `${fmt(dv.runtimeAch, 1)} h`}</b><span>${ext ? `${state.power.busV} V จาก AGV` : `ใช้งาน/ชาร์จ (ต้องการ ${m.runtimeH} h)`}</span></div>
-      <div><b>${dv.bom.total ? fmt(dv.bom.total, 0) + ' ฿' : 'รอราคา'}</b><span>ราคาอุปกรณ์</span></div>
-    </div>`;
+      <div><b>${dv.bom.total ? fmt(dv.bom.total, 0) + ' ฿' : 'รอราคา'}</b><span>ราคาอุปกรณ์${dv.bom.own.length ? ' (ไม่รวมของลูกค้า)' : ''}</span></div>
+    </div>
+    ${(() => { const rq = dv.checklist.filter((c) => c.req && c.status !== 'na'), ok = rq.filter((c) => c.status !== 'missing').length;
+      return `<button class="ov-ck ${dv.complete ? 'ok' : 'bad'}" data-gocheck="1">${dv.complete ? '✅' : '❌'} องค์ประกอบ ${ok}/${rq.length}${dv.complete ? ' ครบ' : ` · ขาด ${dv.missingComps.map((c) => c.th.split(' (')[0]).join(', ')}`}<span>เช็คลิสต์ →</span></button>`; })()}`;
   $('warnings').innerHTML = bad.slice(0, 3).map((w) => `<div class="wi ${w.lvl}">${esc(w.txt)}</div>`).join('')
     + (bad.length > 3 ? `<p class="note">+ อีก ${bad.length - 3} เรื่องในใบสรุป</p>` : '');
   $('bomMini').innerHTML = dv.bom.lines.map((l) => {
     const p = l.product, link = p && p.shop_url ? `<a href="${esc(p.shop_url)}" target="_blank" rel="noopener">🛒 ${p.price != null ? fmt(p.price * l.qty, 0) + ' ฿' : 'ซื้อ'}</a>` : `<a href="https://tesrshop.com/?s=${encodeURIComponent(l.name)}" target="_blank" rel="noopener">🔍 Shop</a>`;
-    return `<div class="bl"><span class="q">${l.qty}×</span><span class="n">${ICON[l.category] || '🔩'} ${esc(l.name)}</span>${link}</div>`;
+    return `<div class="bl"><span class="q">${l.qty}×</span><span class="n">${ICON[l.category] || '🔩'} ${esc(l.name)}</span>${l.own ? '<span class="note" style="margin:0">🧰 ลูกค้ามีเอง</span>' : link}</div>`;
   }).join('');
   $('bomSum').textContent = `รายการอุปกรณ์ · ${dv.bom.lines.reduce((a, l) => a + l.qty, 0)} ชิ้น`;
   status(`${state.name} · RANK ${dv.rank} · ${dv.bom.lines.reduce((a, l) => a + l.qty, 0)} ชิ้น`);

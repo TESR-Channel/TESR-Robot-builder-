@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 
 from ..registry.loader import DRIVER_CATEGORIES
+from ..components import ESTOP_REQUIRED_KG, ESTOP_REQUIRED_PAYLOAD_KG
 from .engine import Finding, RuleContext, register
 
 # --------------------------------------------------------------------- hardware
@@ -211,6 +212,21 @@ def driver_channels(ctx: RuleContext) -> list[Finding]:
 
 
 # ------------------------------------------------------------------- navigation
+@register("R-SYS-001", "hardware", "every robot component is present: LiDAR and IMU (computer, low-level control and battery are required by the schema)")
+def components_present(ctx: RuleContext) -> list[Finding]:
+    cats = {h.category for h in ctx.resolved.hardware}
+    out = []
+    for cat, what in (("lidar", "LiDAR"), ("imu", "IMU")):
+        if cat not in cats:
+            out.append(Finding("R-SYS-001", "hardware", "ERROR", f"no {what} — every robot needs one", path="hardware",
+                               suggestion=f"add a {what} hardware instance; if the customer brings their own, still add the closest model and list "
+                                          f"'{cat}' under supply.customer so the quotation leaves it out"))
+    unknown = [c for c in ctx.defn.supply.notes if c not in ctx.defn.supply.customer]
+    if unknown:
+        out.append(Finding("R-SYS-001", "hardware", "WARN", f"supply.notes for {', '.join(unknown)} but not listed in supply.customer", path="supply.notes"))
+    return out
+
+
 @register("R-NAV-001", "navigation", "a 2D LiDAR is present when SLAM or navigation is requested")
 def lidar_for_nav(ctx: RuleContext) -> list[Finding]:
     feats = set(ctx.defn.ros.navigation.features)
@@ -244,13 +260,14 @@ def ranges_consistent(ctx: RuleContext) -> list[Finding]:
 
 
 # ----------------------------------------------------------------------- safety
-@register("R-SAFE-001", "safety", "an emergency stop is mapped for robots carrying more than 50 kg")
+@register("R-SAFE-001", "safety", f"an emergency stop is fitted to every robot over {ESTOP_REQUIRED_KG:g} kg total / {ESTOP_REQUIRED_PAYLOAD_KG:g} kg payload")
 def estop_present(ctx: RuleContext) -> list[Finding]:
-    heavy = ctx.defn.requirements.payload.max_kg > 50 or ctx.resolved.total_mass > 80
+    heavy = ctx.defn.requirements.payload.max_kg > ESTOP_REQUIRED_PAYLOAD_KG or ctx.resolved.total_mass > ESTOP_REQUIRED_KG
     has_estop = any(h.category == "estop" for h in ctx.resolved.hardware) or "estop" in ctx.defn.io.DI.values()
     if heavy and not has_estop:
-        return [Finding("R-SAFE-001", "safety", "ERROR", "no emergency stop for a robot over 50 kg payload / 80 kg total", path="hardware",
-                        suggestion="add an estop hardware instance and map it to a digital input")]
+        return [Finding("R-SAFE-001", "safety", "ERROR",
+                        f"no emergency stop for a robot over {ESTOP_REQUIRED_KG:g} kg total / {ESTOP_REQUIRED_PAYLOAD_KG:g} kg payload", path="hardware",
+                        suggestion="add an estop hardware instance and map it to a digital input (list 'estop' under supply.customer if the customer fits their own)")]
     if not has_estop:
         return [Finding("R-SAFE-001", "safety", "WARN", "no emergency stop configured")]
     return []

@@ -18,9 +18,15 @@ pytestmark = pytest.mark.skipif(node is None, reason="node not installed")
 
 
 @pytest.fixture(scope="module")
-def garage():
+def garage_all():
     out = subprocess.run([node, str(ROOT / "tests" / "garage_helper.js")], check=True, capture_output=True, text=True).stdout
     return json.loads(out)
+
+
+@pytest.fixture(scope="module")
+def garage(garage_all):
+    """Blueprints only (the helper also returns component-checklist cases under checklist_*)."""
+    return {k: v for k, v in garage_all.items() if not k.startswith("checklist_")}
 
 
 def test_blueprints_pass_engine_rules(garage):
@@ -91,3 +97,16 @@ def test_tf_frames_shown_in_the_garage_equal_the_engine_urdf(garage, tmp_path):
             e_parent, e_xyz, e_rpy = engine[frame]
             assert parent == e_parent, (key, frame, parent, e_parent)
             assert all(abs(a - b) < 2e-3 for a, b in zip(xyz + rpy, e_xyz + e_rpy)), (key, frame, xyz, rpy, e_xyz, e_rpy)
+
+
+def test_component_checklist_matches_the_engine(garage_all):
+    garage = garage_all
+    own = garage["checklist_own"]
+    assert own["complete"] and own["status"]["imu"] == "own" and own["status"]["battery"] == "own"
+    assert "supply:" in own["yaml"] and "customer: [imu, battery]" in own["yaml"] and "Xsens MTi-3" in own["yaml"]
+    res = build_from_yaml(own["yaml"], "own.robot.yaml", str(ROOT / "registry"))
+    assert res["ok"], [r for r in res["report"] if r["severity"] == "ERROR"]
+    miss = garage["checklist_missing"]
+    assert not miss["complete"] and miss["missing"] == ["imu"] and garage["checklist_fixed"]["complete"]
+    res = build_from_yaml(miss["yaml"], "miss.robot.yaml", str(ROOT / "registry"))
+    assert not res["ok"] and any(r["rule"] == "R-SYS-001" and r["severity"] == "ERROR" for r in res["report"])

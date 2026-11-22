@@ -22,6 +22,7 @@ drive:
 hardware:
   - {id: lidar, hw: rplidar_s2, frame: laser, parent: base_link, xyz: [0.2, 0, 0.3], rpy: [0, 0, 0]}
   - {id: camera, hw: realsense_d435, frame: camera_link, parent: base_link, xyz: [0.28, 0, 0.25], rpy: [0, 0, 0]}
+  - {id: imu, hw: witmotion_wt901cm, frame: imu_link, parent: base_link, xyz: [0, 0, 0.1], rpy: [0, 0, 0]}
   - {id: motor_driver, hw: zltech_zlac8015d}
   - {id: estop, hw: generic_estop, io: DI1}
 power:

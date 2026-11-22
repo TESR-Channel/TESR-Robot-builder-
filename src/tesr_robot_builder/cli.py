@@ -190,10 +190,11 @@ def bom(
     typer.secho(f"BOM — {defn.meta.name}" + (f"  (catalog: {cat.source})" if cat else ""), bold=True)
     for l in lines:
         price = f"{l.unit_price:,.0f} THB" if l.unit_price is not None else "—"
-        status = ((l.product.stock_status or "listed") if l.unit_price is not None else "needs price/link") if l.product else "NOT IN CATALOG"
+        status = "customer supplies" if l.supplied_by == "customer" else \
+            ((l.product.stock_status or "listed") if l.unit_price is not None else "needs price/link") if l.product else "NOT IN CATALOG"
         typer.echo(f"  {l.qty:>2} × {l.name:40} {l.category:13} {price:>12}  {status}")
     total = sum(l.line_total for l in lines if l.line_total is not None)
-    missing = [l.hw_id for l in lines if l.product is None]
+    missing = [l.hw_id for l in lines if l.product is None and l.supplied_by != "customer"]
     typer.secho(f"\ntotal (priced parts): {total:,.0f} THB", bold=True)
     if missing:
         typer.secho("add to catalog: " + ", ".join(missing), fg=typer.colors.YELLOW)

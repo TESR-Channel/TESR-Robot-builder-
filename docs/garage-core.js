@@ -62,6 +62,24 @@
   // drive.base 'external' = an existing AGV whose PLC drives the motors; ROS 2 talks to the PLC (generated base_bridge package)
   const isExternal = (state) => !!(state.drive && state.drive.base === 'external');
   const EXT = { base: 'agv_existing_base', bridge: 'plc_modbus_bridge' };
+  // Robot components (same list as src/tesr_robot_builder/components.py). Each one must be in the design;
+  // state.own[id] = true means the customer brings it ("มีแล้ว / จัดหาเอง"): it stays in the design, the quotation leaves out its price.
+  const COMPONENTS = [
+    { id: 'chassis', th: 'โครงรถ / ตัวถัง', en: 'Chassis frame', step: 'chassis', req: true },
+    { id: 'drive', th: 'ระบบขับเคลื่อน (มอเตอร์ + ล้อ)', en: 'Drive (motors + wheels)', step: 'drive', req: true, cats: ['motor', 'wheel'] },
+    { id: 'motor_driver', th: 'Low-level control (ไดรเวอร์มอเตอร์)', en: 'Low-level control (motor driver)', step: 'power', req: true, cats: ['motor_driver', 'encoder', 'comm'] },
+    { id: 'compute', th: 'คอมพิวเตอร์ส่วนกลาง', en: 'Main computer', step: 'brain', req: true, cats: ['compute'] },
+    { id: 'lidar', th: 'LiDAR', en: 'LiDAR', step: 'sensors', req: true, cats: ['lidar'] },
+    { id: 'imu', th: 'IMU', en: 'IMU', step: 'sensors', req: true, cats: ['imu'] },
+    { id: 'battery', th: 'แบตเตอรี่', en: 'Battery', step: 'power', req: true, cats: ['battery'] },
+    { id: 'power', th: 'ไฟเลี้ยงย่อย (DC-DC)', en: 'Power rails (DC-DC)', step: 'power', req: true, cats: ['power_supply'] },
+    { id: 'estop', th: 'ปุ่มหยุดฉุกเฉิน (E-stop)', en: 'Emergency stop', step: 'power', req: true, cats: ['estop'] },
+    { id: 'camera', th: 'กล้อง (ไม่บังคับ)', en: 'Camera (optional)', step: 'sensors', req: false, cats: ['depth_camera', 'rgb_camera'] },
+  ];
+  const COMPONENT_OF = Object.fromEntries(COMPONENTS.flatMap((c) => (c.cats || []).map((k) => [k, c.id])));
+  const ESTOP_REQUIRED_KG = 20, ESTOP_REQUIRED_PAYLOAD_KG = 10;  // as components.py
+  // default part used when the checklist adds a missing component
+  const DEFAULT_PART = { lidar: 'slamtec_c1', imu: 'witmotion_wt901cm' };
 
   // ------------------------------------------------------------------ geometry helpers (all in base_link: x forward, z up, origin at axle height)
   function chassisZ(state) {
@@ -314,9 +332,11 @@
     const order = Object.keys(t.CATEGORY_TH);
     const lines = [...qty].map(([id, n]) => {
       const rec = ids[id], p = t.productsFor(catalog, id)[0] || null;
-      return { hwId: id, category: rec ? rec.category : '?', name: rec ? rec.name : id, qty: n, role: role.get(id), product: p, unitPrice: p ? p.price : null, lineTotal: p && p.price != null ? p.price * n : null };
+      const cat = rec ? rec.category : '?', comp = COMPONENT_OF[cat] || null, own = !!(comp && (state.own || {})[comp]);
+      const unit = own ? null : p ? p.price : null;
+      return { hwId: id, category: cat, component: comp, own, name: rec ? rec.name : id, qty: n, role: role.get(id), product: p, unitPrice: unit, lineTotal: unit != null ? unit * n : null };
     }).sort((a, b) => ((order.indexOf(a.category) + 1 || 99) - (order.indexOf(b.category) + 1 || 99)) || a.hwId.localeCompare(b.hwId));
-    const bom = { lines, total: lines.reduce((s, l) => s + (l.lineTotal || 0), 0), missing: lines.filter((l) => !l.product).map((l) => l.hwId), unpriced: lines.filter((l) => l.product && l.unitPrice == null).map((l) => l.hwId) };
+    const bom = { lines, total: lines.reduce((s, l) => s + (l.lineTotal || 0), 0), missing: lines.filter((l) => !l.product && !l.own).map((l) => l.hwId), unpriced: lines.filter((l) => !l.own && l.unitPrice == null).map((l) => l.hwId), own: lines.filter((l) => l.own).map((l) => l.hwId) };
 
     // warnings (plain Thai, each with the fix)
     const W = [], push = (lvl, txt) => W.push({ lvl, txt });
@@ -343,9 +363,8 @@
     if (battery && packV && !voltMatch(packV, busV)) push('warn', `แบต ${nominal} V ×${series} = ${fmt(packV)} V ไม่ตรงระบบไฟ ${busV} V — ต้องมี DC-DC ระหว่างแบตกับ bus`);
     else if (battery && series > 1) push('ok', `แบต ${nominal} V ต่ออนุกรม ${series} ก้อน = ${fmt(packV)} V${parallel > 1 ? ` · ต่อขนาน ${parallel} ชุด` : ''} (BOM คิด ${series * parallel} ก้อน)`);
     if (!ext && battery && runtimeAch < m.runtimeH * 0.95) push('warn', `ใช้งานได้ประมาณ ${fmt(runtimeAch)} h จากเป้า ${m.runtimeH} h — เลือกแบตความจุสูงขึ้น`);
-    if (!lidars.length) push('err', 'ยังไม่มี LiDAR — หุ่นทำแผนที่ (SLAM) และนำทางเองไม่ได้');
-    else if (coverage < 0.75) push('warn', `LiDAR มองรอบตัวได้ ${Math.round(coverage * 100)}% — มีจุดบอด: เพิ่ม LiDAR ตัวที่ 2 (เฉียงแบบ KURO-X) หรือย้ายขึ้นหลังคา`);
-    if ((m.payload > 50 || totalMass > 80) && !state.estop) push('err', 'หุ่นหนักเกิน 50 kg ต้องมีปุ่ม E-stop');
+    if (lidars.length && coverage < 0.75) push('warn', `LiDAR มองรอบตัวได้ ${Math.round(coverage * 100)}% — มีจุดบอด: เพิ่ม LiDAR ตัวที่ 2 (เฉียงแบบ KURO-X) หรือย้ายขึ้นหลังคา`);
+    const estopNeeded = m.payload > ESTOP_REQUIRED_PAYLOAD_KG || totalMass > ESTOP_REQUIRED_KG;
     const usb3 = sensors.filter((s) => (s.rec?.interfaces || []).includes('usb3')).length;
     if (compute?.compute && usb3 > compute.compute.usb3_ports) push('warn', `อุปกรณ์ USB 3 ${usb3} ตัว แต่ ${compute.name} มี ${compute.compute.usb3_ports} พอร์ต — ใช้ hub มีไฟเลี้ยง หรือเลือกคอมพ์ที่พอร์ตมากขึ้น`);
     if (!tip.ok) push('warn', 'เสี่ยงพลิกเมื่อเลี้ยวเร็ว — ลดความเร็ว ขยายระยะล้อ หรือวางของให้ต่ำลง');
@@ -354,6 +373,23 @@
     if (m.minAisle && c.width + 0.1 > m.minAisle) push('err', `หุ่นกว้าง ${fmt(c.width + 0.1, 2)} m (รวมระยะปลอดภัย) แต่ช่องทางแคบสุด ${m.minAisle} m`);
     rails.filter((rl) => !rl.hw).forEach((rl) => push('err', `ต้องมีไฟ ${rl.v} V แต่ยังไม่มี DC-DC ${busV}→${rl.v} V ในคลัง`));
     sensors.forEach((s) => { if (Math.abs(s.pos[0]) > c.length / 2 + 0.06 || Math.abs(s.pos[1]) > c.width / 2 + 0.06) push('warn', `${s.id} ยื่นออกนอกตัวถังมาก — ระวังชน`); });
+    // component checklist: every required part present (from TESR Shop or brought by the customer)
+    const own = state.own || {}, notes = state.ownNote || {};
+    const byComp = (id) => lines.filter((l) => l.component === id);
+    const checklist = COMPONENTS.map((c) => {
+      const ls = byComp(c.id), parts = ls.map((l) => `${l.name}${l.qty > 1 ? ` ×${l.qty}` : ''}`);
+      let status, need = c.req, why = '';
+      if (c.id === 'chassis') { status = ext ? 'agv' : 'build'; why = ext ? 'ชุดสมองติดบนรถ AGV เดิม' : `${state.chassis.shape === 'round' ? `กลม Ø${fmt(state.chassis.width, 2)} m` : `${fmt(state.chassis.length, 2)} × ${fmt(state.chassis.width, 2)} m`} · สูง ${fmt(state.chassis.height, 2)} m`; }
+      else if (ext && ['drive', 'motor_driver', 'battery'].includes(c.id)) status = 'agv';
+      else if (c.id === 'power' && !rails.length) { status = 'na'; why = `ทุกอุปกรณ์ใช้ไฟ ${busV} V ตรงจากแบต`; }
+      else if (c.id === 'estop' && !estopNeeded && !state.estop) { status = 'rec'; need = false; why = `หุ่นเบากว่า ${ESTOP_REQUIRED_KG} kg — แนะนำให้มี`; }
+      else if (c.id === 'power' && rails.some((rl) => !rl.hw)) status = 'missing';
+      else status = ls.length ? (own[c.id] ? 'own' : 'tesr') : c.req ? 'missing' : 'none';
+      return { ...c, req: need, status, parts, own: !!own[c.id], note: notes[c.id] || '', why, lines: ls };
+    });
+    const missingComps = checklist.filter((c) => c.status === 'missing');
+    missingComps.forEach((c) => push('err', `องค์ประกอบไม่ครบ: ยังไม่มี${c.th} — เลือกจาก TESR Shop หรือกด “มีแล้ว / จัดหาเอง” ในขั้นตรวจองค์ประกอบ`));
+    const complete = !missingComps.length;
     if (!W.some((w) => w.lvl !== 'ok')) push('ok', 'พร้อมออกรบ — ไม่พบปัญหา ส่งต่อไปสร้าง ROS 2 workspace หรือเปิดใน Gazebo ได้เลย');
 
     const stats = {
@@ -365,7 +401,7 @@
     const score = errs ? Math.min(0.39, avg) : Math.max(0, avg - 0.04 * warns);
     const rank = score >= 0.8 ? 'S' : score >= 0.68 ? 'A' : score >= 0.55 ? 'B' : score >= 0.4 ? 'C' : 'D';
     return { r, bottom, top, nDrive, sensors, motor, driver, battery, compute, nominal, series, parallel, packV, packWh, runtimeAch, robotMass, totalMass, dt, pw,
-      suggestedBusV, margin, motorOk, external: ext, nav, coverage, tip, rails, wheels, casters, casterR: casterRadius(state), bom, warnings: W, stats, score, rank, electronicsW };
+      suggestedBusV, margin, motorOk, external: ext, nav, coverage, tip, rails, wheels, casters, casterR: casterRadius(state), bom, warnings: W, stats, score, rank, electronicsW, checklist, complete, missingComps, estopNeeded };
   }
 
   // ------------------------------------------------------------------ Robot Definition v1
@@ -403,6 +439,12 @@
       '  navigation: {profile: indoor_amr, planner: auto, controller: auto, costmap: auto, safety_margin_m: 0.05, features: [manual, slam, nav, waypoints]}',
       `  perception: {depth_to_costmap: ${dv.sensors.some((s) => /camera/.test(s.category))}}`,
       'sim: {engine: gz_harmonic, world: empty, renderer: ogre1}', 'integrations: {node_red: true, studio_pro: true}');
+    const ownList = (dv.checklist || []).filter((c) => c.status === 'own').map((c) => c.id);
+    if (ownList.length) {
+      L.push('supply:  # components the customer brings — still described above, left out of the quotation', `  customer: [${ownList.join(', ')}]`);
+      const nt = ownList.filter((id) => (state.ownNote || {})[id]);
+      if (nt.length) { L.push('  notes:'); nt.forEach((id) => L.push(`    ${id}: ${JSON.stringify(String(state.ownNote[id]))}`)); }
+    }
     return L.join('\n') + '\n';
   }
 
@@ -766,7 +808,14 @@ ${topics}
     return files;
   }
 
-  const api = { BLUEPRINTS, CHASSIS_COLORS, isExternal, applyBlueprint, autoResolve, derive, placeLayout, assignIds, chassisZ, rimPoint, wheelSpots, casterSpots, casterRadius,
+  // checklist "➕ ใส่ให้": put the default part for a missing component into the design
+  function addComponent(state, registry, id) {
+    if (id === 'estop') { state.estop = true; return; }
+    const hw = DEFAULT_PART[id]; if (!hw) return;
+    const cat = id === 'lidar' ? 'lidar' : 'imu';
+    state.sensors.push(...placeLayout(cat, hw, cat === 'lidar' ? 'front1' : null, state, registry));
+  }
+  const api = { COMPONENTS, DEFAULT_PART, addComponent, BLUEPRINTS, CHASSIS_COLORS, isExternal, applyBlueprint, autoResolve, derive, placeLayout, assignIds, chassisZ, rimPoint, wheelSpots, casterSpots, casterRadius,
     toYaml, toUrdf, frames, rosPackage, bridgeArgs, voltMatch, uid, r4, applyHub, motorOptions, driverOptions };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TESR_GARAGE = api;

@@ -259,6 +259,19 @@ class Sim(StrictModel):
     renderer: Literal["ogre1", "ogre2"] = "ogre1"
 
 
+# --------------------------------------------------------------------------- #
+# supply: which robot components the customer brings (not quoted)
+# --------------------------------------------------------------------------- #
+Component = Literal["drive", "motor_driver", "compute", "lidar", "imu", "battery", "power", "estop", "camera"]
+
+
+class Supply(StrictModel):
+    """Every component is still described in the definition (the model drives sizing, URDF and drivers);
+    the ones listed here are supplied by the customer, so the BOM shows them without a price."""
+    customer: list[Component] = []
+    notes: dict[str, str] = Field({}, description="component -> the customer's own model / remark")
+
+
 class Integrations(StrictModel):
     node_red: bool = False
     studio_pro: bool = False
@@ -281,6 +294,7 @@ class RobotDefinition(StrictModel):
     ros: Ros = Ros()
     sim: Sim = Sim()
     integrations: Integrations = Integrations()
+    supply: Supply = Supply()
     overrides_dir: str = "overrides/"
 
     @model_validator(mode="after")

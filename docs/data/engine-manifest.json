@@ -1,5 +1,5 @@
 {
- "generator": "0.6.2",
+ "generator": "0.7.0",
  "registry_hash": "eee897394302",
  "raw_url": "https://raw.githubusercontent.com/TESR-Channel/TESR-Robot-builder-/main/",
  "files": [
@@ -108,6 +108,7 @@
   "src/tesr_robot_builder/calc/geometry.py",
   "src/tesr_robot_builder/calc/power.py",
   "src/tesr_robot_builder/catalog.py",
+  "src/tesr_robot_builder/components.py",
   "src/tesr_robot_builder/generators/__init__.py",
   "src/tesr_robot_builder/generators/base.py",
   "src/tesr_robot_builder/generators/base_bridge.py",

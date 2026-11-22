@@ -131,7 +131,7 @@
   function totals() {
     const sub = dv.bom.lines.reduce((s, l) => s + (l.lineTotal || 0), 0);
     const disc = sub * (Number(quote.discount) || 0) / 100, net = sub - disc, vat = quote.vat ? net * 0.07 : 0;
-    return { sub, disc, net, vat, grand: net + vat, unpriced: dv.bom.lines.filter((l) => l.unitPrice == null).length };
+    return { sub, disc, net, vat, grand: net + vat, unpriced: dv.bom.lines.filter((l) => !l.own && l.unitPrice == null).length, own: dv.bom.lines.filter((l) => l.own).length };
   }
 
   function render() {
@@ -145,17 +145,29 @@
     const sensorsRows = dv.sensors.map((x) => `<tr><td><b>${esc(x.id)}</b></td><td>${esc(x.rec?.name || x.hw)}</td><td class="num">${x.pos.map((v) => fmt(v, 3)).join(', ')}</td>
       <td class="num">${fmt(x.yaw * 180 / Math.PI, 0)}°</td><td>${x.category === 'lidar' ? `${x.fov}° ${x.embedded ? '(ฝังมุม/ขอบ)' : '(บนหลังคา)'} · ${x.rec?.sensor?.range_m ?? '?'} m` : /camera/.test(x.category) ? `FOV ${x.rec?.sensor?.fov_deg ?? '?'}° · ${x.rec?.sensor?.range_m ?? '?'} m` : `${x.rec?.sensor?.rate_hz ?? '?'} Hz`}</td>
       <td><code>/${esc(x.topic)}</code></td></tr>`).join('');
-    let lastCat = null;
-    const bomRows = dv.bom.lines.map((l, i) => {
-      const head = l.category !== lastCat ? `<tr class="cat"><td colspan="6">${esc(T.CATEGORY_TH[l.category] || l.category)}</td></tr>` : '';
-      lastCat = l.category;
-      const p = l.product, link = p && p.shop_url ? `<a href="${esc(p.shop_url)}" target="_blank" rel="noopener">${esc(p.sku || 'TESR Shop')}</a>` : (p && p.sku ? esc(p.sku) : '<span class="muted">—</span>');
-      return head + `<tr><td class="num">${i + 1}</td><td>${esc(l.name)}<div class="muted">${esc(l.hwId)}</div></td><td>${link}</td><td class="num">${l.qty}</td>
-        <td class="num">${l.unitPrice != null ? baht(l.unitPrice) : '<span class="muted">สอบถาม</span>'}</td><td class="num">${l.lineTotal != null ? baht(l.lineTotal) : '—'}</td></tr>`;
-    }).join('');
+    // quotation grouped by robot component (the checklist order): every component shows up — bought, the customer's own, or missing
+    const CKL = { tesr: '✅ TESR Shop', own: '✅ ' + L('ลูกค้ามีแล้ว / จัดหาเอง', 'customer supplies'), agv: '✅ ' + L('ของรถ AGV เดิม', 'from the existing AGV'),
+      build: '✅ ' + L('ลูกค้าสร้างเอง — ดูแนวทางด้านบน', 'built by the customer — see the guide above'), na: '➖ ' + L('ไม่ต้องใช้', 'not needed'),
+      none: '➖ ' + L('ไม่ได้ใส่ (ไม่บังคับ)', 'none (optional)'), rec: '💡 ' + L('แนะนำ — ยังไม่ได้ใส่', 'recommended — not fitted'), missing: '❌ ' + L('ยังไม่มี — ต้องเลือกก่อนออกใบเสนอราคา', 'missing — required before quoting') };
+    let n = 0;
+    const lineRow = (l) => {
+      const p = l.product, link = l.own ? '<span class="muted">—</span>' : p && p.shop_url ? `<a href="${esc(p.shop_url)}" target="_blank" rel="noopener">${esc(p.sku || 'TESR Shop')}</a>` : (p && p.sku ? esc(p.sku) : '<span class="muted">—</span>');
+      const note = l.own && state.ownNote && state.ownNote[l.component] ? `<div class="muted">${L('ของลูกค้า', 'customer’s')}: ${esc(state.ownNote[l.component])}</div>` : '';
+      return `<tr class="${l.own ? 'own' : ''}"><td class="num">${++n}</td><td>${esc(l.name)}<div class="muted">${esc(l.hwId)}</div>${note}</td><td>${link}</td><td class="num">${l.qty}</td>
+        <td class="num">${l.own ? `<span class="muted">${L('ลูกค้าจัดหาเอง', 'customer')}</span>` : l.unitPrice != null ? baht(l.unitPrice) : '<span class="muted">สอบถาม</span>'}</td><td class="num">${l.lineTotal != null ? baht(l.lineTotal) : '—'}</td></tr>`;
+    };
+    const bomRows = dv.checklist.map((c, k) => `<tr class="cat ck-${c.status}"><td colspan="6">${k + 1}. ${esc(isEn() ? c.en : c.th)} <span class="ckst">${CKL[c.status] || ''}</span></td></tr>` + c.lines.map(lineRow).join('')).join('')
+      + (() => { const rest = dv.bom.lines.filter((l) => !l.component); return rest.length ? `<tr class="cat"><td colspan="6">${L('อื่น ๆ', 'Other')}</td></tr>` + rest.map(lineRow).join('') : ''; })();
+    const ckRows = dv.checklist.map((c, k) => `<tr class="ck-${c.status}"><td class="num">${k + 1}</td><td><b>${esc(isEn() ? c.en : c.th)}</b></td>
+      <td>${c.parts.length ? c.parts.map(esc).join('<br>') : `<span class="muted">${esc(c.why || '—')}</span>`}${c.status === 'own' && c.note ? `<div class="muted">${L('ของลูกค้า', 'customer’s')}: ${esc(c.note)}</div>` : ''}</td>
+      <td>${CKL[c.status] || ''}${c.status === 'tesr' && c.lines.some((l) => l.unitPrice == null) ? ` <span class="muted">(${L('สอบถามราคา', 'price on request')})</span>` : ''}</td></tr>`).join('');
     const warn = dv.warnings.filter((w) => w.lvl !== 'ok');
 
-    $('doc').innerHTML = `<div class="sheet">
+    const block = dv.complete ? '' : `<div class="ck-block no-print"><b>❌ ${L('องค์ประกอบหุ่นยังไม่ครบ', 'The robot is missing components')}: ${dv.missingComps.map((c) => esc(isEn() ? c.en : c.th)).join(', ')}</b>
+      <span>${L('กลับไปหน้าออกแบบ → ขั้น “ตรวจองค์ประกอบ” แล้วเลือกจาก TESR Shop หรือกด “มีแล้ว / จัดหาเอง” — ระหว่างนี้พิมพ์ใบเสนอราคาไม่ได้', 'Go back to Design → “Component check”, choose from TESR Shop or mark “customer supplies” — printing is disabled until then')}</span>
+      <a href="./index.html">← ${L('กลับไปแก้', 'Fix it')}</a></div>`;
+    $('aPrint').disabled = !dv.complete; $('aPrint').title = dv.complete ? '' : L('องค์ประกอบยังไม่ครบ', 'components missing');
+    $('doc').innerHTML = block + `<div class="sheet ${dv.complete ? '' : 'draft'}">
       <div class="doc-head">
         <div class="brand" style="align-items:flex-start"><i style="width:88px;height:100px"></i><div style="max-width:420px">
           <b style="font-size:17px">${COMPANY.th}</b><span style="display:block;font-size:12px;color:#8B0000;font-family:'Chakra Petch'">${COMPANY.en}</span>
@@ -218,7 +230,10 @@
       ${frameGuide()}
       ${warn.length ? `<h2>ข้อควรทราบ</h2>${warn.map((w) => `<div class="wi ${w.lvl}">${esc(w.txt)}</div>`).join('')}` : ''}
 
-      <h2>ใบเสนอราคาอุปกรณ์</h2>
+      <h2>${L('เช็คลิสต์องค์ประกอบหุ่นยนต์', 'Robot component checklist')} <span class="muted" style="text-transform:none;letter-spacing:0">(${dv.complete ? L('ครบทุกส่วน', 'complete') : L(`ขาด ${dv.missingComps.length} ส่วน`, `${dv.missingComps.length} missing`)})</span></h2>
+      <table class="t ck"><thead><tr><th class="num">#</th><th>${L('องค์ประกอบ', 'Component')}</th><th>${L('อุปกรณ์', 'Part')}</th><th>${L('สถานะ / ผู้จัดหา', 'Status / supplied by')}</th></tr></thead><tbody>${ckRows}</tbody></table>
+
+      <h2>ใบเสนอราคาอุปกรณ์${dv.complete ? '' : ` <span style="color:#c0392b;text-transform:none;letter-spacing:0">— ${L('ร่าง: องค์ประกอบยังไม่ครบ ออกใบเสนอราคาไม่ได้', 'DRAFT: components missing, cannot be issued')}</span>`}</h2>
       <div class="opts no-print">
         <label>ส่วนลด (%) <input type="number" data-q="discount" min="0" max="100" step="1" value="${quote.discount}"></label>
         <label><input type="checkbox" data-q="vat" ${quote.vat ? 'checked' : ''}> VAT 7%</label>
@@ -249,7 +264,8 @@
       ${t.disc ? `<tr><td colspan="5" class="num">ส่วนลด ${quote.discount}%</td><td class="num">−${baht(t.disc)}</td></tr>` : ''}
       ${quote.vat ? `<tr><td colspan="5" class="num">VAT 7%</td><td class="num">${baht(t.vat)}</td></tr>` : ''}
       <tr class="grand"><td colspan="5" class="num">รวมทั้งสิ้น</td><td class="num">${baht(t.grand)}</td></tr>`;
-    $('priceNote').textContent = t.unpriced ? `มี ${t.unpriced} รายการที่ยังไม่มีราคาในแคตตาล็อก (“สอบถาม”) — ยอดรวมยังไม่รวมรายการเหล่านี้` : '';
+    $('priceNote').textContent = [t.unpriced ? `มี ${t.unpriced} รายการที่ยังไม่มีราคาในแคตตาล็อก (“สอบถาม”) — ยอดรวมยังไม่รวมรายการเหล่านี้` : '',
+      t.own ? `${t.own} รายการลูกค้าจัดหาเอง — ไม่คิดราคา แต่ยังอยู่ในแบบและซอฟต์แวร์ ROS 2` : ''].filter(Boolean).join(' · ');
     $('vDays').textContent = quote.validDays;
     $('qDate').textContent = longDate(quote.date); $('qUntil').textContent = longDate(addDays(quote.date, quote.validDays));
     $('sStatus').textContent = `${state.name} · ${dv.bom.lines.length} รายการ · ${t.grand ? baht(t.grand) + ' ฿' : 'รอราคา'}`;
@@ -263,7 +279,7 @@
   // dates follow the TH / EN switch (Thai: Buddhist year)
   document.addEventListener('click', (e) => { if (e.target.closest('.lang-switch button') && state && dv) setTimeout(render, 0); });
   $('aBack').onclick = () => { location.href = './index.html'; };
-  $('aPrint').onclick = () => window.print();
+  $('aPrint').onclick = () => { if (dv && !dv.complete) return; window.print(); };
   $('aBom').onclick = () => state && download(`${state.name}_bom.csv`, T.bomCsv(dv.bom), 'text/csv');
   $('aYaml').onclick = () => state && download(`${state.name}.robot.yaml`, G.toYaml(state, registry, dv), 'text/yaml');
   $('aBuild').onclick = () => {

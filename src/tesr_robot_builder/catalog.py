@@ -20,6 +20,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .components import component_of
 from .resolve import ResolvedRobot
 
 COLUMNS = [
@@ -179,9 +180,13 @@ class BomLine:
     qty: int
     product: Product | None
     role: str
+    component: str | None = None  # robot component this line belongs to (components.COMPONENTS)
+    supplied_by: str = "tesr"  # "customer" when the component is listed in supply.customer: shown, not priced
 
     @property
     def unit_price(self) -> float | None:
+        if self.supplied_by == "customer":
+            return None
         return self.product.price_thb if self.product else None
 
     @property
@@ -219,9 +224,12 @@ def bill_of_materials(resolved: ResolvedRobot, registry, catalog: Catalog | None
     for hw_id, n in qty.items():
         rec = registry.hw(hw_id)
         products = catalog.for_hardware(hw_id) if catalog else []
+        cat = rec.category if rec else "?"
+        comp = component_of(cat)
         lines.append(BomLine(
-            hw_id=hw_id, category=rec.category if rec else "?", name=rec.name if rec else hw_id, qty=n,
-            product=products[0] if products else None, role=role[hw_id],
+            hw_id=hw_id, category=cat, name=rec.name if rec else hw_id, qty=n,
+            product=products[0] if products else None, role=role[hw_id], component=comp,
+            supplied_by="customer" if comp in d.supply.customer else "tesr",
         ))
     return sorted(lines, key=lambda l: (CATEGORY_ORDER.get(l.category, 99), l.hw_id))
 
@@ -243,17 +251,17 @@ def wheel_for(registry, drive_type: str, diameter_m: float):
 def bom_csv(lines: list[BomLine]) -> str:
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["hw_id", "category", "name", "qty", "role", "sku", "unit_price_thb", "line_total_thb", "stock_status", "shop_url"])
+    w.writerow(["hw_id", "category", "name", "qty", "role", "sku", "unit_price_thb", "line_total_thb", "stock_status", "shop_url", "component", "supplied_by"])
     for l in lines:
         p = l.product
         w.writerow([
             l.hw_id, l.category, l.name, l.qty, l.role,
             p.sku if p else "", "" if l.unit_price is None else f"{l.unit_price:.2f}",
             "" if l.line_total is None else f"{l.line_total:.2f}",
-            p.stock_status if p else "not_in_catalog", p.shop_url if p else "",
+            p.stock_status if p else "not_in_catalog", p.shop_url if p else "", l.component or "", l.supplied_by,
         ])
     total = sum(l.line_total for l in lines if l.line_total is not None)
-    missing = sum(1 for l in lines if l.product is None)
+    missing = sum(1 for l in lines if l.product is None and l.supplied_by != "customer")
     w.writerow(["TOTAL", "", f"{missing} part(s) without catalog entry", "", "", "", "", f"{total:.2f}", "", ""])
     return buf.getvalue()
 

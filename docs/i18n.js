@@ -9,6 +9,18 @@
   'use strict';
   const KEY = 'tesr_rb_lang';
   const DICT = {
+    // ---------- component checklist (step 8, overview, quotation)
+    'ตรวจองค์ประกอบ': 'Component check', 'หุ่นต้องมีครบทุกส่วน — ซื้อจาก TESR Shop หรือกด “มีแล้ว / จัดหาเอง” ถ้าครบจึงไปออกใบเสนอราคาได้': 'Every part must be there — buy it from TESR Shop or mark “customer supplies”; the quotation opens once all are covered',
+    'องค์ประกอบครบ': 'All components covered', 'ส่วนที่ต้องมี': 'required parts', 'ยังขาด': 'Missing', 'ส่วน': 'part(s)',
+    'ซื้อจาก TESR': 'Buy from TESR', 'ลูกค้ามีแล้ว / จัดหาเอง': 'Customer supplies', 'มีแล้ว / จัดหาเอง': 'Customer supplies', 'ของรถ AGV เดิม': 'From the existing AGV',
+    'ลูกค้าสร้างเอง (มีแนวทางในใบสรุป)': 'Built by the customer (guide in the summary)', 'ไม่ต้องใช้': 'Not needed', 'ไม่ได้ใส่ (ไม่บังคับ)': 'None (optional)',
+    'แนะนำ (ไม่บังคับ)': 'Recommended (optional)', 'ยังไม่มี — ต้องเลือก': 'Missing — required', 'ใส่ให้': 'Add', 'มีแล้ว (ใช้รุ่นนี้คำนวณ)': 'Customer has one (use this model for sizing)',
+    'แก้ในขั้น': 'Edit in step', 'รุ่น/ยี่ห้อของลูกค้า (ถ้ามี)': 'Customer’s model / brand (optional)', 'สอบถามราคา': 'Price on request',
+    'โครงรถ / ตัวถัง': 'Chassis frame', 'ระบบขับเคลื่อน (มอเตอร์ + ล้อ)': 'Drive (motors + wheels)', 'Low-level control (ไดรเวอร์มอเตอร์)': 'Low-level control (motor driver)',
+    'คอมพิวเตอร์ส่วนกลาง': 'Main computer', 'แบตเตอรี่': 'Battery', 'ไฟเลี้ยงย่อย (DC-DC)': 'Power rails (DC-DC)', 'ปุ่มหยุดฉุกเฉิน (E-stop)': 'Emergency stop (E-stop)', 'กล้อง (ไม่บังคับ)': 'Camera (optional)',
+    'ครบแล้ว — ไปสรุป & ราคา →': 'Complete — go to the quote →', 'องค์ประกอบ': 'Components', 'ครบ': 'complete', 'ขาด': 'missing', 'เช็คลิสต์ →': 'Checklist →',
+    'ลูกค้ามีเอง': 'customer’s own', '(ไม่รวมของลูกค้า)': '(excl. customer parts)', 'เช็คลิสต์องค์ประกอบหุ่นยนต์': 'Robot component checklist', 'ลูกค้าจัดหาเอง': 'Customer supplies',
+
     // ---------- TF layers (garage-layers.js) and the beginner export page (build.html)
     'ทางแคบสุด': 'narrowest way', '❌ หุ่นกว้าง': '❌ A robot', 'm ผ่านไม่ได้': 'm wide cannot pass', '⚠️ คับสำหรับหุ่นตัวนี้ อาจติด': '⚠️ Tight for this robot — it may get stuck',
     '✓ ทางกว้างพอสำหรับหุ่นตัวนี้': '✓ Wide enough for this robot', '— เลือกสนามอื่นในข้อ ① หรือทำหุ่นให้แคบลง': '— choose another field in step ① or make the robot narrower',
