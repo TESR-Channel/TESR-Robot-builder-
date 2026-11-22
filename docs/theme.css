@@ -195,3 +195,17 @@ header.tesr nav.steps-nav a.guide { margin-left:12px; }
   header.tesr nav.steps-nav a { padding:5px 8px; font-size:12.5px; gap:5px; }
   header.tesr nav.steps-nav .sep { display:none; }
 }
+
+/* ---------- version badge + "What's new" (version.js, nav.js) */
+.ver-badge { background:transparent; border:1px solid #3a3a42; color:var(--muted); font-family:'Chakra Petch'; font-size:11.5px; padding:1px 8px; border-radius:10px; margin:0 6px 0 -4px; cursor:pointer; white-space:nowrap; }
+.ver-badge:hover { color:var(--gold); border-color:rgba(201,168,76,.6); }
+.ver-modal { position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:rgba(3,3,6,.75); padding:16px; }
+.ver-modal .card { position:relative; width:min(560px,100%); max-height:84vh; overflow:auto; background:#121218; border:1px solid rgba(201,168,76,.45); border-radius:14px; padding:20px 22px; }
+.ver-modal h2 { font-family:'Chakra Petch'; color:#fff; margin:0 0 12px; font-size:20px; } .ver-modal h2 small { display:block; font-size:12px; color:var(--muted); font-weight:400; }
+.ver-modal ol { list-style:none; margin:0; padding:0; }
+.ver-modal li { border-left:2px solid #2c2c33; padding:2px 0 10px 14px; position:relative; }
+.ver-modal li::before { content:''; position:absolute; left:-6px; top:6px; width:10px; height:10px; border-radius:50%; background:#2c2c33; }
+.ver-modal li.now::before { background:var(--gold); } .ver-modal li b { color:#fff; font-family:'Chakra Petch'; } .ver-modal li.now b { color:var(--gold); }
+.ver-modal li span { color:var(--muted); font-size:12px; margin-left:8px; } .ver-modal li p { margin:2px 0 0; font-size:13px; color:var(--text); line-height:1.5; }
+.ver-modal .x { position:absolute; right:12px; top:10px; background:transparent; border:none; color:var(--muted); font-size:16px; cursor:pointer; }
+@media print { .ver-badge { display:none; } }

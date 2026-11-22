@@ -10,6 +10,26 @@
     ['build.html', '4', 'ส่งออก ROS 2', ['build.html']],
   ];
   const here = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+
+  // version badge next to the logo → "What's new" window (data in version.js)
+  const V = window.TESR_RB;
+  const h1 = document.querySelector('header.tesr h1');
+  if (V && h1 && !document.getElementById('verBadge')) {
+    const en = () => document.documentElement.lang === 'en';
+    const b = document.createElement('button');
+    b.id = 'verBadge'; b.className = 'ver-badge'; b.type = 'button'; b.textContent = 'v' + V.version;
+    b.title = 'TESR Robot Builder v' + V.version + ' · ' + V.date;
+    h1.insertAdjacentElement('afterend', b);
+    b.addEventListener('click', () => {
+      const d = document.createElement('div'); d.className = 'ver-modal';
+      d.innerHTML = `<div class="card" role="dialog" aria-label="What's new"><button class="x" aria-label="close">✕</button>
+        <h2>${en() ? 'What’s new' : 'มีอะไรใหม่'} <small>TESR Robot Builder v${V.version}</small></h2>
+        <ol>${V.releases.map(([v, dt, th, eng], i) => `<li class="${i ? '' : 'now'}"><b>v${v}</b><span>${dt}</span><p>${en() ? eng : th}</p></li>`).join('')}</ol></div>`;
+      document.body.appendChild(d);
+      d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('.x')) d.remove(); });
+      document.addEventListener('keydown', function k(e) { if (e.key === 'Escape') { d.remove(); document.removeEventListener('keydown', k); } });
+    });
+  }
   const nav = document.querySelector('header.tesr nav'); if (!nav) return;
   const esc = (s) => s.replace(/&/g, '&amp;');
   nav.className = 'steps-nav';

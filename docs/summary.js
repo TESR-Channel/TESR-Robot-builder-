@@ -229,7 +229,7 @@
       <p class="note" id="priceNote"></p>
       <p class="note">${dv.external ? L('รถ AGV และระบบ PLC เป็นของลูกค้า ไม่รวมในใบเสนอราคานี้ — ราคาเป็นชุดสมอง (คอมพ์ เซนเซอร์ ไฟเลี้ยง) · ดู "แนวทางติดตั้งชุดสมองบนรถ AGV" ด้านบน', 'The AGV and its PLC are the customer’s and not included — this quotation covers the brain kit (computer, sensors, power) · see "Fitting the brain kit to the AGV" above')
         : L('โครงรถ / ตัวถัง: ลูกค้าจัดทำเอง ไม่รวมในใบเสนอราคานี้ — ดู "แนวทางสร้างโครงรถ" ด้านบน', 'Chassis frame: built by the customer, not included in this quotation — see the "Chassis frame build guide" above')}</p>
-      <p class="note">ราคาอุปกรณ์จาก TESR Shop ณ วันที่ออกเอกสาร · ยังไม่รวมค่าประกอบ ติดตั้ง ซอฟต์แวร์ และอบรม เว้นแต่ระบุในหมายเหตุ · สเปกคำนวณโดย TESR Robot Builder (ตรวจด้วยกฎวิศวกรรม 16 ข้อก่อนสร้าง ROS 2 workspace)</p>
+      <p class="note">ราคาอุปกรณ์จาก TESR Shop ณ วันที่ออกเอกสาร · ยังไม่รวมค่าประกอบ ติดตั้ง ซอฟต์แวร์ และอบรม เว้นแต่ระบุในหมายเหตุ · สเปกคำนวณโดย TESR Robot Builder${window.TESR_RB ? ' v' + window.TESR_RB.version : ''} (ตรวจด้วยกฎวิศวกรรม 16 ข้อก่อนสร้าง ROS 2 workspace)</p>
       <div style="margin-top:14px;padding:12px 14px;border:1.5px solid #C9A84C;border-radius:8px;background:#fffaf0;break-inside:avoid">
         <b style="font-family:'Chakra Petch';color:#8B0000">${L('สนใจสั่งซื้อ · สอบถาม · นัดติดตั้งและอบรม ติดต่อ TESR', 'To order, ask questions or book installation & training — contact TESR')}</b>
         <div style="display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:6px;font-size:13px">
