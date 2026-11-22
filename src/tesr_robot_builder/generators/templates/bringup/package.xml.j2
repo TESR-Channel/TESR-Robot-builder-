@@ -19,7 +19,8 @@
   <exec_depend>joint_state_publisher</exec_depend>
 {% endif %}
   <exec_depend>teleop_twist_keyboard</exec_depend>
-{% for pkg in p.real_sensors|map(attribute='package')|unique %}
+{# drivers built from source (drivers.repos) have no rosdep key, so they are not listed here #}
+{% for pkg in p.real_sensors|rejectattr('from_source')|map(attribute='package')|unique %}
   <exec_depend>{{ pkg }}</exec_depend>
 {% endfor %}
 {% if r.drive_hw_generated == 'zlac_hardware' %}

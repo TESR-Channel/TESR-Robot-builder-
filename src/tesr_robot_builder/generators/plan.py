@@ -46,6 +46,7 @@ class RealSensor:
     arg_params: list  # [(launch arg, parameter name, default, description)]
     remaps: list
     static_tf: tuple | None = None  # (parent, child) identity transform when the driver names its own frame
+    from_source: bool = False  # built from drivers.repos (no rosdep key) — not an exec_depend of bringup
 
     @property
     def params_src(self) -> str:
@@ -75,13 +76,14 @@ def _real_sensors(r, lidars) -> list:
                 ip = h.options.get("ip") or prm.pop("udp_ip", "192.168.11.2")
                 prm.pop("udp_ip", None)
                 args.append((f"{h.id}_ip", "udp_ip", ip, f"IP address of {h.name}"))
-            out.append(RealSensor(h.id, h.driver_package, h.driver_node, prm, args, [("scan", topics.get(h.id, "/scan"))]))
+            out.append(RealSensor(h.id, h.driver_package, h.driver_node, prm, args, [("scan", topics.get(h.id, "/scan"))],
+                                  from_source=bool(h.driver_source)))
         elif h.category in ("depth_camera", "rgb_camera"):
             name = h.frame[:-5] if h.frame.endswith("_link") else h.frame
             prm.update({"camera_name": name, "publish_tf": True})  # node name = instance id → topics /<id>/color/…
             args.append((f"{h.id}_serial", "serial_no", str(h.options.get("serial_no", "")), f"serial number of {h.name} (empty = the first camera found)"))
             out.append(RealSensor(h.id, h.driver_package, h.driver_node, prm, args, [],
-                                  None if h.frame.endswith("_link") else (h.frame, f"{name}_link")))
+                                  None if h.frame.endswith("_link") else (h.frame, f"{name}_link"), from_source=bool(h.driver_source)))
     return out
 
 
